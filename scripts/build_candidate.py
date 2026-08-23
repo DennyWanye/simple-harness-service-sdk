@@ -55,12 +55,19 @@ def build(output: Path, *, planned_tag: str) -> dict[str, object]:
         for directory in builds:
             directory.mkdir()
             run("uv", "build", "--out-dir", str(directory), env=env)
-            hashes.append({path.name: sha256(path) for path in sorted(directory.iterdir())})
+            distributions = sorted(
+                path
+                for path in directory.iterdir()
+                if path.name.endswith((".whl", ".tar.gz"))
+            )
+            if len(distributions) != 2:
+                raise RuntimeError("build must produce exactly one wheel and one sdist")
+            hashes.append({path.name: sha256(path) for path in distributions})
         if hashes[0] != hashes[1]:
             raise RuntimeError("candidate distributions are not byte-for-byte reproducible")
         output.mkdir(parents=True, exist_ok=True)
-        for path in builds[0].iterdir():
-            shutil.copy2(path, output / path.name)
+        for name in hashes[0]:
+            shutil.copy2(builds[0] / name, output / name)
 
     wheel = next(output.glob("*.whl"))
     with zipfile.ZipFile(wheel) as archive:
@@ -130,4 +137,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
