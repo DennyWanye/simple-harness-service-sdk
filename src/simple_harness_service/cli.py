@@ -89,6 +89,7 @@ class CliEngine:
         run_id = f"run-{secrets.token_hex(16)}"
         command_id = f"command-{secrets.token_hex(16)}"
         await client.start(StartRequest(session, run_id, command_id, message))
+        print(f"accepted run_id={run_id} command_id={command_id}", file=self.stderr)
         return await self._observe(client, run_id, command_id)
 
     async def _observe(
@@ -136,6 +137,9 @@ class CliEngine:
                 run_id = None
                 last_command = None
                 continue
+            if message == "/session":
+                print(current_session, file=self.stdout)
+                continue
             if message == "/new":
                 run_id = None
                 last_command = None
@@ -162,6 +166,7 @@ class CliEngine:
                         message,
                     )
                 )
+            print(f"accepted run_id={run_id} command_id={command_id}", file=self.stderr)
             last_command = command_id
             result = await self._observe(client, run_id, last_command)
             if result != ExitCode.OK:

@@ -56,6 +56,15 @@ def _validate_parent(path: Path, owner_uid: int) -> None:
         raise PermissionError("socket parent must be owner-only mode 0700")
 
 
+def _validate_socket(path: Path, owner_uid: int) -> None:
+    _validate_parent(path, owner_uid)
+    info = path.lstat()
+    if not stat.S_ISSOCK(info.st_mode) or path.is_symlink():
+        raise PermissionError("service path must be an AF_UNIX socket")
+    if info.st_uid != owner_uid or stat.S_IMODE(info.st_mode) != 0o600:
+        raise PermissionError("service socket must be owner-only mode 0600")
+
+
 class UnixServiceServer:
     def __init__(
         self,
@@ -141,6 +150,8 @@ class UnixServiceServer:
             await self._safe_error(writer, error.code)
         except TimeoutError:
             await self._safe_error(writer, ServiceErrorCode.TIMEOUT)
+        except (TypeError, ValueError):
+            await self._safe_error(writer, ServiceErrorCode.INVALID_REQUEST)
         except Exception:
             await self._safe_error(writer, ServiceErrorCode.INTERNAL)
         finally:
@@ -186,8 +197,9 @@ class UnixServiceServer:
 class UnixServiceClient:
     """Short-RPC client; each call obtains a fresh connection-bound capability."""
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, owner_uid: int | None = None) -> None:
         self.path = path
+        self._owner_uid = os.getuid() if owner_uid is None else owner_uid
 
     async def health(self) -> HealthSnapshot:
         value = await self._rpc("health", {})
@@ -214,10 +226,14 @@ class UnixServiceClient:
 
     async def _rpc(self, op: str, payload: Mapping[str, object]) -> JsonObject:
         try:
+            _validate_socket(self.path, self._owner_uid)
             reader, writer = await asyncio.wait_for(
                 asyncio.open_unix_connection(self.path), CONNECT_TIMEOUT_SECONDS
             )
             try:
+                transport_socket = writer.get_extra_info("socket")
+                if _peer_uid(transport_socket) != self._owner_uid:
+                    raise ServiceError(ServiceErrorCode.FORBIDDEN)
                 hello = await asyncio.wait_for(read_frame(reader), RPC_TIMEOUT_SECONDS)
                 capability = hello.get("capability")
                 if hello.get("type") != "hello" or not isinstance(capability, str):

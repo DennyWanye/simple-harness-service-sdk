@@ -9,6 +9,7 @@ from simple_harness import (
     AgentIdentity,
     CancelCommandIntent,
     CommandError,
+    CommandErrorCode,
     ContinueCommandIntent,
     ConversationContinuationInput,
     ConversationTurnInput,
@@ -122,33 +123,39 @@ class HarnessService:
             Message(MessageRole.USER, request.message),
             request.message,
         )
-        intent = StartCommandIntent(
-            self._projector.namespace,
-            self._projector.key_id,
-            command_id,
-            RunId(run_id),
-            RequestId(self._id("request", p, request.external_command_id)),
-            turn_id,
-            conversation,
-            request.profile_key,
-        )
+        try:
+            intent = StartCommandIntent(
+                self._projector.namespace,
+                self._projector.key_id,
+                command_id,
+                RunId(run_id),
+                RequestId(self._id("request", p, request.external_command_id)),
+                turn_id,
+                conversation,
+                request.profile_key,
+            )
+        except CommandError as error:
+            raise _mapped_command_error(error) from None
         return await self._call(self._adapter.submit_start, intent)
 
     async def continue_(
         self, request: ContinueRequest, context: AuthenticatedContext
     ) -> CommandReceipt:
         p = context.principal
-        intent = ContinueCommandIntent(
-            self._projector.namespace,
-            self._projector.key_id,
-            self._id("command", p, request.external_command_id),
-            RunId(self._id("run", p, request.external_run_id)),
-            self._id("continuation", p, request.external_continuation_id),
-            self._id("turn", p, request.external_command_id),
-            ConversationContinuationInput(
-                Message(MessageRole.USER, request.message), request.message
-            ),
-        )
+        try:
+            intent = ContinueCommandIntent(
+                self._projector.namespace,
+                self._projector.key_id,
+                self._id("command", p, request.external_command_id),
+                RunId(self._id("run", p, request.external_run_id)),
+                self._id("continuation", p, request.external_continuation_id),
+                self._id("turn", p, request.external_command_id),
+                ConversationContinuationInput(
+                    Message(MessageRole.USER, request.message), request.message
+                ),
+            )
+        except CommandError as error:
+            raise _mapped_command_error(error) from None
         return await self._call(self._adapter.submit_continue, intent)
 
     async def get(self, request: GetRequest, context: AuthenticatedContext) -> CommandSnapshot:
@@ -175,13 +182,7 @@ class HarnessService:
         try:
             return await call(*args)
         except CommandError as error:
-            code = error.code.value
-            mapped = (
-                ServiceErrorCode.CONFLICT
-                if "conflict" in code
-                else ServiceErrorCode.INVALID_REQUEST
-            )
-            raise ServiceError(mapped, code) from None
+            raise _mapped_command_error(error) from None
 
 
 def _receipt(value: HarnessCommandReceipt) -> CommandReceipt:
@@ -192,3 +193,18 @@ def _receipt(value: HarnessCommandReceipt) -> CommandReceipt:
         state=CommandState(value.state.value),
         version=value.version,
     )
+
+
+def _mapped_command_error(error: CommandError) -> ServiceError:
+    mapping = {
+        CommandErrorCode.NOT_FOUND: ServiceErrorCode.NOT_FOUND,
+        CommandErrorCode.INTENT_CONFLICT: ServiceErrorCode.CONFLICT,
+        CommandErrorCode.RUN_MODE_CONFLICT: ServiceErrorCode.CONFLICT,
+        CommandErrorCode.NAMESPACE_KEY_CONFLICT: ServiceErrorCode.CONFLICT,
+        CommandErrorCode.CANCEL_FENCE: ServiceErrorCode.CONFLICT,
+        CommandErrorCode.PAYLOAD_TOO_LARGE: ServiceErrorCode.PAYLOAD_TOO_LARGE,
+        CommandErrorCode.TRANSIENT_FAILURE: ServiceErrorCode.UNAVAILABLE,
+        CommandErrorCode.RETRY_EXHAUSTED: ServiceErrorCode.UNAVAILABLE,
+        CommandErrorCode.PERMANENT_FAILURE: ServiceErrorCode.INVALID_REQUEST,
+    }
+    return ServiceError(mapping[error.code], error.code.value)

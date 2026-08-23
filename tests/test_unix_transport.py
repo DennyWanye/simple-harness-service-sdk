@@ -212,3 +212,25 @@ async def test_oversize_peer_is_rejected_before_body_and_service_recovers(
         writer.close()
         await writer.wait_closed()
         assert (await UnixServiceClient(path).health()).serving
+
+
+@pytest.mark.asyncio
+async def test_client_rejects_socket_mode_drift(socket_dir: Path) -> None:
+    from simple_harness_service import ServiceError
+
+    path = socket_dir / "svc.sock"
+    principal = Principal("deploy", "home", "alice")
+    service = HarnessService(
+        FakeAdapter(),  # type: ignore[arg-type]
+        IdentityProjector(b"p" * 32, namespace="consumer.example"),
+    )
+    server = UnixServiceServer(
+        path,
+        service,
+        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        principal_for_uid=lambda _: principal,
+    )
+    async with server:
+        os.chmod(path, 0o660)
+        with pytest.raises(ServiceError):
+            await UnixServiceClient(path).health()

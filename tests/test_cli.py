@@ -74,8 +74,8 @@ async def test_chat_session_new_cancel_and_quit() -> None:
     client = FakeClient()
     engine = CliEngine(
         lambda _: client,  # type: ignore[arg-type,return-value]
-        stdin=io.StringIO("hello\nagain\n/new\nnew run\n/cancel\n/quit\n"),
-        stdout=io.StringIO(),
+        stdin=io.StringIO("/session\nhello\nagain\n/new\nnew run\n/cancel\n/quit\n"),
+        stdout=(stdout := io.StringIO()),
         stderr=io.StringIO(),
     )
     result = await engine.run(["--socket", str(Path("/tmp/test.sock")), "chat"])
@@ -83,6 +83,7 @@ async def test_chat_session_new_cancel_and_quit() -> None:
     assert len(client.started) == 2
     assert len(client.continued) == 1
     assert len(client.cancelled) == 1
+    assert stdout.getvalue().startswith("main\n")
 
 
 @pytest.mark.asyncio

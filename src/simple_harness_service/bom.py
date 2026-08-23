@@ -30,7 +30,8 @@ def validate_metadata_requirements(requires_dist: list[str]) -> None:
         matches = [
             requirement
             for requirement in requires_dist
-            if requirement.lower().startswith(str(item["distribution"]).lower())
+            if requirement.partition("@")[0].strip().lower()
+            == str(item["distribution"]).lower()
         ]
         if len(matches) != 1 or expected_url not in matches[0].replace(" ", ""):
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} metadata pin drift")
