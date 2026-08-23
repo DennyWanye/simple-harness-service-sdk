@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "simple-harness-service-sdk"
+version = "0.1.0"
+description = "Thin authenticated service framework for Simple Harness SDK"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {file = "LICENSE"}
+authors = [{name = "DennyWanye"}]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+  "simple-harness-sdk @ https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.0/simple_harness_sdk-0.5.0-py3-none-any.whl#sha256=d5ac29760304b0eeebd40dd26bac7f8e65d0700a4066699a9f0d5fca6ec3f94c",
+]
+
+[project.optional-dependencies]
+memory = [
+  "simple-harness-memory-sdk @ https://github.com/DennyWanye/simple-harness-memory-sdk/releases/download/v0.5.1/simple_harness_memory_sdk-0.5.1-py3-none-any.whl#sha256=314c1b89a1921abef3b9900a32b753cc0a0c89a3ce92b98822ec1cb45f7a9898",
+]
+
+[project.scripts]
+simple-harness-service = "simple_harness_service.cli:main"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/simple_harness_service"]
+
+[dependency-groups]
+dev = [
+  "build>=1.3,<2",
+  "hatchling>=1.27,<2",
+  "mypy>=1.17,<2",
+  "pytest>=8.4,<9",
+  "pytest-asyncio>=1.1,<2",
+  "ruff>=0.12,<1",
+  "twine>=6.1,<7",
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["simple_harness_service"]
+
