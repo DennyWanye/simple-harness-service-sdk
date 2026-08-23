@@ -8,4 +8,7 @@
   AF_UNIX transport, ConversationClient, CLI engine, conformance helpers, and compatibility BOM.
 - Adds closed terminal outcome projection, active-chat durable cancellation, create-once owner-only
   credential manifests, and strict installed direct-URL hash validation.
+- Preserves public Harness command kind in every receipt/snapshot, distinguishes no-run cancel from
+  start/continue projection, and atomically activates credentials only after file, directory, and
+  parent-directory durability barriers.
 - This candidate is not tagged or published pending independent audit.

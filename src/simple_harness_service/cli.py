@@ -163,13 +163,19 @@ class CliEngine:
             f"accepted run_id={run_id} command_id={cancel_command_id}",
             file=self.stderr,
         )
-        return await self._observe(
+        result = await self._observe(
             client,
             run_id,
             cancel_command_id,
             deadline_seconds=CANCEL_RECONCILE_SECONDS,
             cancel_on_interrupt=False,
         )
+        if result is ExitCode.TIMEOUT:
+            print(
+                f"cancel pending run_id={run_id} command_id={cancel_command_id}",
+                file=self.stderr,
+            )
+        return result
 
     async def _chat(self, client: CliClient, session: str) -> int:
         run_id: str | None = None
@@ -327,6 +333,7 @@ def _snapshot_json(value: CommandSnapshot) -> dict[str, object]:
         "command_id": value.receipt.command_id,
         "run_id": value.receipt.run_id,
         "state": value.receipt.state.value,
+        "kind": value.receipt.kind.value,
         "output_state": value.output_state.value,
         "output_text": value.output_text,
         "error_code": value.error_code,

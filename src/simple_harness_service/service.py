@@ -29,6 +29,7 @@ from simple_harness import (
 from .auth import AuthenticatedContext
 from .contracts import (
     CancelRequest,
+    CommandKind,
     CommandOutcome,
     CommandReceipt,
     CommandSnapshot,
@@ -104,7 +105,12 @@ class HarnessAdapter:
             output_text,
             None if snapshot.error_code is None else snapshot.error_code.value,
             run_state,
-            _closed_outcome(command_state, output_state, run_state),
+            _closed_outcome(
+                command_state,
+                output_state,
+                run_state,
+                CommandKind(snapshot.receipt.kind.value),
+            ),
         )
 
 
@@ -211,6 +217,7 @@ def _receipt(value: HarnessCommandReceipt) -> CommandReceipt:
         accept_seq=value.accept_seq,
         state=CommandState(value.state.value),
         version=value.version,
+        kind=CommandKind(value.kind.value),
     )
 
 
@@ -233,6 +240,7 @@ def _closed_outcome(
     command_state: CommandState,
     output_state: OutputState,
     run_state: RunState | None,
+    command_kind: CommandKind | None = None,
 ) -> CommandOutcome:
     if command_state in {
         CommandState.ACCEPTED,
@@ -252,6 +260,20 @@ def _closed_outcome(
         if run_state in {RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED}:
             return CommandOutcome.PROTOCOL_ERROR
         return CommandOutcome.PENDING
+    if (
+        command_kind is CommandKind.CANCEL
+        and command_state is CommandState.APPLIED
+        and output_state is OutputState.ABSENT
+        and run_state is None
+    ):
+        return CommandOutcome.CANCELLED
+    if (
+        command_kind in {CommandKind.START, CommandKind.CONTINUE}
+        and command_state is CommandState.APPLIED
+        and output_state is OutputState.ABSENT
+        and run_state is None
+    ):
+        return CommandOutcome.PROTOCOL_ERROR
     if run_state is RunState.FAILED or command_state is CommandState.REJECTED:
         return CommandOutcome.FAILED
     if run_state is RunState.CANCELLED or command_state is CommandState.CANCELLED:

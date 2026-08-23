@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from simple_harness_service import (
+    CommandKind,
     CommandOutcome,
     CommandReceipt,
     CommandSnapshot,
@@ -21,7 +22,7 @@ from simple_harness_service import (
     OutputState,
     RunState,
 )
-from simple_harness_service.cli import CliEngine, ExitCode
+from simple_harness_service.cli import CliEngine, ExitCode, main
 
 
 class FakeClient:
@@ -39,6 +40,19 @@ class FakeClient:
         return _receipt()
 
     async def get(self, command_id: str) -> CommandSnapshot:
+        if any(item.external_command_id == command_id for item in self.cancelled):
+            return CommandSnapshot(
+                CommandReceipt(
+                    command_id,
+                    "backend-run",
+                    1,
+                    CommandState.APPLIED,
+                    2,
+                    CommandKind.CANCEL,
+                ),
+                OutputState.ABSENT,
+                outcome=CommandOutcome.CANCELLED,
+            )
         return CommandSnapshot(
             _receipt(),
             OutputState.PRESENT,
@@ -49,7 +63,7 @@ class FakeClient:
 
     async def cancel(self, request: Any) -> CommandReceipt:
         self.cancelled.append(request)
-        return _receipt()
+        return _receipt(CommandKind.CANCEL)
 
 
 class PendingClient(FakeClient):
@@ -62,7 +76,7 @@ class PendingClient(FakeClient):
             item.external_command_id == command_id for item in self.cancelled
         ):
             return CommandSnapshot(
-                _receipt(),
+                _receipt(CommandKind.CANCEL),
                 OutputState.ABSENT,
                 run_state=RunState.CANCELLED,
                 outcome=CommandOutcome.CANCELLED,
@@ -73,9 +87,19 @@ class PendingClient(FakeClient):
         )
 
 
-def _receipt() -> CommandReceipt:
+class UnsettledCancelClient(PendingClient):
+    async def get(self, command_id: str) -> CommandSnapshot:
+        self.observed.set()
+        return CommandSnapshot(
+            _receipt(CommandKind.CANCEL if self.cancelled else CommandKind.START),
+            OutputState.PENDING,
+            outcome=CommandOutcome.PENDING,
+        )
+
+
+def _receipt(kind: CommandKind = CommandKind.START) -> CommandReceipt:
     return CommandReceipt(
-        "backend-command", "backend-run", 0, CommandState.ACCEPTED, 1
+        "backend-command", "backend-run", 0, CommandState.ACCEPTED, 1, kind
     )
 
 
@@ -124,6 +148,38 @@ async def test_observation_cancellation_sends_durable_cancel() -> None:
     assert client.cancelled[0].external_run_id == "external-run"
 
 
+@pytest.mark.asyncio
+async def test_interrupt_reports_durable_cancel_pending_without_forging_terminal(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from simple_harness_service import cli as cli_module
+
+    client = UnsettledCancelClient()
+    stderr = io.StringIO()
+    engine = CliEngine(lambda _: client, stderr=stderr)
+    monkeypatch.setattr(cli_module, "CANCEL_RECONCILE_SECONDS", 0.01)
+    task = asyncio.create_task(
+        engine._observe(client, "external-run", "external-command")
+    )
+    await client.observed.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert "cancel pending run_id=external-run" in stderr.getvalue()
+    assert "cancelled" not in stderr.getvalue()
+
+
+def test_sigint_and_successful_cancel_share_exit_six(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def interrupted(awaitable: Any) -> int:
+        awaitable.close()
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(asyncio, "run", interrupted)
+    assert main([]) == ExitCode.CANCELLED
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="PTY is POSIX-only")
 @pytest.mark.asyncio
 async def test_active_chat_quit_durably_cancels_and_reconciles_over_pty() -> None:
@@ -165,7 +221,7 @@ async def test_status_and_cancel_commands() -> None:
     assert '"output_state": "present"' in stdout.getvalue()
     assert (
         await engine.run(["--socket", "/tmp/test.sock", "cancel", "external-run"])
-        == ExitCode.OK
+        == ExitCode.CANCELLED
     )
     assert client.cancelled[-1].external_run_id == "external-run"
 

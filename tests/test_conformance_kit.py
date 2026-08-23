@@ -6,6 +6,7 @@ import pytest
 
 from simple_harness_service import (
     AuthenticatedContext,
+    CommandKind,
     CommandReceipt,
     CommandSnapshot,
     CommandState,
@@ -35,7 +36,12 @@ class ConformingService:
 
 
 def _receipt(command_id: str) -> CommandReceipt:
-    return CommandReceipt(command_id, "run", 0, CommandState.ACCEPTED, 1)
+    kind = {
+        "start": CommandKind.START,
+        "continue": CommandKind.CONTINUE,
+        "cancel": CommandKind.CANCEL,
+    }.get(command_id, CommandKind.START)
+    return CommandReceipt(command_id, "run", 0, CommandState.ACCEPTED, 1, kind)
 
 
 @pytest.mark.asyncio

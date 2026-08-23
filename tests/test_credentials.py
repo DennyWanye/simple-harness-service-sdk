@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 import stat
 from pathlib import Path
 
@@ -12,6 +13,7 @@ from simple_harness_service import (
     load_credentials,
     provision_credentials,
 )
+from simple_harness_service import credentials as credential_module
 
 
 def test_credentials_create_once_are_owner_only_and_stable(tmp_path: Path) -> None:
@@ -67,3 +69,76 @@ def test_server_construction_rejects_credentials_before_socket_admission(
             principal_for_uid=lambda _: Principal("deploy", "home", "alice"),
         )
     assert not socket_path.exists()
+
+
+def test_provision_fsync_and_atomic_activation_order(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    events: list[str] = []
+    original_write = credential_module._write_new
+    original_sync = credential_module._fsync_directory
+    original_rename = os.rename
+
+    def write(path: Path, value: bytes) -> None:
+        original_write(path, value)
+        events.append(f"write:{path.name}")
+
+    def sync(path: Path) -> None:
+        original_sync(path)
+        events.append(f"sync:{path.name}")
+
+    def rename(source: Path, target: Path) -> None:
+        original_rename(source, target)
+        events.append("rename")
+
+    monkeypatch.setattr(credential_module, "_write_new", write)
+    monkeypatch.setattr(credential_module, "_fsync_directory", sync)
+    monkeypatch.setattr(os, "rename", rename)
+    path = tmp_path / "credentials"
+    provision_credentials(path, namespace="consumer.example")
+    assert events == [
+        f"sync:{tmp_path.name}",
+        "write:identity.key",
+        "write:context.key",
+        "write:credential-manifest.json",
+        "sync:.credentials.provisioning",
+        "rename",
+        f"sync:{tmp_path.name}",
+    ]
+
+
+@pytest.mark.parametrize("fault_at", range(1, 7))
+def test_provision_fsync_faults_never_succeed_or_regenerate_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault_at: int
+) -> None:
+    path = tmp_path / "credentials"
+    original_fsync = os.fsync
+    calls = 0
+    generated = 0
+
+    def token_bytes(size: int) -> bytes:
+        nonlocal generated
+        generated += 1
+        return bytes([generated]) * size
+
+    def failing_fsync(descriptor: int) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == fault_at:
+            raise OSError("durability fault")
+        original_fsync(descriptor)
+
+    monkeypatch.setattr(secrets, "token_bytes", token_bytes)
+    monkeypatch.setattr(os, "fsync", failing_fsync)
+    with pytest.raises(OSError, match="durability fault"):
+        provision_credentials(path, namespace="consumer.example")
+    generated_after_failure = generated
+    monkeypatch.setattr(os, "fsync", original_fsync)
+    if path.exists():
+        bundle = provision_credentials(path, namespace="consumer.example")
+        assert bundle.identity_key == bytes([1]) * 32
+        assert bundle.context_key == bytes([2]) * 32
+    else:
+        with pytest.raises(PermissionError, match="operator review"):
+            provision_credentials(path, namespace="consumer.example")
+    assert generated == generated_after_failure

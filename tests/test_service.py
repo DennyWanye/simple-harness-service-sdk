@@ -3,7 +3,10 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from simple_harness import CommandKind, CommandOutputState, CommandRetryState, RunId
+from simple_harness import (
+    CommandKind as HarnessCommandKind,
+)
+from simple_harness import CommandOutputState, CommandRetryState, RunId
 from simple_harness import CommandReceipt as HarnessReceipt
 from simple_harness import CommandSnapshot as HarnessSnapshot
 
@@ -22,6 +25,9 @@ from simple_harness_service import (
     RunState,
     StartRequest,
 )
+from simple_harness_service import (
+    CommandKind as SvcCommandKind,
+)
 from simple_harness_service.service import HarnessAdapter, _closed_outcome
 
 
@@ -31,20 +37,28 @@ class FakeRunClient:
 
     async def submit_start(self, intent: Any) -> HarnessReceipt:
         self.calls.append(("submit_start", intent))
-        return receipt(intent, CommandKind.START)
+        return receipt(intent, HarnessCommandKind.START)
 
     async def submit_continue(self, intent: Any) -> HarnessReceipt:
         self.calls.append(("submit_continue", intent))
-        return receipt(intent, CommandKind.CONTINUE)
+        return receipt(intent, HarnessCommandKind.CONTINUE)
 
     async def submit_cancel(self, intent: Any) -> HarnessReceipt:
         self.calls.append(("submit_cancel", intent))
-        return receipt(intent, CommandKind.CANCEL)
+        return receipt(intent, HarnessCommandKind.CANCEL)
 
     async def get_command(self, command_id: str) -> HarnessSnapshot:
         self.calls.append(("get_command", command_id))
         value = HarnessReceipt(
-            command_id, RunId("run"), CommandKind.START, 0, "accepted", 1, "ns", "kid", "a" * 64
+            command_id,
+            RunId("run"),
+            HarnessCommandKind.START,
+            0,
+            "accepted",
+            1,
+            "ns",
+            "kid",
+            "a" * 64,
         )
         return HarnessSnapshot(value, CommandRetryState.READY, CommandOutputState.PENDING)
 
@@ -52,7 +66,7 @@ class FakeRunClient:
         self.calls.append(("query", run_id))
 
 
-def receipt(intent: Any, kind: CommandKind) -> HarnessReceipt:
+def receipt(intent: Any, kind: HarnessCommandKind) -> HarnessReceipt:
     return HarnessReceipt(
         intent.command_id,
         intent.run_id,
@@ -72,22 +86,62 @@ def context() -> AuthenticatedContext:
 
 
 @pytest.mark.parametrize(
-    ("command_state", "output_state", "run_state", "expected"),
+    ("command_state", "output_state", "run_state", "command_kind", "expected"),
     [
         (
             CommandState.ACCEPTED,
             OutputState.ABSENT,
             RunState.COMPLETED,
+            SvcCommandKind.START,
             CommandOutcome.PENDING,
         ),
-        (CommandState.APPLIED, OutputState.PRESENT, RunState.COMPLETED, CommandOutcome.COMPLETED),
-        (CommandState.APPLIED, OutputState.ABSENT, RunState.COMPLETED, CommandOutcome.COMPLETED),
-        (CommandState.APPLIED, OutputState.ABSENT, RunState.FAILED, CommandOutcome.FAILED),
-        (CommandState.CANCELLED, OutputState.ABSENT, RunState.CANCELLED, CommandOutcome.CANCELLED),
+        (
+            CommandState.APPLIED,
+            OutputState.PRESENT,
+            RunState.COMPLETED,
+            SvcCommandKind.START,
+            CommandOutcome.COMPLETED,
+        ),
+        (
+            CommandState.APPLIED,
+            OutputState.ABSENT,
+            RunState.COMPLETED,
+            SvcCommandKind.CONTINUE,
+            CommandOutcome.COMPLETED,
+        ),
+        (
+            CommandState.APPLIED,
+            OutputState.ABSENT,
+            RunState.FAILED,
+            SvcCommandKind.START,
+            CommandOutcome.FAILED,
+        ),
+        (
+            CommandState.CANCELLED,
+            OutputState.ABSENT,
+            RunState.CANCELLED,
+            SvcCommandKind.START,
+            CommandOutcome.CANCELLED,
+        ),
         (
             CommandState.APPLIED,
             OutputState.UNKNOWN,
             RunState.COMPLETED,
+            SvcCommandKind.START,
+            CommandOutcome.PROTOCOL_ERROR,
+        ),
+        (
+            CommandState.APPLIED,
+            OutputState.ABSENT,
+            None,
+            SvcCommandKind.CANCEL,
+            CommandOutcome.CANCELLED,
+        ),
+        (
+            CommandState.APPLIED,
+            OutputState.ABSENT,
+            None,
+            SvcCommandKind.START,
             CommandOutcome.PROTOCOL_ERROR,
         ),
     ],
@@ -95,10 +149,11 @@ def context() -> AuthenticatedContext:
 def test_closed_cli_outcomes_preserve_terminal_provenance(
     command_state: CommandState,
     output_state: OutputState,
-    run_state: RunState,
+    run_state: RunState | None,
+    command_kind: SvcCommandKind,
     expected: CommandOutcome,
 ) -> None:
-    assert _closed_outcome(command_state, output_state, run_state) is expected
+    assert _closed_outcome(command_state, output_state, run_state, command_kind) is expected
 
 
 @pytest.mark.asyncio

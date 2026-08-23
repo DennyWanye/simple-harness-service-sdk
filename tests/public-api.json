@@ -4,6 +4,7 @@
   "Capability",
   "CommandReceipt",
   "CommandOutcome",
+  "CommandKind",
   "CommandSnapshot",
   "CommandState",
   "ContextAuthority",

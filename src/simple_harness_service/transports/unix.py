@@ -18,6 +18,7 @@ from ..auth import ContextAuthority
 from ..codec import encode_frame, read_frame
 from ..contracts import (
     CancelRequest,
+    CommandKind,
     CommandOutcome,
     CommandReceipt,
     CommandSnapshot,
@@ -313,6 +314,7 @@ def _result_json(value: object) -> JsonObject:
             "accept_seq": value.accept_seq,
             "state": value.state.value,
             "version": value.version,
+            "kind": value.kind.value,
         }
     if isinstance(value, CommandSnapshot):
         return {
@@ -339,4 +341,5 @@ def _receipt(value: JsonObject) -> CommandReceipt:
         int(value["accept_seq"]),
         CommandState(str(value["state"])),
         int(value["version"]),
+        CommandKind(str(value["kind"])),
     )

@@ -43,11 +43,14 @@ def provision_credentials(path: Path, *, namespace: str) -> CredentialBundle:
     """Create the complete credential set once, or validate an existing set."""
     if not namespace.strip():
         raise ValueError("namespace is required")
-    try:
-        path.mkdir(mode=0o700)
-    except FileExistsError:
+    if path.exists() or path.is_symlink():
         return load_credentials(path, expected_namespace=namespace)
-    _validate_directory(path)
+    staging = path.parent / f".{path.name}.provisioning"
+    if staging.exists() or staging.is_symlink():
+        raise PermissionError("incomplete credential provisioning requires operator review")
+    staging.mkdir(mode=0o700)
+    _validate_directory(staging)
+    _fsync_directory(path.parent)
     identity_key = secrets.token_bytes(32)
     context_key = secrets.token_bytes(32)
     projector = IdentityProjector(identity_key, namespace=namespace)
@@ -59,16 +62,19 @@ def provision_credentials(path: Path, *, namespace: str) -> CredentialBundle:
         "context_key_id": authority.key_id,
     }
     try:
-        _write_new(path / _IDENTITY, identity_key)
-        _write_new(path / _CONTEXT, context_key)
+        _write_new(staging / _IDENTITY, identity_key)
+        _write_new(staging / _CONTEXT, context_key)
         _write_new(
-            path / _MANIFEST,
+            staging / _MANIFEST,
             json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode() + b"\n",
         )
-        _fsync_directory(path)
+        _fsync_directory(staging)
+        os.rename(staging, path)
+        _fsync_directory(path.parent)
     except BaseException:
-        # A partial create is intentionally not repaired on the next invocation.
-        # Admission fails closed until an operator removes the never-activated set.
+        # Partial staging is intentionally retained for operator review. If the
+        # rename succeeded but the parent fsync failed, restart loads the same keys
+        # and never silently generates a different identity.
         raise
     return load_credentials(path, expected_namespace=namespace)
 

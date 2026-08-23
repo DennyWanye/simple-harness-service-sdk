@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from simple_harness_service import (
+    CommandKind,
     CommandReceipt,
     CommandSnapshot,
     CommandState,
@@ -30,21 +31,43 @@ class FakeAdapter:
 
     async def submit_start(self, intent: Any) -> CommandReceipt:
         return CommandReceipt(
-            intent.command_id, intent.run_id.value, 0, CommandState.ACCEPTED, 1
+            intent.command_id,
+            intent.run_id.value,
+            0,
+            CommandState.ACCEPTED,
+            1,
+            CommandKind.START,
         )
 
     async def submit_continue(self, intent: Any) -> CommandReceipt:
         return CommandReceipt(
-            intent.command_id, intent.run_id.value, 1, CommandState.ACCEPTED, 1
+            intent.command_id,
+            intent.run_id.value,
+            1,
+            CommandState.ACCEPTED,
+            1,
+            CommandKind.CONTINUE,
         )
 
     async def submit_cancel(self, intent: Any) -> CommandReceipt:
         return CommandReceipt(
-            intent.command_id, intent.run_id.value, 2, CommandState.ACCEPTED, 1
+            intent.command_id,
+            intent.run_id.value,
+            2,
+            CommandState.ACCEPTED,
+            1,
+            CommandKind.CANCEL,
         )
 
     async def get_command(self, command_id: str) -> CommandSnapshot:
-        receipt = CommandReceipt(command_id, "backend-run", 0, CommandState.APPLIED, 2)
+        receipt = CommandReceipt(
+            command_id,
+            "backend-run",
+            0,
+            CommandState.APPLIED,
+            2,
+            CommandKind.START,
+        )
         return CommandSnapshot(receipt, OutputState.PRESENT, "answer")
 
 

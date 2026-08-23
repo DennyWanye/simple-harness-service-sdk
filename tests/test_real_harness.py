@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import io
 from pathlib import Path
 from typing import Any
 
 import pytest
 from simple_harness import (
+    CommittedTurnReceipt,
+    CommittedTurnStatus,
     ConsumerRuntimePorts,
+    CurrentMessageContextProvider,
     Message,
     MessageRole,
     build_consumer_runtime,
@@ -16,7 +20,10 @@ from simple_harness.providers import ProviderRequestRejectedError, ProviderRespo
 from simple_harness_service import (
     AuthenticatedContext,
     CancelRequest,
+    CommandKind,
     CommandOutcome,
+    CommandReceipt,
+    CommandSnapshot,
     ContinueRequest,
     GetRequest,
     HarnessAdapter,
@@ -27,6 +34,7 @@ from simple_harness_service import (
     Principal,
     StartRequest,
 )
+from simple_harness_service.cli import CliEngine, ExitCode
 
 
 class AnswerProvider:
@@ -42,6 +50,72 @@ class AnswerProvider:
 class FailingProvider:
     async def invoke(self, request: Any, *, cancel: Any) -> ProviderResponse:
         raise ProviderRequestRejectedError()
+
+
+class CountingProvider(AnswerProvider):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def invoke(self, request: Any, *, cancel: Any) -> ProviderResponse:
+        self.calls += 1
+        return await super().invoke(request, cancel=cancel)
+
+
+class BlockingContext:
+    def __init__(self) -> None:
+        self.entered = asyncio.Event()
+        self.release = asyncio.Event()
+        self.delegate = CurrentMessageContextProvider()
+
+    async def prepare_once(self, request: Any) -> Any:
+        self.entered.set()
+        await self.release.wait()
+        return await self.delegate.prepare_once(request)
+
+
+class CancelAwareProvider(AnswerProvider):
+    def __init__(self) -> None:
+        self.entered = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def invoke(self, request: Any, *, cancel: Any) -> ProviderResponse:
+        self.entered.set()
+        await self.release.wait()
+        return await super().invoke(request, cancel=cancel)
+
+
+class DirectServiceClient:
+    def __init__(self, service: HarnessService, context: AuthenticatedContext) -> None:
+        self.service = service
+        self.context = context
+
+    async def start(self, request: StartRequest) -> CommandReceipt:
+        return await self.service.start(request, self.context)
+
+    async def continue_(self, request: ContinueRequest) -> CommandReceipt:
+        return await self.service.continue_(request, self.context)
+
+    async def get(self, command_id: str) -> CommandSnapshot:
+        return await self.service.get(GetRequest(command_id), self.context)
+
+    async def cancel(self, request: CancelRequest) -> CommandReceipt:
+        return await self.service.cancel(request, self.context)
+
+
+class NoopMemory:
+    async def recall_for_turn(self, request: Any) -> Any:
+        raise TimeoutError
+
+    async def release_recall(self, request: Any) -> None:
+        return None
+
+    async def record_committed_turn(self, request: Any) -> CommittedTurnReceipt:
+        return CommittedTurnReceipt(
+            request.turn_id,
+            request.payload_hash,
+            CommittedTurnStatus.APPLIED,
+            "noop-memory-receipt",
+        )
 
 
 class NoopToolExecutor:
@@ -171,3 +245,125 @@ async def test_real_public_harness_failed_terminal_and_cancel_method(
         assert cancel.command_id
     finally:
         await cancelled_runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_real_harness_pre_dispatch_cancel_closes_without_provider_call(
+    tmp_path: Path,
+) -> None:
+    context_provider = BlockingContext()
+    provider = CountingProvider()
+    runtime = await build_consumer_runtime(
+        ConsumerRuntimePorts(
+            provider=provider,
+            tool_executor=NoopToolExecutor(),
+            authorization=AllowAuthorization(),
+            database_path=str(tmp_path / "pre-dispatch-cancel.db"),
+            owner_id="service-pre-dispatch-cancel",
+            context_provider=context_provider,
+            memory=NoopMemory(),
+        )
+    )
+
+    async def health() -> HealthSnapshot:
+        return HealthSnapshot(True)
+
+    service = HarnessService(
+        HarnessAdapter(runtime.client, health=health),
+        IdentityProjector(b"p" * 32, namespace="consumer.pre-dispatch-cancel"),
+    )
+    context = AuthenticatedContext(
+        Principal("deploy", "home", "alice"), "binding", "nonce"
+    )
+    client = DirectServiceClient(service, context)
+    await runtime.start()
+    try:
+        start = await client.start(StartRequest("session", "run", "start", "hello"))
+        assert start.kind is CommandKind.START
+        engine = CliEngine(
+            lambda _: client, stdout=io.StringIO(), stderr=io.StringIO()
+        )
+        assert (
+            await engine._cancel_and_reconcile(client, "run", "cancel")
+            is ExitCode.CANCELLED
+        )
+        cancel_snapshot = await client.get("cancel")
+        start_snapshot = await client.get("start")
+        assert cancel_snapshot.receipt.kind is CommandKind.CANCEL
+        assert cancel_snapshot.outcome is CommandOutcome.CANCELLED
+        assert cancel_snapshot.run_state is None
+        assert start_snapshot.receipt.kind is CommandKind.START
+        assert start_snapshot.outcome is CommandOutcome.CANCELLED
+        assert not context_provider.entered.is_set()
+        assert provider.calls == 0
+    finally:
+        context_provider.release.set()
+        await runtime.close()
+
+
+@pytest.mark.asyncio
+async def test_real_harness_active_cancel_and_cli_reconcile_close_both_snapshots(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    provider = CancelAwareProvider()
+    runtime = await build_consumer_runtime(
+        ConsumerRuntimePorts(
+            provider=provider,
+            tool_executor=NoopToolExecutor(),
+            authorization=AllowAuthorization(),
+            database_path=str(tmp_path / "active-cancel.db"),
+            owner_id="service-active-cancel",
+        )
+    )
+
+    async def health() -> HealthSnapshot:
+        return HealthSnapshot(True)
+
+    service = HarnessService(
+        HarnessAdapter(runtime.client, health=health),
+        IdentityProjector(b"p" * 32, namespace="consumer.active-cancel"),
+    )
+    context = AuthenticatedContext(
+        Principal("deploy", "home", "alice"), "binding", "nonce"
+    )
+    client = DirectServiceClient(service, context)
+    await runtime.start()
+    try:
+        await client.start(StartRequest("session", "run", "start", "hello"))
+        await asyncio.wait_for(provider.entered.wait(), 2)
+        stderr = io.StringIO()
+        engine = CliEngine(
+            lambda _: client,
+            stdout=io.StringIO(),
+            stderr=stderr,
+        )
+        from simple_harness_service import cli as cli_module
+
+        monkeypatch.setattr(cli_module, "CANCEL_RECONCILE_SECONDS", 0.2)
+        result = await engine._cancel_and_reconcile(client, "run", "cancel")
+        assert result is ExitCode.TIMEOUT
+        start_snapshot = await client.get("start")
+        cancel_snapshot = await client.get("cancel")
+        assert start_snapshot.receipt.kind is CommandKind.START
+        assert start_snapshot.outcome is CommandOutcome.PENDING
+        assert cancel_snapshot.receipt.kind is CommandKind.CANCEL
+        assert cancel_snapshot.outcome is CommandOutcome.PENDING
+        assert start_snapshot.receipt.run_id == cancel_snapshot.receipt.run_id
+        assert "cancel pending run_id=run command_id=cancel" in stderr.getvalue()
+        provider.release.set()
+        for _ in range(300):
+            start_snapshot = await client.get("start")
+            cancel_snapshot = await client.get("cancel")
+            if start_snapshot.outcome is not CommandOutcome.PENDING:
+                break
+            await asyncio.sleep(0.01)
+        # The formal consumer composition intentionally remains recoverable after
+        # an active physical call settles unknown: it exposes no public provider
+        # reconciliation injection and must not forge a terminal cancellation.
+        assert start_snapshot.outcome is CommandOutcome.PENDING
+        assert cancel_snapshot.outcome is CommandOutcome.PENDING
+        assert start_snapshot.run_state is not None
+        assert start_snapshot.run_state.value == "waiting"
+    finally:
+        provider.release.set()
+        await runtime.close()

@@ -37,6 +37,12 @@ class CommandState(StrEnum):
     CANCELLED = "cancelled"
 
 
+class CommandKind(StrEnum):
+    START = "start"
+    CONTINUE = "continue"
+    CANCEL = "cancel"
+
+
 class OutputState(StrEnum):
     PENDING = "pending"
     PRESENT = "present"
@@ -137,9 +143,11 @@ class CommandReceipt:
     accept_seq: int
     state: CommandState
     version: int
+    kind: CommandKind
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "state", CommandState(self.state))
+        object.__setattr__(self, "kind", CommandKind(self.kind))
 
 
 @dataclass(frozen=True, slots=True)
