@@ -154,3 +154,61 @@ async def test_capability_replay_on_another_connection_is_rejected(socket_dir: P
         assert response == {"ok": False, "error": "forbidden"}
         writer_two.close()
         await writer_two.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_slow_peer_is_timed_out_without_poisoning_service(
+    socket_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from simple_harness_service.transports import unix as unix_module
+
+    monkeypatch.setattr(unix_module, "RPC_TIMEOUT_SECONDS", 0.01)
+    path = socket_dir / "svc.sock"
+    principal = Principal("deploy", "home", "alice")
+    service = HarnessService(
+        FakeAdapter(),  # type: ignore[arg-type]
+        IdentityProjector(b"p" * 32, namespace="consumer.example"),
+    )
+    server = UnixServiceServer(
+        path,
+        service,
+        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        principal_for_uid=lambda _: principal,
+    )
+    async with server:
+        reader, writer = await asyncio.open_unix_connection(path)
+        await read_frame(reader)
+        response = await read_frame(reader)
+        assert response == {"ok": False, "error": "timeout"}
+        writer.close()
+        await writer.wait_closed()
+        assert (await UnixServiceClient(path).health()).serving
+
+
+@pytest.mark.asyncio
+async def test_oversize_peer_is_rejected_before_body_and_service_recovers(
+    socket_dir: Path,
+) -> None:
+    from simple_harness_service import FRAME_MAX_BYTES
+
+    path = socket_dir / "svc.sock"
+    principal = Principal("deploy", "home", "alice")
+    service = HarnessService(
+        FakeAdapter(),  # type: ignore[arg-type]
+        IdentityProjector(b"p" * 32, namespace="consumer.example"),
+    )
+    server = UnixServiceServer(
+        path,
+        service,
+        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        principal_for_uid=lambda _: principal,
+    )
+    async with server:
+        reader, writer = await asyncio.open_unix_connection(path)
+        await read_frame(reader)
+        writer.write((FRAME_MAX_BYTES + 1).to_bytes(4, "big"))
+        await writer.drain()
+        assert await read_frame(reader) == {"ok": False, "error": "payload_too_large"}
+        writer.close()
+        await writer.wait_closed()
+        assert (await UnixServiceClient(path).health()).serving

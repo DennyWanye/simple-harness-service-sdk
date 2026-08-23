@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import io
+import os
+import pty
+import select
+import subprocess
+import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -89,3 +95,63 @@ async def test_observation_cancellation_sends_durable_cancel() -> None:
     with pytest.raises(asyncio.CancelledError):
         await task
     assert client.cancelled[0].external_run_id == "external-run"
+
+
+@pytest.mark.asyncio
+async def test_status_and_cancel_commands() -> None:
+    client = FakeClient()
+    stdout = io.StringIO()
+    engine = CliEngine(
+        lambda _: client,  # type: ignore[arg-type,return-value]
+        stdin=io.StringIO(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+    )
+    assert (
+        await engine.run(["--socket", "/tmp/test.sock", "status", "external-command"])
+        == ExitCode.OK
+    )
+    assert '"output_state": "present"' in stdout.getvalue()
+    assert (
+        await engine.run(["--socket", "/tmp/test.sock", "cancel", "external-run"])
+        == ExitCode.OK
+    )
+    assert client.cancelled[-1].external_run_id == "external-run"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="PTY is POSIX-only")
+def test_chat_help_and_quit_over_real_pty() -> None:
+    master, slave = pty.openpty()
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "simple_harness_service.cli",
+            "--socket",
+            "/tmp/not-used.sock",
+            "chat",
+        ],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        close_fds=True,
+    )
+    os.close(slave)
+    try:
+        os.write(master, b"/help\n/quit\n")
+        output = bytearray()
+        deadline = time.monotonic() + 5
+        expected = b"/help /session NAME /new /cancel /quit"
+        while time.monotonic() < deadline and expected not in output:
+            ready, _, _ = select.select([master], [], [], 0.1)
+            if ready:
+                try:
+                    output.extend(os.read(master, 4096))
+                except OSError:
+                    break
+        assert process.wait(timeout=5) == 0
+        assert expected in output
+    finally:
+        os.close(master)
+        if process.poll() is None:
+            process.kill()
