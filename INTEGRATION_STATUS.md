@@ -1,7 +1,16 @@
-# Simple Harness Service SDK 0.1.0 candidate status
+# Simple Harness Service SDK 0.1.0 release status
 
-No `v0.1.0` tag or GitHub Release exists. The current candidate must pass independent audit and
-downstream AIPhone integration before promotion.
+`v0.1.0` is formally published as a non-Draft, non-Prerelease GitHub Latest Release:
+https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.0
+
+The annotated tag peels to source commit `682b9fd82770af9e5949f16f6888757eb784e094`.
+The published wheel SHA-256 is
+`086961c454f31e469c7450d57ceac21f39dd3009648d10026a9cae5a27e4fec6`; the sdist SHA-256 is
+`8962d95d5a423a2100f1f7d0b9f2ccc7e581402257588ec14bcff3e03cc61b1f`; and the candidate
+manifest SHA-256 is `fdeadc66190f74d4c6ffa3cf29a3ceb22b949a277bc075790ad9bbdfddec7ea4`.
+All assets were independently downloaded from the public Release and verified byte-for-byte.
+Python 3.11 and 3.13 exact public wheel installs with the `memory` extra passed BOM, import, and
+CLI smoke gates.
 
 The prior candidate whose manifest SHA-256 begins `558c0a9b8a70` (wheel SHA-256
 `5c286c9e1c4fdbde1d2d8034b89e6da2d414e200cb789d0dd3aac8f2c07f6181`, source commit

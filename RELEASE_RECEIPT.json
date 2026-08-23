@@ -1,0 +1,47 @@
+{
+  "schema": "simple-harness-service-release-receipt-v1",
+  "version": "0.1.0",
+  "release_url": "https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.0",
+  "source_commit": "682b9fd82770af9e5949f16f6888757eb784e094",
+  "tag": {
+    "name": "v0.1.0",
+    "object": "d6449f1f21df0f78c36ba8eaf0aa9853870b4c1b",
+    "peeled_commit": "682b9fd82770af9e5949f16f6888757eb784e094",
+    "annotated": true
+  },
+  "release": {
+    "draft": false,
+    "prerelease": false,
+    "latest": true,
+    "published_at": "2026-08-23T19:12:43Z"
+  },
+  "assets": {
+    "BUILD_INFO.json": "9b69cd7064751c6c78f125fc0caccce59b3d824349f66bfc19c7e1ae896025a7",
+    "METADATA": "b7be35d4272c330f491dd39e254be0687f60b7f129eebc7665c5ad6b35e491d4",
+    "SHA256SUMS": "aeab4511344f648e40e513e99be64603dc25578596e61a9dba335dbbc7d2f248",
+    "WHEEL": "ccec20e2307acd7da453dd7437e70c6b08e2bc3ead3bc3445af135da37b56d59",
+    "candidate-manifest.json": "fdeadc66190f74d4c6ffa3cf29a3ceb22b949a277bc075790ad9bbdfddec7ea4",
+    "compatibility-bom.json": "70116687ed4e05ff446e72b05cd926c3dabfab3080b6d611733c578a775c82cb",
+    "simple_harness_service_sdk-0.1.0-py3-none-any.whl": "086961c454f31e469c7450d57ceac21f39dd3009648d10026a9cae5a27e4fec6",
+    "simple_harness_service_sdk-0.1.0.tar.gz": "8962d95d5a423a2100f1f7d0b9f2ccc7e581402257588ec14bcff3e03cc61b1f"
+  },
+  "dependencies": {
+    "simple-harness-sdk": {
+      "version": "0.5.0",
+      "sha256": "d5ac29760304b0eeebd40dd26bac7f8e65d0700a4066699a9f0d5fca6ec3f94c"
+    },
+    "simple-harness-memory-sdk": {
+      "version": "0.5.1",
+      "sha256": "314c1b89a1921abef3b9900a32b753cc0a0c89a3ce92b98822ec1cb45f7a9898"
+    }
+  },
+  "verification": {
+    "remote_assets_byte_identical": true,
+    "sdist_tag_source_files_identical": true,
+    "reproducible_wheel_and_sdist": true,
+    "python_3_11_exact_public_install": true,
+    "python_3_13_exact_public_install": true,
+    "bom_validation": true,
+    "cli_import_smoke": true
+  }
+}
