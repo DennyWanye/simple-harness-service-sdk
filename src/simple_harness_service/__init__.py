@@ -19,6 +19,7 @@ from .contracts import (
 )
 from .identity import IdentityProjector, Principal
 from .service import HarnessAdapter, HarnessService
+from .transports import UnixServiceClient, UnixServiceServer
 from .version import __version__
 
 __all__ = (
@@ -44,6 +45,7 @@ __all__ = (
     "ServiceErrorCode",
     "ServicePort",
     "StartRequest",
+    "UnixServiceClient",
+    "UnixServiceServer",
     "__version__",
 )
-

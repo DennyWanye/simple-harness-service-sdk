@@ -19,6 +19,9 @@ from simple_harness import (
     RunId,
     StartCommandIntent,
 )
+from simple_harness import (
+    CommandReceipt as HarnessCommandReceipt,
+)
 
 from .auth import AuthenticatedContext
 from .contracts import (
@@ -181,11 +184,11 @@ class HarnessService:
             raise ServiceError(mapped, code) from None
 
 
-def _receipt(value: object) -> CommandReceipt:
+def _receipt(value: HarnessCommandReceipt) -> CommandReceipt:
     return CommandReceipt(
-        command_id=value.command_id,  # type: ignore[attr-defined]
-        run_id=value.run_id.value,  # type: ignore[attr-defined]
-        accept_seq=value.accept_seq,  # type: ignore[attr-defined]
-        state=CommandState(value.state.value),  # type: ignore[attr-defined]
-        version=value.version,  # type: ignore[attr-defined]
+        command_id=value.command_id,
+        run_id=value.run_id.value,
+        accept_seq=value.accept_seq,
+        state=CommandState(value.state.value),
+        version=value.version,
     )

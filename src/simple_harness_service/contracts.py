@@ -118,6 +118,9 @@ class CommandReceipt:
     state: CommandState
     version: int
 
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "state", CommandState(self.state))
+
 
 @dataclass(frozen=True, slots=True)
 class CommandSnapshot:
@@ -127,6 +130,7 @@ class CommandSnapshot:
     error_code: str | None = None
 
     def __post_init__(self) -> None:
+        object.__setattr__(self, "output_state", OutputState(self.output_state))
         if self.output_state is OutputState.PRESENT and self.output_text is None:
             raise ValueError("present output requires text")
         if self.output_state is not OutputState.PRESENT and self.output_text is not None:
@@ -134,4 +138,3 @@ class CommandSnapshot:
 
 
 JsonObject = dict[str, Any]
-
