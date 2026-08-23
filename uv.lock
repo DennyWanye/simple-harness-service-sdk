@@ -1156,13 +1156,13 @@ provides-extras = ["all", "dev", "embeddings", "harness", "openai", "world"]
 
 [[package]]
 name = "simple-harness-sdk"
-version = "0.5.0"
-source = { url = "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.0/simple_harness_sdk-0.5.0-py3-none-any.whl" }
+version = "0.5.1"
+source = { url = "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.1/simple_harness_sdk-0.5.1-py3-none-any.whl" }
 dependencies = [
     { name = "httpx" },
 ]
 wheels = [
-    { url = "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.0/simple_harness_sdk-0.5.0-py3-none-any.whl", hash = "sha256:d5ac29760304b0eeebd40dd26bac7f8e65d0700a4066699a9f0d5fca6ec3f94c" },
+    { url = "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.1/simple_harness_sdk-0.5.1-py3-none-any.whl", hash = "sha256:1298aa7d44f748ebf39265920d648f40c130bf014452dce3c6ae049aa5f6590c" },
 ]
 
 [package.metadata]
@@ -1174,7 +1174,7 @@ provides-extras = ["testing"]
 
 [[package]]
 name = "simple-harness-service-sdk"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "simple-harness-sdk" },
@@ -1199,7 +1199,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "simple-harness-memory-sdk", marker = "extra == 'memory'", url = "https://github.com/DennyWanye/simple-harness-memory-sdk/releases/download/v0.5.1/simple_harness_memory_sdk-0.5.1-py3-none-any.whl" },
-    { name = "simple-harness-sdk", url = "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.0/simple_harness_sdk-0.5.0-py3-none-any.whl" },
+    { name = "simple-harness-sdk", url = "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.1/simple_harness_sdk-0.5.1-py3-none-any.whl" },
 ]
 provides-extras = ["memory"]
 

@@ -25,7 +25,7 @@ def test_public_api_snapshot() -> None:
 
 def test_compatibility_bom_and_installed_harness_provenance() -> None:
     bom = load_bom()
-    assert bom["service"]["version"] == "0.1.1"
+    assert bom["service"]["version"] == "0.1.2"
     assert bom["harness"]["execution_schema"] == 5
     assert bom["memory"]["memory_schema"] == 4
     # The uv development environment deliberately demonstrates fail-closed behavior:

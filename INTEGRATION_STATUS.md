@@ -1,9 +1,7 @@
-# Simple Harness Service SDK 0.1.1 release status
+# Simple Harness Service SDK 0.1.2 release status
 
-`v0.1.1` is formally published as a non-Draft, non-Prerelease GitHub Latest Release:
-https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.1
-
-The annotated tag peels to source commit `2cb414e9a8bc357049e31c50b19d019772e578f3`.
+Version 0.1.2 is the exact-Harness-0.5.1 release candidate. Immutable source and asset identities
+will be recorded here after formal publication and public redownload verification.
 The published wheel SHA-256 is
 `5633e7d74cb3c3600e6b59d820d437ef06398c9c9665300c605693922d9753f4`; the sdist SHA-256 is
 `358dee91aaa9bb44fa68f3cf9e27f2da885724a98cbbbf8a4b4e68059e927a3c`; and the candidate
@@ -26,7 +24,7 @@ The later candidate at commit `a326bc826e7d5bc11041e8ef0a7a35b9080d645c` (manife
 **withdrawn** after re-audit. Its receipts omitted Harness command kind and its credential
 activation did not fsync the parent directory entry.
 
-The SDK owns no SQLite schema, durable ingress, output store, or execution worker. Harness 0.5.0
+The SDK owns no SQLite schema, durable ingress, output store, or execution worker. Harness 0.5.1
 is the sole durable command authority. The optional `memory` extra pins Memory SDK 0.5.1.
 Credential admission uses the reusable create-once owner-only manifest component; operators must
 load and validate it before opening the AF_UNIX socket. Installed BOM validation requires an exact,

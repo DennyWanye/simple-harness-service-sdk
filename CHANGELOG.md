@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Pin the formal Harness 0.5.1 wheel and compatibility BOM, exposing its closed durable Tool
+  catalog fingerprint authority without adding SVC persistence or workers.
+
 ## 0.1.1
 
 - Interactive `chat` now treats a completed Harness run as terminal and starts the next turn
