@@ -44,6 +44,26 @@ class OutputState(StrEnum):
     UNKNOWN = "unknown"
 
 
+class RunState(StrEnum):
+    CREATED = "created"
+    ADMISSION_PENDING = "admission_pending"
+    QUEUED = "queued"
+    RUNNING = "running"
+    WAITING = "waiting"
+    CANCEL_REQUESTED = "cancel_requested"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class CommandOutcome(StrEnum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    PROTOCOL_ERROR = "protocol_error"
+
+
 def _text(value: str, name: str, *, max_bytes: int = 512) -> str:
     if not isinstance(value, str) or not value.strip() or "\x00" in value:
         raise ValueError(f"{name} is required")
@@ -128,9 +148,14 @@ class CommandSnapshot:
     output_state: OutputState
     output_text: str | None = None
     error_code: str | None = None
+    run_state: RunState | None = None
+    outcome: CommandOutcome = CommandOutcome.PENDING
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "output_state", OutputState(self.output_state))
+        if self.run_state is not None:
+            object.__setattr__(self, "run_state", RunState(self.run_state))
+        object.__setattr__(self, "outcome", CommandOutcome(self.outcome))
         if self.output_state is OutputState.PRESENT and self.output_text is None:
             raise ValueError("present output requires text")
         if self.output_state is not OutputState.PRESENT and self.output_text is not None:

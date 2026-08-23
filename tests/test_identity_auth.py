@@ -19,7 +19,7 @@ def test_projection_is_stable_domain_and_principal_separated() -> None:
 
 
 def test_capability_mac_expiry_and_channel_binding() -> None:
-    authority = ContextAuthority(b"a" * 32, key_id="context-v1")
+    authority = ContextAuthority(b"a" * 32)
     principal = Principal("deploy", "home", "alice")
     token = authority.issue(
         principal, channel_binding="connection-a", now=10, ttl_seconds=5, nonce="nonce"
@@ -34,4 +34,3 @@ def test_capability_mac_expiry_and_channel_binding() -> None:
     claims, mac = token.split(".")
     with pytest.raises(ServiceError):
         authority.verify(f"{claims}.{mac[:-1]}0", observed_channel_binding="connection-a", now=12)
-

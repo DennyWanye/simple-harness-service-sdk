@@ -3,9 +3,11 @@
   "CancelRequest",
   "Capability",
   "CommandReceipt",
+  "CommandOutcome",
   "CommandSnapshot",
   "CommandState",
   "ContextAuthority",
+  "CredentialBundle",
   "ContinueRequest",
   "ConversationClient",
   "FRAME_MAX_BYTES",
@@ -16,6 +18,7 @@
   "IdentityProjector",
   "MESSAGE_MAX_BYTES",
   "OutputState",
+  "RunState",
   "Principal",
   "ServiceError",
   "ServiceErrorCode",
@@ -25,7 +28,8 @@
   "UnixServiceServer",
   "__version__",
   "load_bom",
+  "load_credentials",
+  "provision_credentials",
   "validate_installed_bom",
   "validate_metadata_requirements"
 ]
-

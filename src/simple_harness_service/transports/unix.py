@@ -18,6 +18,7 @@ from ..auth import ContextAuthority
 from ..codec import encode_frame, read_frame
 from ..contracts import (
     CancelRequest,
+    CommandOutcome,
     CommandReceipt,
     CommandSnapshot,
     CommandState,
@@ -25,12 +26,14 @@ from ..contracts import (
     GetRequest,
     HealthSnapshot,
     JsonObject,
+    RunState,
     ServiceError,
     ServiceErrorCode,
     StartRequest,
 )
+from ..credentials import load_credentials
 from ..identity import Principal
-from ..service import HarnessService
+from ..service import HarnessService, ServiceAdapterPort
 
 CONNECT_TIMEOUT_SECONDS = 2.0
 WRITE_TIMEOUT_SECONDS = 2.0
@@ -83,6 +86,29 @@ class UnixServiceServer:
         self._owner_uid = os.getuid() if owner_uid is None else owner_uid
         self._peer_uid_resolver = peer_uid_resolver
         self._server: asyncio.AbstractServer | None = None
+
+    @classmethod
+    def from_credentials(
+        cls,
+        path: Path,
+        adapter: ServiceAdapterPort,
+        credential_path: Path,
+        *,
+        namespace: str,
+        principal_for_uid: Callable[[int], Principal],
+        owner_uid: int | None = None,
+        peer_uid_resolver: Callable[[Any], int] = _peer_uid,
+    ) -> UnixServiceServer:
+        """Fail closed on credential drift before a socket can be admitted."""
+        bundle = load_credentials(credential_path, expected_namespace=namespace)
+        return cls(
+            path,
+            HarnessService(adapter, bundle.projector()),
+            bundle.authority(),
+            principal_for_uid=principal_for_uid,
+            owner_uid=owner_uid,
+            peer_uid_resolver=peer_uid_resolver,
+        )
 
     async def start(self) -> None:
         _validate_parent(self.path, self._owner_uid)
@@ -219,6 +245,8 @@ class UnixServiceClient:
             value["output_state"],
             value.get("output_text"),
             value.get("error_code"),
+            None if value.get("run_state") is None else RunState(str(value["run_state"])),
+            CommandOutcome(str(value["outcome"])),
         )
 
     async def cancel(self, request: CancelRequest) -> CommandReceipt:
@@ -292,6 +320,8 @@ def _result_json(value: object) -> JsonObject:
             "output_state": value.output_state.value,
             "output_text": value.output_text,
             "error_code": value.error_code,
+            "run_state": None if value.run_state is None else value.run_state.value,
+            "outcome": value.outcome.value,
         }
     raise ServiceError(ServiceErrorCode.INTERNAL)
 

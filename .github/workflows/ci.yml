@@ -18,6 +18,5 @@ jobs:
       - run: uv sync --frozen --group dev
       - run: uv run --frozen pytest -q
       - run: uv run --frozen ruff check .
-      - run: uv run --frozen mypy
+      - run: uv run --frozen mypy src tests
       - run: uv run --frozen python scripts/check_architecture.py
-

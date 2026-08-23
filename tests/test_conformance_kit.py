@@ -8,6 +8,7 @@ from simple_harness_service import (
     AuthenticatedContext,
     CommandReceipt,
     CommandSnapshot,
+    CommandState,
     HealthSnapshot,
     OutputState,
     Principal,
@@ -33,7 +34,7 @@ class ConformingService:
 
 
 def _receipt(command_id: str) -> CommandReceipt:
-    return CommandReceipt(command_id, "run", 0, "accepted", 1)
+    return CommandReceipt(command_id, "run", 0, CommandState.ACCEPTED, 1)
 
 
 @pytest.mark.asyncio

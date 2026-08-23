@@ -10,15 +10,19 @@ from simple_harness import CommandSnapshot as HarnessSnapshot
 from simple_harness_service import (
     AuthenticatedContext,
     CancelRequest,
+    CommandOutcome,
+    CommandState,
     ContinueRequest,
     GetRequest,
     HarnessService,
     HealthSnapshot,
     IdentityProjector,
+    OutputState,
     Principal,
+    RunState,
     StartRequest,
 )
-from simple_harness_service.service import HarnessAdapter
+from simple_harness_service.service import HarnessAdapter, _closed_outcome
 
 
 class FakeRunClient:
@@ -44,6 +48,9 @@ class FakeRunClient:
         )
         return HarnessSnapshot(value, CommandRetryState.READY, CommandOutputState.PENDING)
 
+    def query(self, run_id: RunId) -> None:
+        self.calls.append(("query", run_id))
+
 
 def receipt(intent: Any, kind: CommandKind) -> HarnessReceipt:
     return HarnessReceipt(
@@ -64,6 +71,30 @@ def context() -> AuthenticatedContext:
     return AuthenticatedContext(Principal("deploy", "home", "alice"), "binding", "nonce")
 
 
+@pytest.mark.parametrize(
+    ("command_state", "output_state", "run_state", "expected"),
+    [
+        (CommandState.APPLIED, OutputState.PRESENT, RunState.COMPLETED, CommandOutcome.COMPLETED),
+        (CommandState.APPLIED, OutputState.ABSENT, RunState.COMPLETED, CommandOutcome.COMPLETED),
+        (CommandState.APPLIED, OutputState.ABSENT, RunState.FAILED, CommandOutcome.FAILED),
+        (CommandState.CANCELLED, OutputState.ABSENT, RunState.CANCELLED, CommandOutcome.CANCELLED),
+        (
+            CommandState.APPLIED,
+            OutputState.UNKNOWN,
+            RunState.COMPLETED,
+            CommandOutcome.PROTOCOL_ERROR,
+        ),
+    ],
+)
+def test_closed_cli_outcomes_preserve_terminal_provenance(
+    command_state: CommandState,
+    output_state: OutputState,
+    run_state: RunState,
+    expected: CommandOutcome,
+) -> None:
+    assert _closed_outcome(command_state, output_state, run_state) is expected
+
+
 @pytest.mark.asyncio
 async def test_five_methods_map_only_to_public_harness_commands(
     context: AuthenticatedContext,
@@ -74,7 +105,7 @@ async def test_five_methods_map_only_to_public_harness_commands(
         return HealthSnapshot(True)
 
     service = HarnessService(
-        HarnessAdapter(run_client, health=health),  # type: ignore[arg-type]
+        HarnessAdapter(run_client, health=health),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     assert (await service.health()).serving
@@ -90,6 +121,7 @@ async def test_five_methods_map_only_to_public_harness_commands(
         "submit_start",
         "submit_continue",
         "get_command",
+        "query",
         "submit_cancel",
     ]
     start_intent = run_client.calls[0][1]
@@ -107,7 +139,7 @@ async def test_principal_isolation_changes_every_backend_identity(
         return HealthSnapshot(True)
 
     service = HarnessService(
-        HarnessAdapter(run_client, health=health),  # type: ignore[arg-type]
+        HarnessAdapter(run_client, health=health),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     request = StartRequest("session", "run", "command", "hello")

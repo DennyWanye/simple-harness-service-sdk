@@ -4,20 +4,22 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import secrets
 import sys
 import time
+from collections import deque
 from collections.abc import Callable, Sequence
 from enum import IntEnum
 from pathlib import Path
-from typing import TextIO
+from typing import Protocol, TextIO
 
 from .contracts import (
     CancelRequest,
+    CommandOutcome,
     CommandSnapshot,
     ContinueRequest,
-    OutputState,
     ServiceError,
     StartRequest,
 )
@@ -25,22 +27,31 @@ from .transports.unix import UnixServiceClient
 
 DEFAULT_SESSION = "main"
 OBSERVE_DEADLINE_SECONDS = 315.0
-POLL_SECONDS = 0.2
+CANCEL_RECONCILE_SECONDS = 5.0
+POLL_INITIAL_SECONDS = 0.1
+POLL_MAX_SECONDS = 1.0
+
+
+class CliClient(Protocol):
+    async def start(self, request: StartRequest) -> object: ...
+    async def continue_(self, request: ContinueRequest) -> object: ...
+    async def get(self, command_id: str) -> CommandSnapshot: ...
+    async def cancel(self, request: CancelRequest) -> object: ...
 
 
 class ExitCode(IntEnum):
     OK = 0
     USAGE = 2
-    UNAVAILABLE = 3
-    REJECTED = 4
-    TIMEOUT = 5
-    INTERRUPTED = 130
+    PROTOCOL = 3
+    TIMEOUT = 4
+    FAILED = 5
+    CANCELLED = 6
 
 
 class CliEngine:
     def __init__(
         self,
-        client_factory: Callable[[Path], UnixServiceClient] = UnixServiceClient,
+        client_factory: Callable[[Path], CliClient] = UnixServiceClient,
         *,
         stdin: TextIO = sys.stdin,
         stdout: TextIO = sys.stdout,
@@ -69,23 +80,23 @@ class CliEngine:
             if args.command == "status":
                 snapshot = await client.get(args.command_id)
                 print(json.dumps(_snapshot_json(snapshot), sort_keys=True), file=self.stdout)
-                return ExitCode.OK
+                return self._emit_outcome(snapshot, emit_output=False)
             if args.command == "cancel":
-                receipt = await client.cancel(
-                    CancelRequest(args.run_id, f"cancel-{secrets.token_hex(16)}")
+                return await self._cancel_and_reconcile(
+                    client,
+                    args.run_id,
+                    f"cancel-{secrets.token_hex(16)}",
                 )
-                print(receipt.command_id, file=self.stdout)
-                return ExitCode.OK
             if args.command == "chat":
                 return await self._chat(client, args.session)
             return ExitCode.USAGE
         except KeyboardInterrupt:
-            return ExitCode.INTERRUPTED
+            return ExitCode.CANCELLED
         except ServiceError as error:
             print(error.code.value, file=self.stderr)
-            return ExitCode.TIMEOUT if error.code.value == "timeout" else ExitCode.UNAVAILABLE
+            return ExitCode.TIMEOUT if error.code.value == "timeout" else ExitCode.PROTOCOL
 
-    async def _ask(self, client: UnixServiceClient, message: str, session: str) -> int:
+    async def _ask(self, client: CliClient, message: str, session: str) -> int:
         run_id = f"run-{secrets.token_hex(16)}"
         command_id = f"command-{secrets.token_hex(16)}"
         await client.start(StartRequest(session, run_id, command_id, message))
@@ -93,84 +104,222 @@ class CliEngine:
         return await self._observe(client, run_id, command_id)
 
     async def _observe(
-        self, client: UnixServiceClient, run_id: str, command_id: str
+        self,
+        client: CliClient,
+        run_id: str,
+        command_id: str,
+        *,
+        deadline_seconds: float = OBSERVE_DEADLINE_SECONDS,
+        cancel_on_interrupt: bool = True,
     ) -> int:
         try:
-            deadline = self._now() + OBSERVE_DEADLINE_SECONDS
+            deadline = self._now() + deadline_seconds
+            delay = POLL_INITIAL_SECONDS
             while self._now() < deadline:
                 snapshot = await client.get(command_id)
-                if snapshot.output_state is OutputState.PRESENT:
-                    print(snapshot.output_text, file=self.stdout)
-                    return ExitCode.OK
-                if snapshot.output_state in {OutputState.ABSENT, OutputState.UNKNOWN}:
-                    print(snapshot.output_state.value, file=self.stderr)
-                    return ExitCode.REJECTED
-                await asyncio.sleep(POLL_SECONDS)
+                if snapshot.outcome is not CommandOutcome.PENDING:
+                    return self._emit_outcome(snapshot)
+                await asyncio.sleep(delay)
+                delay = min(POLL_MAX_SECONDS, delay * 2)
             print(f"timeout run_id={run_id} command_id={command_id}", file=self.stderr)
             return ExitCode.TIMEOUT
         except asyncio.CancelledError:
-            cancel = CancelRequest(run_id, f"cancel-{secrets.token_hex(16)}")
-            await asyncio.shield(client.cancel(cancel))
+            if cancel_on_interrupt:
+                await asyncio.shield(
+                    self._cancel_and_reconcile(
+                        client,
+                        run_id,
+                        f"cancel-{secrets.token_hex(16)}",
+                    )
+                )
             raise
 
-    async def _chat(self, client: UnixServiceClient, session: str) -> int:
+    def _emit_outcome(
+        self, snapshot: CommandSnapshot, *, emit_output: bool = True
+    ) -> int:
+        if snapshot.outcome is CommandOutcome.COMPLETED:
+            if emit_output and snapshot.output_text is not None:
+                print(snapshot.output_text, file=self.stdout)
+            return ExitCode.OK
+        if snapshot.outcome is CommandOutcome.FAILED:
+            print("failed", file=self.stderr)
+            return ExitCode.FAILED
+        if snapshot.outcome is CommandOutcome.CANCELLED:
+            print("cancelled", file=self.stderr)
+            return ExitCode.CANCELLED
+        if snapshot.outcome is CommandOutcome.PROTOCOL_ERROR:
+            print("protocol_error", file=self.stderr)
+            return ExitCode.PROTOCOL
+        raise RuntimeError("pending outcome cannot be emitted")
+
+    async def _cancel_and_reconcile(
+        self,
+        client: CliClient,
+        run_id: str,
+        cancel_command_id: str,
+    ) -> int:
+        await client.cancel(CancelRequest(run_id, cancel_command_id))
+        print(
+            f"accepted run_id={run_id} command_id={cancel_command_id}",
+            file=self.stderr,
+        )
+        return await self._observe(
+            client,
+            run_id,
+            cancel_command_id,
+            deadline_seconds=CANCEL_RECONCILE_SECONDS,
+            cancel_on_interrupt=False,
+        )
+
+    async def _chat(self, client: CliClient, session: str) -> int:
         run_id: str | None = None
-        last_command: str | None = None
         current_session = session
+        active_command: str | None = None
+        buffered: deque[str] = deque()
+        lines: asyncio.Queue[str] = asyncio.Queue()
+        reader = asyncio.create_task(self._pump_lines(lines))
+        try:
+            while True:
+                line = buffered.popleft() if buffered else await lines.get()
+                if line == "":
+                    return ExitCode.OK
+                message = line.rstrip("\n")
+                if not message:
+                    continue
+                if message == "/quit":
+                    return ExitCode.OK
+                if message == "/help":
+                    print("/help /session NAME /new /cancel /quit", file=self.stdout)
+                    continue
+                if message.startswith("/session "):
+                    current_session = message.removeprefix("/session ").strip()
+                    if not current_session:
+                        print("session is required", file=self.stderr)
+                        continue
+                    run_id = None
+                    continue
+                if message == "/session":
+                    print(current_session, file=self.stdout)
+                    continue
+                if message == "/new":
+                    run_id = None
+                    continue
+                if message == "/cancel":
+                    continue
+                command_id = f"command-{secrets.token_hex(16)}"
+                if run_id is None:
+                    run_id = f"run-{secrets.token_hex(16)}"
+                    await client.start(
+                        StartRequest(current_session, run_id, command_id, message)
+                    )
+                else:
+                    await client.continue_(
+                        ContinueRequest(
+                            current_session,
+                            run_id,
+                            command_id,
+                            f"continuation-{secrets.token_hex(16)}",
+                            message,
+                        )
+                    )
+                print(
+                    f"accepted run_id={run_id} command_id={command_id}",
+                    file=self.stderr,
+                )
+                active_command = command_id
+                result, reset_run = await self._observe_active_chat(
+                    client, lines, buffered, run_id, command_id
+                )
+                active_command = None
+                if reset_run:
+                    run_id = None
+                if result != ExitCode.OK:
+                    return result
+        except asyncio.CancelledError:
+            if run_id is not None and active_command is not None:
+                await asyncio.shield(
+                    self._cancel_and_reconcile(
+                        client,
+                        run_id,
+                        f"cancel-{secrets.token_hex(16)}",
+                    )
+                )
+            raise
+        finally:
+            reader.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await reader
+
+    async def _pump_lines(self, queue: asyncio.Queue[str]) -> None:
         while True:
-            line = self.stdin.readline()
+            line = await self._read_line()
+            await queue.put(line)
             if line == "":
-                return ExitCode.OK
-            message = line.rstrip("\n")
-            if not message:
+                return
+
+    async def _read_line(self) -> str:
+        try:
+            descriptor = self.stdin.fileno()
+        except (AttributeError, OSError):
+            return await asyncio.to_thread(self.stdin.readline)
+        loop = asyncio.get_running_loop()
+        ready: asyncio.Future[str] = loop.create_future()
+
+        def read_ready() -> None:
+            if not ready.done():
+                try:
+                    ready.set_result(self.stdin.readline())
+                except BaseException as error:
+                    ready.set_exception(error)
+
+        loop.add_reader(descriptor, read_ready)
+        try:
+            return await ready
+        finally:
+            loop.remove_reader(descriptor)
+
+    async def _observe_active_chat(
+        self,
+        client: CliClient,
+        lines: asyncio.Queue[str],
+        buffered: deque[str],
+        run_id: str,
+        command_id: str,
+    ) -> tuple[int, bool]:
+        deadline = self._now() + OBSERVE_DEADLINE_SECONDS
+        delay = POLL_INITIAL_SECONDS
+        while self._now() < deadline:
+            try:
+                line = await asyncio.wait_for(lines.get(), timeout=delay)
+            except TimeoutError:
+                snapshot = await client.get(command_id)
+                if snapshot.outcome is not CommandOutcome.PENDING:
+                    return self._emit_outcome(snapshot), False
+                delay = min(POLL_MAX_SECONDS, delay * 2)
                 continue
-            if message == "/quit":
-                return ExitCode.OK
+            message = line.rstrip("\n")
+            if message in {"/cancel", "/new", "/quit"}:
+                result = await self._cancel_and_reconcile(
+                    client,
+                    run_id,
+                    f"cancel-{secrets.token_hex(16)}",
+                )
+                if message == "/quit":
+                    code = (
+                        ExitCode.CANCELLED
+                        if result in {ExitCode.OK, ExitCode.CANCELLED}
+                        else result
+                    )
+                    return code, False
+                if result not in {ExitCode.OK, ExitCode.CANCELLED}:
+                    return result, False
+                return ExitCode.OK, True
             if message == "/help":
                 print("/help /session NAME /new /cancel /quit", file=self.stdout)
                 continue
-            if message.startswith("/session "):
-                current_session = message.removeprefix("/session ").strip()
-                if not current_session:
-                    print("session is required", file=self.stderr)
-                    continue
-                run_id = None
-                last_command = None
-                continue
-            if message == "/session":
-                print(current_session, file=self.stdout)
-                continue
-            if message == "/new":
-                run_id = None
-                last_command = None
-                continue
-            if message == "/cancel":
-                if run_id is not None:
-                    await client.cancel(
-                        CancelRequest(run_id, f"cancel-{secrets.token_hex(16)}")
-                    )
-                continue
-            command_id = f"command-{secrets.token_hex(16)}"
-            if run_id is None:
-                run_id = f"run-{secrets.token_hex(16)}"
-                await client.start(
-                    StartRequest(current_session, run_id, command_id, message)
-                )
-            else:
-                await client.continue_(
-                    ContinueRequest(
-                        current_session,
-                        run_id,
-                        command_id,
-                        f"continuation-{secrets.token_hex(16)}",
-                        message,
-                    )
-                )
-            print(f"accepted run_id={run_id} command_id={command_id}", file=self.stderr)
-            last_command = command_id
-            result = await self._observe(client, run_id, last_command)
-            if result != ExitCode.OK:
-                return result
+            buffered.append(line)
+        print(f"timeout run_id={run_id} command_id={command_id}", file=self.stderr)
+        return ExitCode.TIMEOUT, False
 
 
 def _snapshot_json(value: CommandSnapshot) -> dict[str, object]:
@@ -181,6 +330,8 @@ def _snapshot_json(value: CommandSnapshot) -> dict[str, object]:
         "output_state": value.output_state.value,
         "output_text": value.output_text,
         "error_code": value.error_code,
+        "run_state": None if value.run_state is None else value.run_state.value,
+        "outcome": value.outcome.value,
     }
 
 
@@ -204,7 +355,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         return asyncio.run(CliEngine().run(sys.argv[1:] if argv is None else argv))
     except KeyboardInterrupt:
-        return ExitCode.INTERRUPTED
+        return ExitCode.CANCELLED
 
 
 if __name__ == "__main__":

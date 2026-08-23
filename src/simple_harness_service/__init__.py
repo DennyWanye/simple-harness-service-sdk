@@ -7,6 +7,7 @@ from .contracts import (
     FRAME_MAX_BYTES,
     MESSAGE_MAX_BYTES,
     CancelRequest,
+    CommandOutcome,
     CommandReceipt,
     CommandSnapshot,
     CommandState,
@@ -14,10 +15,12 @@ from .contracts import (
     GetRequest,
     HealthSnapshot,
     OutputState,
+    RunState,
     ServiceError,
     ServiceErrorCode,
     StartRequest,
 )
+from .credentials import CredentialBundle, load_credentials, provision_credentials
 from .identity import IdentityProjector, Principal
 from .service import HarnessAdapter, HarnessService
 from .transports import UnixServiceClient, UnixServiceServer
@@ -29,12 +32,14 @@ __all__ = (
     "AuthenticatedContext",
     "CancelRequest",
     "Capability",
+    "CommandOutcome",
     "CommandReceipt",
     "CommandSnapshot",
     "CommandState",
     "ContextAuthority",
     "ContinueRequest",
     "ConversationClient",
+    "CredentialBundle",
     "GetRequest",
     "HarnessAdapter",
     "HarnessService",
@@ -42,6 +47,7 @@ __all__ = (
     "IdentityProjector",
     "OutputState",
     "Principal",
+    "RunState",
     "ServiceError",
     "ServiceErrorCode",
     "ServicePort",
@@ -50,6 +56,8 @@ __all__ = (
     "UnixServiceServer",
     "__version__",
     "load_bom",
+    "load_credentials",
+    "provision_credentials",
     "validate_installed_bom",
     "validate_metadata_requirements",
 )

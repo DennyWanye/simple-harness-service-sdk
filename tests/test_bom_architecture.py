@@ -13,6 +13,7 @@ from simple_harness_service import (
     validate_installed_bom,
     validate_metadata_requirements,
 )
+from simple_harness_service.bom import _validate_direct_url
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -27,7 +28,10 @@ def test_compatibility_bom_and_installed_harness_provenance() -> None:
     assert bom["service"]["version"] == "0.1.0"
     assert bom["harness"]["execution_schema"] == 5
     assert bom["memory"]["memory_schema"] == 4
-    assert validate_installed_bom() == {"service": "0.1.0", "harness": "0.5.0"}
+    # The uv development environment deliberately demonstrates fail-closed behavior:
+    # its direct_url.json retains the URL but drops the archive digest.
+    with pytest.raises(ServiceError, match="SHA provenance missing"):
+        validate_installed_bom()
 
 
 def test_thin_architecture_gate() -> None:
@@ -52,3 +56,31 @@ def test_metadata_validator_rejects_lookalike_distribution() -> None:
     ]
     with pytest.raises(ServiceError):
         validate_metadata_requirements(requirements)
+
+
+@pytest.mark.parametrize(
+    "archive_info",
+    [
+        {},
+        {"hashes": {}},
+        {"hashes": {"sha256": "0" * 64}},
+        {"hashes": {"sha256": "d" * 64, "sha512": "e" * 128}},
+        {"hash": "sha256=" + "d" * 64, "hashes": {"sha256": "d" * 64}},
+    ],
+)
+def test_direct_url_requires_one_exact_sha256(archive_info: object) -> None:
+    item = {"url": "https://example.invalid/wheel.whl", "sha256": "d" * 64}
+    direct_url = json.dumps({"url": item["url"], "archive_info": archive_info})
+    with pytest.raises(ServiceError):
+        _validate_direct_url("harness", item, direct_url)
+
+
+def test_direct_url_accepts_only_exact_url_and_bytes_identity() -> None:
+    item = {"url": "https://example.invalid/wheel.whl", "sha256": "d" * 64}
+    valid = json.dumps(
+        {"url": item["url"], "archive_info": {"hashes": {"sha256": item["sha256"]}}}
+    )
+    _validate_direct_url("harness", item, valid)
+    wrong_url = valid.replace("wheel.whl", "other.whl")
+    with pytest.raises(ServiceError):
+        _validate_direct_url("harness", item, wrong_url)

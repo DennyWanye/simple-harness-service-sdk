@@ -16,17 +16,20 @@ from simple_harness import (
     Message,
     MessageRole,
     RequestId,
-    RunClient,
     RunId,
     StartCommandIntent,
 )
 from simple_harness import (
     CommandReceipt as HarnessCommandReceipt,
 )
+from simple_harness import (
+    CommandSnapshot as HarnessCommandSnapshot,
+)
 
 from .auth import AuthenticatedContext
 from .contracts import (
     CancelRequest,
+    CommandOutcome,
     CommandReceipt,
     CommandSnapshot,
     CommandState,
@@ -34,6 +37,7 @@ from .contracts import (
     GetRequest,
     HealthSnapshot,
     OutputState,
+    RunState,
     ServiceError,
     ServiceErrorCode,
     StartRequest,
@@ -43,11 +47,20 @@ from .identity import IdentityProjector, Principal
 T = TypeVar("T")
 
 
-class HarnessPort(Protocol):
-    async def submit_start(self, intent: StartCommandIntent) -> object: ...
-    async def submit_continue(self, intent: ContinueCommandIntent) -> object: ...
-    async def submit_cancel(self, intent: CancelCommandIntent) -> object: ...
-    async def get_command(self, command_id: str) -> object: ...
+class _PublicRunState(Protocol):
+    value: str
+
+
+class _PublicRunRecord(Protocol):
+    state: _PublicRunState
+
+
+class PublicRunClient(Protocol):
+    async def submit_start(self, intent: StartCommandIntent) -> HarnessCommandReceipt: ...
+    async def submit_continue(self, intent: ContinueCommandIntent) -> HarnessCommandReceipt: ...
+    async def submit_cancel(self, intent: CancelCommandIntent) -> HarnessCommandReceipt: ...
+    async def get_command(self, command_id: str) -> HarnessCommandSnapshot: ...
+    def query(self, run_id: RunId) -> _PublicRunRecord | None: ...
 
 
 class HarnessAdapter:
@@ -55,7 +68,7 @@ class HarnessAdapter:
 
     def __init__(
         self,
-        client: RunClient,
+        client: PublicRunClient,
         *,
         health: Callable[[], Awaitable[HealthSnapshot]],
     ) -> None:
@@ -81,11 +94,17 @@ class HarnessAdapter:
             output_text = snapshot.output.memory_text
             if output_text is None and isinstance(snapshot.output.message.content, str):
                 output_text = snapshot.output.message.content
+        run = self._client.query(snapshot.receipt.run_id)
+        run_state = None if run is None else RunState(run.state.value)
+        output_state = OutputState(snapshot.output_state.value)
+        command_state = CommandState(snapshot.receipt.state.value)
         return CommandSnapshot(
             _receipt(snapshot.receipt),
-            OutputState(snapshot.output_state.value),
+            output_state,
             output_text,
             None if snapshot.error_code is None else snapshot.error_code.value,
+            run_state,
+            _closed_outcome(command_state, output_state, run_state),
         )
 
 
@@ -208,3 +227,29 @@ def _mapped_command_error(error: CommandError) -> ServiceError:
         CommandErrorCode.PERMANENT_FAILURE: ServiceErrorCode.INVALID_REQUEST,
     }
     return ServiceError(mapping[error.code], error.code.value)
+
+
+def _closed_outcome(
+    command_state: CommandState,
+    output_state: OutputState,
+    run_state: RunState | None,
+) -> CommandOutcome:
+    if output_state is OutputState.UNKNOWN:
+        return CommandOutcome.PROTOCOL_ERROR
+    if output_state is OutputState.PRESENT:
+        return (
+            CommandOutcome.COMPLETED
+            if run_state is RunState.COMPLETED
+            else CommandOutcome.PROTOCOL_ERROR
+        )
+    if output_state is OutputState.PENDING:
+        if run_state in {RunState.COMPLETED, RunState.FAILED, RunState.CANCELLED}:
+            return CommandOutcome.PROTOCOL_ERROR
+        return CommandOutcome.PENDING
+    if run_state is RunState.FAILED or command_state is CommandState.REJECTED:
+        return CommandOutcome.FAILED
+    if run_state is RunState.CANCELLED or command_state is CommandState.CANCELLED:
+        return CommandOutcome.CANCELLED
+    if run_state is RunState.COMPLETED:
+        return CommandOutcome.COMPLETED
+    return CommandOutcome.PENDING

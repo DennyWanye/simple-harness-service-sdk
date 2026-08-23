@@ -57,19 +57,31 @@ def validate_installed_bom(*, include_memory: bool = False) -> dict[str, str]:
         direct_url = distribution.read_text("direct_url.json")
         if direct_url is None:
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} source provenance missing")
-        provenance = json.loads(direct_url)
-        archive = provenance.get("archive_info", {})
-        hashes = archive.get("hashes", {})
-        digest = hashes.get("sha256") or str(archive.get("hash", "")).removeprefix("sha256=")
-        if provenance.get("url") != item["url"]:
-            raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
-        # Some compliant installers retain the source URL but omit archive_info after
-        # verifying the hash from Requires-Dist. The exact hash remains mandatory in
-        # the service METADATA; when an installer retains it, it must also agree.
-        if digest and digest != item["sha256"]:
-            raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
+        _validate_direct_url(component, item, direct_url)
         result[component] = distribution.version
     return result
+
+
+def _validate_direct_url(
+    component: str, item: Mapping[str, object], direct_url: str
+) -> None:
+    try:
+        provenance = json.loads(direct_url)
+    except json.JSONDecodeError as error:
+        raise ServiceError(
+            ServiceErrorCode.INTERNAL, f"{component} provenance malformed"
+        ) from error
+    if not isinstance(provenance, dict) or provenance.get("url") != item["url"]:
+        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
+    archive = provenance.get("archive_info")
+    if not isinstance(archive, dict) or "hash" in archive:
+        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} SHA provenance ambiguous")
+    hashes = archive.get("hashes")
+    if not isinstance(hashes, dict) or set(hashes) != {"sha256"}:
+        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} SHA provenance missing")
+    digest = hashes["sha256"]
+    if not isinstance(digest, str) or digest != item["sha256"]:
+        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
 
 
 def _item(bom: Mapping[str, object], key: str) -> Mapping[str, object]:

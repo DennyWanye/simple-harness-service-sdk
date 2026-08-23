@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ import pytest
 from simple_harness_service import (
     CommandReceipt,
     CommandSnapshot,
+    CommandState,
     ContextAuthority,
     HarnessService,
     HealthSnapshot,
@@ -27,21 +29,27 @@ class FakeAdapter:
         return HealthSnapshot(True)
 
     async def submit_start(self, intent: Any) -> CommandReceipt:
-        return CommandReceipt(intent.command_id, intent.run_id.value, 0, "accepted", 1)
+        return CommandReceipt(
+            intent.command_id, intent.run_id.value, 0, CommandState.ACCEPTED, 1
+        )
 
     async def submit_continue(self, intent: Any) -> CommandReceipt:
-        return CommandReceipt(intent.command_id, intent.run_id.value, 1, "accepted", 1)
+        return CommandReceipt(
+            intent.command_id, intent.run_id.value, 1, CommandState.ACCEPTED, 1
+        )
 
     async def submit_cancel(self, intent: Any) -> CommandReceipt:
-        return CommandReceipt(intent.command_id, intent.run_id.value, 2, "accepted", 1)
+        return CommandReceipt(
+            intent.command_id, intent.run_id.value, 2, CommandState.ACCEPTED, 1
+        )
 
     async def get_command(self, command_id: str) -> CommandSnapshot:
-        receipt = CommandReceipt(command_id, "backend-run", 0, "applied", 2)
+        receipt = CommandReceipt(command_id, "backend-run", 0, CommandState.APPLIED, 2)
         return CommandSnapshot(receipt, OutputState.PRESENT, "answer")
 
 
 @pytest.fixture
-def socket_dir() -> Path:
+def socket_dir() -> Generator[Path, None, None]:
     with tempfile.TemporaryDirectory(prefix="shs-", dir="/tmp") as raw:
         path = Path(raw)
         os.chmod(path, 0o700)
@@ -53,13 +61,13 @@ async def test_owner_only_unix_transport_exercises_five_methods(socket_dir: Path
     path = socket_dir / "svc.sock"
     principal = Principal("deploy", "home", "alice")
     service = HarnessService(
-        FakeAdapter(),  # type: ignore[arg-type]
+        FakeAdapter(),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     server = UnixServiceServer(
         path,
         service,
-        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        ContextAuthority(b"a" * 32),
         principal_for_uid=lambda _: principal,
     )
     async with server:
@@ -82,13 +90,13 @@ async def test_wrong_peer_uid_is_rejected(socket_dir: Path) -> None:
     path = socket_dir / "svc.sock"
     principal = Principal("deploy", "home", "alice")
     service = HarnessService(
-        FakeAdapter(),  # type: ignore[arg-type]
+        FakeAdapter(),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     server = UnixServiceServer(
         path,
         service,
-        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        ContextAuthority(b"a" * 32),
         principal_for_uid=lambda _: principal,
         peer_uid_resolver=lambda _: os.getuid() + 1,
     )
@@ -104,13 +112,13 @@ async def test_directory_mode_must_be_owner_only(socket_dir: Path) -> None:
     os.chmod(socket_dir, 0o755)
     path = socket_dir / "svc.sock"
     service = HarnessService(
-        FakeAdapter(),  # type: ignore[arg-type]
+        FakeAdapter(),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     server = UnixServiceServer(
         path,
         service,
-        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        ContextAuthority(b"a" * 32),
         principal_for_uid=lambda _: Principal("deploy", "home", "alice"),
     )
     with pytest.raises(PermissionError):
@@ -122,13 +130,13 @@ async def test_capability_replay_on_another_connection_is_rejected(socket_dir: P
     path = socket_dir / "svc.sock"
     principal = Principal("deploy", "home", "alice")
     service = HarnessService(
-        FakeAdapter(),  # type: ignore[arg-type]
+        FakeAdapter(),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     server = UnixServiceServer(
         path,
         service,
-        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        ContextAuthority(b"a" * 32),
         principal_for_uid=lambda _: principal,
     )
     async with server:
@@ -166,13 +174,13 @@ async def test_slow_peer_is_timed_out_without_poisoning_service(
     path = socket_dir / "svc.sock"
     principal = Principal("deploy", "home", "alice")
     service = HarnessService(
-        FakeAdapter(),  # type: ignore[arg-type]
+        FakeAdapter(),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     server = UnixServiceServer(
         path,
         service,
-        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        ContextAuthority(b"a" * 32),
         principal_for_uid=lambda _: principal,
     )
     async with server:
@@ -194,13 +202,13 @@ async def test_oversize_peer_is_rejected_before_body_and_service_recovers(
     path = socket_dir / "svc.sock"
     principal = Principal("deploy", "home", "alice")
     service = HarnessService(
-        FakeAdapter(),  # type: ignore[arg-type]
+        FakeAdapter(),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     server = UnixServiceServer(
         path,
         service,
-        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        ContextAuthority(b"a" * 32),
         principal_for_uid=lambda _: principal,
     )
     async with server:
@@ -221,13 +229,13 @@ async def test_client_rejects_socket_mode_drift(socket_dir: Path) -> None:
     path = socket_dir / "svc.sock"
     principal = Principal("deploy", "home", "alice")
     service = HarnessService(
-        FakeAdapter(),  # type: ignore[arg-type]
+        FakeAdapter(),
         IdentityProjector(b"p" * 32, namespace="consumer.example"),
     )
     server = UnixServiceServer(
         path,
         service,
-        ContextAuthority(b"a" * 32, key_id="context-v1"),
+        ContextAuthority(b"a" * 32),
         principal_for_uid=lambda _: principal,
     )
     async with server:

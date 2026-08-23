@@ -47,13 +47,13 @@ class AuthenticatedContext:
 
 
 class ContextAuthority:
-    def __init__(self, key: bytes, *, key_id: str) -> None:
+    def __init__(self, key: bytes) -> None:
         if len(key) < 32:
             raise ValueError("context authority key must contain at least 256 bits")
-        if not key_id.strip():
-            raise ValueError("key_id is required")
         self._key = bytes(key)
-        self.key_id = key_id
+        self.key_id = hashlib.sha256(
+            b"svc-context-key-id-v1\x00" + self._key
+        ).hexdigest()[:32]
 
     def issue(
         self,
