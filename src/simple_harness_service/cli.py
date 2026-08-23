@@ -213,21 +213,12 @@ class CliEngine:
                 if message == "/cancel":
                     continue
                 command_id = f"command-{secrets.token_hex(16)}"
-                if run_id is None:
-                    run_id = f"run-{secrets.token_hex(16)}"
-                    await client.start(
-                        StartRequest(current_session, run_id, command_id, message)
-                    )
-                else:
-                    await client.continue_(
-                        ContinueRequest(
-                            current_session,
-                            run_id,
-                            command_id,
-                            f"continuation-{secrets.token_hex(16)}",
-                            message,
-                        )
-                    )
+                if run_id is not None:
+                    raise RuntimeError("chat attempted to reuse a settled run")
+                run_id = f"run-{secrets.token_hex(16)}"
+                await client.start(
+                    StartRequest(current_session, run_id, command_id, message)
+                )
                 print(
                     f"accepted run_id={run_id} command_id={command_id}",
                     file=self.stderr,
@@ -300,7 +291,7 @@ class CliEngine:
             except TimeoutError:
                 snapshot = await client.get(command_id)
                 if snapshot.outcome is not CommandOutcome.PENDING:
-                    return self._emit_outcome(snapshot), False
+                    return self._emit_outcome(snapshot), True
                 delay = min(POLL_MAX_SECONDS, delay * 2)
                 continue
             message = line.rstrip("\n")

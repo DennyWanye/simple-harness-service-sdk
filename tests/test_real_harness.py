@@ -32,6 +32,7 @@ from simple_harness_service import (
     IdentityProjector,
     OutputState,
     Principal,
+    RunState,
     StartRequest,
 )
 from simple_harness_service.cli import CliEngine, ExitCode
@@ -166,16 +167,35 @@ async def test_service_reaches_terminal_output_through_real_public_harness(
         assert snapshot.output_state is OutputState.PRESENT
         assert snapshot.output_text == "real harness answer"
         assert snapshot.outcome is CommandOutcome.COMPLETED
-        # The formal wheel's public continuation command is exercised without
-        # importing any implementation module. A terminal run rejects it durably.
+        # The formal wheel's public contract rejects continuation of a terminal Run.
         await service.continue_(
             ContinueRequest(
                 "session", "run", "continue-command", "continuation", "again"
             ),
             context,
         )
-        continuation = await service.get(GetRequest("continue-command"), context)
-        assert continuation.receipt.command_id
+        for _ in range(100):
+            continuation = await service.get(GetRequest("continue-command"), context)
+            if continuation.error_code is not None:
+                break
+            await asyncio.sleep(0.01)
+        assert continuation.outcome is CommandOutcome.PENDING
+        assert continuation.error_code == "command_transient_failure"
+        assert continuation.run_state is RunState.COMPLETED
+
+        # Interactive chat must therefore start the next turn as a fresh Run while
+        # retaining the stable external session identity used by Agent Memory.
+        await service.start(
+            StartRequest("session", "run-2", "command-2", "again"),
+            context,
+        )
+        for _ in range(200):
+            second = await service.get(GetRequest("command-2"), context)
+            if second.outcome is not CommandOutcome.PENDING:
+                break
+            await asyncio.sleep(0.01)
+        assert second.outcome is CommandOutcome.COMPLETED
+        assert second.output_text == "real harness answer"
     finally:
         await runtime.close()
 

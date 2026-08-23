@@ -8,6 +8,7 @@ import select
 import subprocess
 import sys
 import time
+from collections import deque
 from pathlib import Path
 from typing import Any
 
@@ -131,9 +132,28 @@ async def test_chat_session_new_cancel_and_quit() -> None:
     result = await engine.run(["--socket", str(Path("/tmp/test.sock")), "chat"])
     assert result in {ExitCode.OK, ExitCode.CANCELLED}
     assert len(client.started) >= 2
-    assert len(client.continued) <= 1
+    assert client.continued == []
+    assert len({request.external_run_id for request in client.started}) == len(
+        client.started
+    )
+    assert {request.external_session_id for request in client.started} == {"main"}
     assert len(client.cancelled) >= 1
     assert stdout.getvalue().startswith("main\n")
+
+
+@pytest.mark.asyncio
+async def test_completed_chat_turn_releases_run_for_same_session_fresh_start() -> None:
+    client = FakeClient()
+    engine = CliEngine(lambda _: client, stdout=io.StringIO(), stderr=io.StringIO())
+    lines: asyncio.Queue[str] = asyncio.Queue()
+    buffered: deque[str] = deque()
+
+    result, reset_run = await engine._observe_active_chat(
+        client, lines, buffered, "external-run", "external-command"
+    )
+
+    assert result == ExitCode.OK
+    assert reset_run is True
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Interactive `chat` now treats a completed Harness run as terminal and starts the next turn
+  as a fresh run under the same session, allowing Agent Memory to carry conversation context
+  without submitting an invalid continuation to a terminal run.
+
 ## 0.1.0 — candidate
 
 - Adds closed authenticated health/start/continue/get/cancel services over Harness 0.5 public
