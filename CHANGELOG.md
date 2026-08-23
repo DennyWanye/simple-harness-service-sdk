@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.1.1
 
 - Interactive `chat` now treats a completed Harness run as terminal and starts the next turn
   as a fresh run under the same session, allowing Agent Memory to carry conversation context

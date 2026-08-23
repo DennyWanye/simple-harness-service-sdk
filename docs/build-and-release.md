@@ -9,7 +9,7 @@ uv run --frozen pytest -q
 uv run --frozen ruff check .
 uv run --frozen mypy src tests
 python3 scripts/check_architecture.py
-python3 scripts/build_candidate.py --output /tmp/svc-candidate --planned-tag v0.1.0
+python3 scripts/build_candidate.py --output /tmp/svc-candidate --planned-tag v0.1.1
 uv run --frozen twine check /tmp/svc-candidate/*.whl /tmp/svc-candidate/*.tar.gz
 ```
 
