@@ -1,6 +1,7 @@
 """Public API for Simple Harness Service SDK."""
 
 from .auth import AuthenticatedContext, Capability, ContextAuthority
+from .bom import load_bom, validate_installed_bom, validate_metadata_requirements
 from .client import ConversationClient, ServicePort
 from .contracts import (
     FRAME_MAX_BYTES,
@@ -48,4 +49,7 @@ __all__ = (
     "UnixServiceClient",
     "UnixServiceServer",
     "__version__",
+    "load_bom",
+    "validate_installed_bom",
+    "validate_metadata_requirements",
 )
