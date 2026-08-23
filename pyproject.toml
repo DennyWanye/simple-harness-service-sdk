@@ -44,7 +44,7 @@ dev = [
   "pytest>=8.4,<9",
   "pytest-asyncio>=1.1,<2",
   "ruff>=0.12,<1",
-  "twine>=6.1,<7",
+  "twine>=7,<8",
 ]
 
 [tool.pytest.ini_options]
@@ -63,4 +63,3 @@ select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 python_version = "3.11"
 strict = true
 packages = ["simple_harness_service"]
-
