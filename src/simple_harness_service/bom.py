@@ -74,14 +74,17 @@ def _validate_direct_url(
     if not isinstance(provenance, dict) or provenance.get("url") != item["url"]:
         raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
     archive = provenance.get("archive_info")
-    if not isinstance(archive, dict) or "hash" in archive:
-        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} SHA provenance ambiguous")
+    if not isinstance(archive, dict):
+        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} SHA provenance missing")
     hashes = archive.get("hashes")
     if not isinstance(hashes, dict) or set(hashes) != {"sha256"}:
         raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} SHA provenance missing")
     digest = hashes["sha256"]
     if not isinstance(digest, str) or digest != item["sha256"]:
         raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
+    legacy_hash = archive.get("hash")
+    if legacy_hash is not None and legacy_hash != f"sha256={digest}":
+        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} SHA provenance ambiguous")
 
 
 def _item(bom: Mapping[str, object], key: str) -> Mapping[str, object]:

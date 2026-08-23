@@ -65,7 +65,7 @@ def test_metadata_validator_rejects_lookalike_distribution() -> None:
         {"hashes": {}},
         {"hashes": {"sha256": "0" * 64}},
         {"hashes": {"sha256": "d" * 64, "sha512": "e" * 128}},
-        {"hash": "sha256=" + "d" * 64, "hashes": {"sha256": "d" * 64}},
+        {"hash": "sha512=" + "e" * 128, "hashes": {"sha256": "d" * 64}},
     ],
 )
 def test_direct_url_requires_one_exact_sha256(archive_info: object) -> None:
@@ -81,6 +81,16 @@ def test_direct_url_accepts_only_exact_url_and_bytes_identity() -> None:
         {"url": item["url"], "archive_info": {"hashes": {"sha256": item["sha256"]}}}
     )
     _validate_direct_url("harness", item, valid)
+    pip_valid = json.dumps(
+        {
+            "url": item["url"],
+            "archive_info": {
+                "hash": f"sha256={item['sha256']}",
+                "hashes": {"sha256": item["sha256"]},
+            },
+        }
+    )
+    _validate_direct_url("harness", item, pip_valid)
     wrong_url = valid.replace("wheel.whl", "other.whl")
     with pytest.raises(ServiceError):
         _validate_direct_url("harness", item, wrong_url)
