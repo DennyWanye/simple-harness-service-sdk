@@ -74,6 +74,12 @@ def context() -> AuthenticatedContext:
 @pytest.mark.parametrize(
     ("command_state", "output_state", "run_state", "expected"),
     [
+        (
+            CommandState.ACCEPTED,
+            OutputState.ABSENT,
+            RunState.COMPLETED,
+            CommandOutcome.PENDING,
+        ),
         (CommandState.APPLIED, OutputState.PRESENT, RunState.COMPLETED, CommandOutcome.COMPLETED),
         (CommandState.APPLIED, OutputState.ABSENT, RunState.COMPLETED, CommandOutcome.COMPLETED),
         (CommandState.APPLIED, OutputState.ABSENT, RunState.FAILED, CommandOutcome.FAILED),

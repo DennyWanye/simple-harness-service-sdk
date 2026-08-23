@@ -170,6 +170,31 @@ async def test_status_and_cancel_commands() -> None:
     assert client.cancelled[-1].external_run_id == "external-run"
 
 
+@pytest.mark.parametrize(
+    ("outcome", "expected"),
+    [
+        (CommandOutcome.COMPLETED, ExitCode.OK),
+        (CommandOutcome.FAILED, ExitCode.FAILED),
+        (CommandOutcome.CANCELLED, ExitCode.CANCELLED),
+        (CommandOutcome.PROTOCOL_ERROR, ExitCode.PROTOCOL),
+    ],
+)
+def test_closed_terminal_outcomes_have_stable_exit_codes(
+    outcome: CommandOutcome, expected: ExitCode
+) -> None:
+    output_state = (
+        OutputState.PRESENT if outcome is CommandOutcome.COMPLETED else OutputState.ABSENT
+    )
+    snapshot = CommandSnapshot(
+        _receipt(),
+        output_state,
+        "answer" if output_state is OutputState.PRESENT else None,
+        outcome=outcome,
+    )
+    engine = CliEngine(stdout=io.StringIO(), stderr=io.StringIO())
+    assert engine._emit_outcome(snapshot) == expected
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="PTY is POSIX-only")
 def test_chat_help_and_quit_over_real_pty() -> None:
     master, slave = pty.openpty()

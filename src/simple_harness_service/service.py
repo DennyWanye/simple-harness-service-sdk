@@ -234,6 +234,12 @@ def _closed_outcome(
     output_state: OutputState,
     run_state: RunState | None,
 ) -> CommandOutcome:
+    if command_state in {
+        CommandState.ACCEPTED,
+        CommandState.CONTEXT_CALL_INTENT,
+        CommandState.CONTEXT_READY,
+    }:
+        return CommandOutcome.PENDING
     if output_state is OutputState.UNKNOWN:
         return CommandOutcome.PROTOCOL_ERROR
     if output_state is OutputState.PRESENT:
