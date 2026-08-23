@@ -1,16 +1,20 @@
-# Simple Harness Service SDK 0.1.0 release status
+# Simple Harness Service SDK 0.1.1 release status
 
-`v0.1.0` is formally published as a non-Draft, non-Prerelease GitHub Latest Release:
-https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.0
+`v0.1.1` is formally published as a non-Draft, non-Prerelease GitHub Latest Release:
+https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.1
 
-The annotated tag peels to source commit `682b9fd82770af9e5949f16f6888757eb784e094`.
+The annotated tag peels to source commit `2cb414e9a8bc357049e31c50b19d019772e578f3`.
 The published wheel SHA-256 is
-`086961c454f31e469c7450d57ceac21f39dd3009648d10026a9cae5a27e4fec6`; the sdist SHA-256 is
-`8962d95d5a423a2100f1f7d0b9f2ccc7e581402257588ec14bcff3e03cc61b1f`; and the candidate
-manifest SHA-256 is `fdeadc66190f74d4c6ffa3cf29a3ceb22b949a277bc075790ad9bbdfddec7ea4`.
+`5633e7d74cb3c3600e6b59d820d437ef06398c9c9665300c605693922d9753f4`; the sdist SHA-256 is
+`358dee91aaa9bb44fa68f3cf9e27f2da885724a98cbbbf8a4b4e68059e927a3c`; and the candidate
+manifest SHA-256 is `0640bc9877df9a03a435d73fd13feb693823ca9a8a8ccd94ec8a7d3f9c00f423`.
 All assets were independently downloaded from the public Release and verified byte-for-byte.
 Python 3.11 and 3.13 exact public wheel installs with the `memory` extra passed BOM, import, and
 CLI smoke gates.
+
+Interactive chat now starts every turn after a terminal outcome as a fresh Harness run while
+preserving the external session identity. This matches Harness 0.5's public rule that terminal runs
+reject continuations and lets Agent Memory provide cross-run conversation continuity.
 
 The prior candidate whose manifest SHA-256 begins `558c0a9b8a70` (wheel SHA-256
 `5c286c9e1c4fdbde1d2d8034b89e6da2d414e200cb789d0dd3aac8f2c07f6181`, source commit
