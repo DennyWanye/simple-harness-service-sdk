@@ -1,11 +1,12 @@
 # Simple Harness Service SDK 0.1.2 release status
 
-Version 0.1.2 is the exact-Harness-0.5.1 release candidate. Immutable source and asset identities
-will be recorded here after formal publication and public redownload verification.
+[`v0.1.2`](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.2) is the
+current non-Draft, non-Prerelease Latest release. Its annotated tag binds source commit
+`920a0054ded4101d96195f087035669f4ef818a8`.
 The published wheel SHA-256 is
-`5633e7d74cb3c3600e6b59d820d437ef06398c9c9665300c605693922d9753f4`; the sdist SHA-256 is
-`358dee91aaa9bb44fa68f3cf9e27f2da885724a98cbbbf8a4b4e68059e927a3c`; and the candidate
-manifest SHA-256 is `0640bc9877df9a03a435d73fd13feb693823ca9a8a8ccd94ec8a7d3f9c00f423`.
+`699c1a8744bdda45cd784b3e28b63273873fa967e203da4c6552c2ee5302c4a7`; the sdist SHA-256 is
+`23fe0fc6005f7d33672c681c9e0135925139a6a0533a4297e57b92183f2f4e30`; and the candidate
+manifest SHA-256 is `7ede2185f537274c38a8f7de2908013a080e94606f9aa9d719b19d02a28c43a3`.
 All assets were independently downloaded from the public Release and verified byte-for-byte.
 Python 3.11 and 3.13 exact public wheel installs with the `memory` extra passed BOM, import, and
 CLI smoke gates.
