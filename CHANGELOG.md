@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1
+
+- Preserve pending prompt input while durable observation runs, enforce observe/cancel deadlines,
+  recover renderer failures through safe flat reconciliation, and keep local help/clear operations
+  free of durable or global-output side effects.
+
+## 0.2.0
+
+- Add the product-configurable terminal chat UI, durable chat controller, safe Markdown renderer,
+  accessibility fallbacks, and public `ChatUiConfig` composition boundary.
+
 ## 0.1.3
 
 - Pin the formal Harness 0.5.2 wheel and compatibility BOM. SVC behavior, public API, transport

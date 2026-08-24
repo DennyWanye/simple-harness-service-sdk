@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import io
 from typing import Any
 
@@ -7,12 +8,17 @@ import pytest
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
-from simple_harness_service.chat_controller import ChatController
+from simple_harness_service.chat_controller import (
+    ChatController,
+    Pending,
+    TranscriptCleared,
+)
 from simple_harness_service.terminal_ui import (
     ChatUiConfig,
     SlashCommandCompleter,
     TerminalChatUI,
     TerminalMode,
+    _wait_for_activity,
     detect_terminal_mode,
 )
 
@@ -90,3 +96,127 @@ async def test_flat_mode_has_no_ansi_and_keeps_local_commands() -> None:
     assert "session=main state=idle" in output
     assert "\x1b" not in output
     assert "\u202e" not in output
+
+
+@pytest.mark.asyncio
+async def test_pending_prompt_survives_observation_and_simultaneous_results() -> None:
+    prompt_gate = asyncio.Event()
+
+    async def prompt() -> str:
+        await prompt_gate.wait()
+        return "/status"
+
+    async def observed() -> tuple[Pending, ...]:
+        return (Pending("run-1", "command-1"),)
+
+    prompt_task = asyncio.create_task(prompt())
+    observe_task = asyncio.create_task(observed())
+    _text, events = await _wait_for_activity(prompt_task, observe_task)
+    assert events == (Pending("run-1", "command-1"),)
+    assert not prompt_task.done()
+    assert not prompt_task.cancelled()
+
+    prompt_gate.set()
+    await asyncio.sleep(0)
+    observe_task = asyncio.create_task(observed())
+    await asyncio.sleep(0)
+    text, events = await _wait_for_activity(prompt_task, observe_task)
+    assert text == "/status"
+    assert events == (Pending("run-1", "command-1"),)
+
+
+def test_clear_uses_injected_output_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    class RecordingOutput:
+        def __init__(self) -> None:
+            self.calls: list[object] = []
+
+        def erase_screen(self) -> None:
+            self.calls.append("erase")
+
+        def cursor_goto(self, row: int, column: int) -> None:
+            self.calls.append((row, column))
+
+        def flush(self) -> None:
+            self.calls.append("flush")
+
+    ui = TerminalChatUI(
+        ChatController(FakeClient()),
+        config=ChatUiConfig(),
+        stdin=io.StringIO(),
+        stdout=io.StringIO(),
+        stderr=io.StringIO(),
+    )
+    monkeypatch.setattr(ui, "_print_welcome", lambda output: None)
+    output = RecordingOutput()
+
+    ui._emit_events((TranscriptCleared(),), output)  # type: ignore[arg-type]
+
+    assert output.calls == ["erase", (0, 0), "flush"]
+
+
+@pytest.mark.asyncio
+async def test_renderer_failure_reconciles_in_flat_mode_without_cancel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class CompletingClient(FakeClient):
+        def __init__(self) -> None:
+            self.started: list[Any] = []
+            self.cancelled: list[Any] = []
+
+        async def start(self, request: Any) -> object:
+            self.started.append(request)
+            return object()
+
+        async def get(self, command_id: str) -> Any:
+            from simple_harness_service import (
+                CommandKind,
+                CommandOutcome,
+                CommandReceipt,
+                CommandSnapshot,
+                CommandState,
+                OutputState,
+                RunState,
+            )
+
+            return CommandSnapshot(
+                CommandReceipt(
+                    command_id,
+                    "backend-run",
+                    1,
+                    CommandState.APPLIED,
+                    1,
+                    CommandKind.START,
+                ),
+                OutputState.PRESENT,
+                "answer",
+                run_state=RunState.COMPLETED,
+                outcome=CommandOutcome.COMPLETED,
+            )
+
+        async def cancel(self, request: Any) -> object:
+            self.cancelled.append(request)
+            return object()
+
+    client = CompletingClient()
+    controller = ChatController(client, id_factory=lambda kind: f"{kind}-1")
+    await controller.dispatch_text("hello")
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    ui = TerminalChatUI(
+        controller,
+        config=ChatUiConfig(),
+        stdin=io.StringIO(),
+        stdout=stdout,
+        stderr=stderr,
+    )
+    ui.mode = TerminalMode.INTERACTIVE
+
+    async def fail_renderer() -> int:
+        raise RuntimeError("render failed")
+
+    monkeypatch.setattr(ui, "_run_interactive", fail_renderer)
+
+    assert await ui.run() == 0
+    assert stdout.getvalue() == "answer\n"
+    assert "terminal-ui-render-error run_id=run-1 command_id=command-1" in stderr.getvalue()
+    assert client.cancelled == []

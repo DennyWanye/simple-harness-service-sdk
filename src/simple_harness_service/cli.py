@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import contextlib
 import json
 import secrets
 import sys
@@ -92,22 +91,7 @@ class CliEngine:
                     f"cancel-{secrets.token_hex(16)}",
                 )
             if args.command == "chat":
-                config = ChatUiConfig(
-                    brand=self._chat_ui_config.brand,
-                    model_label=self._chat_ui_config.model_label,
-                    default_session=args.session,
-                    version_label=self._chat_ui_config.version_label,
-                    help_footer=self._chat_ui_config.help_footer,
-                    screen_reader=self._chat_ui_config.screen_reader,
-                )
-                controller = ChatController(client, session=args.session, now=self._now)
-                return await TerminalChatUI(
-                    controller,
-                    config=config,
-                    stdin=self.stdin,
-                    stdout=self.stdout,
-                    stderr=self.stderr,
-                ).run()
+                return await self._chat(client, args.session)
             return ExitCode.USAGE
         except KeyboardInterrupt:
             return ExitCode.CANCELLED
@@ -195,100 +179,23 @@ class CliEngine:
         return result
 
     async def _chat(self, client: CliClient, session: str) -> int:
-        run_id: str | None = None
-        current_session = session
-        active_command: str | None = None
-        buffered: deque[str] = deque()
-        lines: asyncio.Queue[str] = asyncio.Queue()
-        reader = asyncio.create_task(self._pump_lines(lines))
-        try:
-            while True:
-                line = buffered.popleft() if buffered else await lines.get()
-                if line == "":
-                    return ExitCode.OK
-                message = line.rstrip("\n")
-                if not message:
-                    continue
-                if message == "/quit":
-                    return ExitCode.OK
-                if message == "/help":
-                    print("/help /session NAME /new /cancel /quit", file=self.stdout)
-                    continue
-                if message.startswith("/session "):
-                    current_session = message.removeprefix("/session ").strip()
-                    if not current_session:
-                        print("session is required", file=self.stderr)
-                        continue
-                    run_id = None
-                    continue
-                if message == "/session":
-                    print(current_session, file=self.stdout)
-                    continue
-                if message == "/new":
-                    run_id = None
-                    continue
-                if message == "/cancel":
-                    continue
-                command_id = f"command-{secrets.token_hex(16)}"
-                if run_id is not None:
-                    raise RuntimeError("chat attempted to reuse a settled run")
-                run_id = f"run-{secrets.token_hex(16)}"
-                await client.start(StartRequest(current_session, run_id, command_id, message))
-                print(
-                    f"accepted run_id={run_id} command_id={command_id}",
-                    file=self.stderr,
-                )
-                active_command = command_id
-                result, reset_run = await self._observe_active_chat(
-                    client, lines, buffered, run_id, command_id
-                )
-                active_command = None
-                if reset_run:
-                    run_id = None
-                if result != ExitCode.OK:
-                    return result
-        except asyncio.CancelledError:
-            if run_id is not None and active_command is not None:
-                await asyncio.shield(
-                    self._cancel_and_reconcile(
-                        client,
-                        run_id,
-                        f"cancel-{secrets.token_hex(16)}",
-                    )
-                )
-            raise
-        finally:
-            reader.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await reader
+        """Compatibility wrapper for callers that exercised the former private chat hook."""
 
-    async def _pump_lines(self, queue: asyncio.Queue[str]) -> None:
-        while True:
-            line = await self._read_line()
-            await queue.put(line)
-            if line == "":
-                return
-
-    async def _read_line(self) -> str:
-        try:
-            descriptor = self.stdin.fileno()
-        except (AttributeError, OSError):
-            return await asyncio.to_thread(self.stdin.readline)
-        loop = asyncio.get_running_loop()
-        ready: asyncio.Future[str] = loop.create_future()
-
-        def read_ready() -> None:
-            if not ready.done():
-                try:
-                    ready.set_result(self.stdin.readline())
-                except BaseException as error:
-                    ready.set_exception(error)
-
-        loop.add_reader(descriptor, read_ready)
-        try:
-            return await ready
-        finally:
-            loop.remove_reader(descriptor)
+        config = ChatUiConfig(
+            brand=self._chat_ui_config.brand,
+            model_label=self._chat_ui_config.model_label,
+            default_session=session,
+            version_label=self._chat_ui_config.version_label,
+            help_footer=self._chat_ui_config.help_footer,
+            screen_reader=self._chat_ui_config.screen_reader,
+        )
+        return await TerminalChatUI(
+            ChatController(client, session=session, now=self._now),
+            config=config,
+            stdin=self.stdin,
+            stdout=self.stdout,
+            stderr=self.stderr,
+        ).run()
 
     async def _observe_active_chat(
         self,

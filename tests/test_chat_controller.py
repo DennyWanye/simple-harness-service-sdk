@@ -18,6 +18,7 @@ from simple_harness_service.chat_controller import (
     ProtocolError,
     QuitRequested,
     SessionChanged,
+    Timeout,
     TranscriptCleared,
 )
 from simple_harness_service.contracts import (
@@ -225,6 +226,74 @@ async def test_help_and_unknown_commands_are_local(ids: Any) -> None:
     assert "/status" in help_events[0].text
     assert await controller.dispatch_text("/bogus") == (Notice("Unknown command: /bogus"),)
     assert client.started == []
+    assert client.cancelled == []
+
+
+@pytest.mark.asyncio
+async def test_question_mark_is_local_help_without_start(ids: Any) -> None:
+    client = FakeClient()
+    controller = ChatController(client, id_factory=ids)
+
+    events = await controller.dispatch_text("?")
+
+    assert isinstance(events[0], Notice)
+    assert "/help" in events[0].text
+    assert client.started == []
+
+
+@pytest.mark.asyncio
+async def test_observe_and_cancel_deadlines_preserve_active_identity(ids: Any) -> None:
+    clock = [0.0]
+
+    async def advance(delay: float) -> None:
+        clock[0] += delay
+
+    client = FakeClient()
+    controller = ChatController(
+        client,
+        id_factory=ids,
+        now=lambda: clock[0],
+        sleep=advance,
+        observe_deadline_seconds=10.0,
+        cancel_reconcile_seconds=0.15,
+    )
+    await controller.dispatch_text("hello")
+    await controller.dispatch(Cancel())
+    client.snapshots["command-1"] = snapshot("command-1")
+    client.snapshots["cancel-1"] = snapshot("cancel-1", kind=CommandKind.CANCEL)
+
+    events = await controller.observe_until(
+        deadline_seconds=10.0, initial_delay=0.1, maximum_delay=0.1
+    )
+
+    assert events == (Timeout("run-1", "command-1"),)
+    assert controller.active_identity == ("run-1", "command-1")
+    assert len(client.cancelled) == 1
+
+
+@pytest.mark.asyncio
+async def test_observe_deadline_times_out_without_cancel(ids: Any) -> None:
+    clock = [0.0]
+
+    async def advance(delay: float) -> None:
+        clock[0] += delay
+
+    client = FakeClient()
+    controller = ChatController(
+        client,
+        id_factory=ids,
+        now=lambda: clock[0],
+        sleep=advance,
+        observe_deadline_seconds=0.15,
+    )
+    await controller.dispatch_text("hello")
+    client.snapshots["command-1"] = snapshot("command-1")
+
+    events = await controller.observe_until(
+        deadline_seconds=10.0, initial_delay=0.1, maximum_delay=0.1
+    )
+
+    assert events == (Timeout("run-1", "command-1"),)
     assert client.cancelled == []
 
 

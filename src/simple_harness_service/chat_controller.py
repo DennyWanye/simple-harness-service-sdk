@@ -179,6 +179,8 @@ class ChatController:
         id_factory: Callable[[str], str] | None = None,
         now: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        observe_deadline_seconds: float = 315.0,
+        cancel_reconcile_seconds: float = 5.0,
     ) -> None:
         if not session.strip():
             raise ValueError("session is required")
@@ -187,6 +189,8 @@ class ChatController:
         self._id_factory = id_factory or _random_id
         self._now = now
         self._sleep = sleep
+        self._observe_deadline_seconds = observe_deadline_seconds
+        self._cancel_reconcile_seconds = cancel_reconcile_seconds
         self._run_id: str | None = None
         self._start_command_id: str | None = None
         self._cancel_command_id: str | None = None
@@ -194,6 +198,8 @@ class ChatController:
         self._start_snapshot: CommandSnapshot | None = None
         self._cancel_snapshot: CommandSnapshot | None = None
         self._quit_after_settle = False
+        self._run_deadline: float | None = None
+        self._cancel_deadline: float | None = None
         self._last_outcome = "idle"
         self._lock = asyncio.Lock()
 
@@ -212,6 +218,12 @@ class ChatController:
     @property
     def commands(self) -> tuple[CommandDescriptor, ...]:
         return COMMANDS
+
+    @property
+    def active_identity(self) -> tuple[str, str] | None:
+        if self._run_id is None or self._start_command_id is None:
+            return None
+        return self._run_id, self._start_command_id
 
     async def dispatch(self, action: ChatAction) -> tuple[ChatEvent, ...]:
         if isinstance(action, Submit):
@@ -241,6 +253,8 @@ class ChatController:
     async def dispatch_text(self, text: str) -> tuple[ChatEvent, ...]:
         if not text.strip():
             return ()
+        if text == "?":
+            return await self.dispatch(Help())
         if not text.startswith("/"):
             return await self.dispatch(Submit(text))
         command, _, argument = text.partition(" ")
@@ -264,6 +278,13 @@ class ChatController:
 
     async def observe_once(self) -> tuple[ChatEvent, ...]:
         run_id, start_id = self._active_identity()
+        deadlines = tuple(
+            value
+            for value in (self._run_deadline, self._cancel_deadline)
+            if value is not None
+        )
+        if deadlines and self._now() >= min(deadlines):
+            return (Timeout(run_id, start_id),)
         start_snapshot, cancel_snapshot = await self._read_snapshots(start_id)
         self._start_snapshot = start_snapshot
         if cancel_snapshot is not None:
@@ -288,6 +309,8 @@ class ChatController:
         deadline = self._now() + deadline_seconds
         delay = initial_delay
         while self._now() < deadline:
+            if self._cancel_deadline is not None and self._now() >= self._cancel_deadline:
+                return (Timeout(run_id, command_id),)
             events = await self.observe_once()
             if not isinstance(events[0], Pending):
                 return events
@@ -307,6 +330,7 @@ class ChatController:
             self._run_id = run_id
             self._start_command_id = command_id
             self._last_outcome = "pending"
+            self._run_deadline = self._now() + self._observe_deadline_seconds
         return (Accepted(run_id, command_id), Pending(run_id, command_id))
 
     async def _cancel(self) -> tuple[ChatEvent, ...]:
@@ -317,6 +341,7 @@ class ChatController:
                 self._cancel_command_id = self._id_factory("cancel")
                 request = CancelRequest(self._run_id, self._cancel_command_id)
                 self._cancel_task = asyncio.create_task(self._client.cancel(request))
+                self._cancel_deadline = self._now() + self._cancel_reconcile_seconds
             task = self._cancel_task
             run_id = self._run_id
             start_id = self._start_command_id
@@ -388,6 +413,8 @@ class ChatController:
         self._start_snapshot = None
         self._cancel_snapshot = None
         self._quit_after_settle = False
+        self._run_deadline = None
+        self._cancel_deadline = None
 
     def _set_session(self, name: str) -> tuple[ChatEvent, ...]:
         if self.state is not ControllerState.IDLE:

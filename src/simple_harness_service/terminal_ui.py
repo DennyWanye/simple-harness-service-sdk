@@ -10,7 +10,7 @@ from collections import deque
 from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TextIO, cast
+from typing import TextIO
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import Completer, Completion
@@ -19,7 +19,7 @@ from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.input import create_input
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.output import ColorDepth, Output, create_output
-from prompt_toolkit.shortcuts import clear, print_formatted_text
+from prompt_toolkit.shortcuts import print_formatted_text
 
 from .chat_controller import (
     Accepted,
@@ -39,6 +39,7 @@ from .chat_controller import (
     Timeout,
     TranscriptCleared,
 )
+from .contracts import ServiceError
 from .text_rendering import render_markdown_fragments, sanitize_untrusted_text
 
 
@@ -145,7 +146,22 @@ class TerminalChatUI:
     async def run(self) -> int:
         if self.mode is TerminalMode.FLAT:
             return await self._run_flat()
-        return await self._run_interactive()
+        try:
+            return await self._run_interactive()
+        except (KeyboardInterrupt, EOFError, ServiceError):
+            raise
+        except Exception:
+            identity = self.controller.active_identity
+            suffix = ""
+            if identity is not None:
+                suffix = f" run_id={identity[0]} command_id={identity[1]}"
+            self.stderr.write(f"terminal-ui-render-error{suffix}\n")
+            self.stderr.flush()
+            if identity is None:
+                return 3
+            events = await self.controller.observe_until(deadline_seconds=315.0)
+            self._emit_flat_events(events)
+            return self._exit_code
 
     async def _run_interactive(self) -> int:
         output = create_output(stdout=self.stdout)
@@ -160,55 +176,58 @@ class TerminalChatUI:
             color_depth=ColorDepth.DEPTH_8_BIT,
         )
         self._print_welcome(output)
-        while not self._quit:
-            try:
-                if self.controller.state is ControllerState.IDLE:
-                    text = await session.prompt_async(
-                        FormattedText([("class:prompt", "\u276f ")]),
-                        bottom_toolbar=self._toolbar,
+        prompt_task: asyncio.Task[str] | None = None
+        observe_task: asyncio.Task[tuple[ChatEvent, ...]] | None = None
+        restart = False
+        try:
+            while not self._quit:
+                if prompt_task is None:
+                    prompt_task = asyncio.create_task(
+                        session.prompt_async(
+                            FormattedText([("class:prompt", "\u276f ")]),
+                            bottom_toolbar=self._toolbar,
+                        )
                     )
+                if self.controller.state is not ControllerState.IDLE and observe_task is None:
+                    observe_task = asyncio.create_task(
+                        self.controller.observe_until(deadline_seconds=315.0)
+                    )
+                text, events = await _wait_for_activity(prompt_task, observe_task)
+                if events is not None:
+                    self._emit_events(events, output)
+                    observe_task = None
+                if text is not None:
+                    prompt_task = None
                     await self._handle_text(text, output)
-                    continue
-                prompt_task = asyncio.create_task(
-                    session.prompt_async(
-                        FormattedText([("class:prompt", "\u276f ")]),
-                        bottom_toolbar=self._toolbar,
-                    )
-                )
-                observe_task = asyncio.create_task(self._observe_after_delay())
-                done, pending = await asyncio.wait(
-                    {prompt_task, observe_task}, return_when=asyncio.FIRST_COMPLETED
-                )
-                for task in pending:
-                    task.cancel()
-                await asyncio.gather(*pending, return_exceptions=True)
-                completed = next(iter(done))
-                if completed is observe_task:
-                    self._emit_events(
-                        cast(tuple[ChatEvent, ...], completed.result()), output
-                    )
-                else:
-                    await self._handle_text(cast(str, completed.result()), output)
-            except KeyboardInterrupt:
-                if self.controller.state is not ControllerState.IDLE:
-                    self._emit_events(await self.controller.dispatch(Cancel()), output)
-                elif time.monotonic() - self._last_idle_interrupt <= 2.0:
-                    self._quit = True
-                else:
-                    self._last_idle_interrupt = time.monotonic()
-                    self._print_notice("Press Ctrl-C again to exit", output)
-            except EOFError:
+        except KeyboardInterrupt:
+            if self.controller.state is not ControllerState.IDLE:
+                self._emit_events(await self.controller.dispatch(Cancel()), output)
+            elif time.monotonic() - self._last_idle_interrupt <= 2.0:
                 self._quit = True
+            else:
+                self._last_idle_interrupt = time.monotonic()
+                self._print_notice("Press Ctrl-C again to exit", output)
+            if not self._quit:
+                restart = True
+        except EOFError:
+            if self.controller.state is not ControllerState.IDLE:
+                self._emit_events(await self.controller.dispatch(Quit()), output)
+                if not self._quit:
+                    restart = True
+            else:
+                self._quit = True
+        finally:
+            tasks = [task for task in (prompt_task, observe_task) if task is not None]
+            for task in tasks:
+                task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+            output.reset_attributes()
+            output.show_cursor()
+            output.flush()
+        if restart:
+            return await self._run_interactive()
         return self._exit_code
-
-    async def _observe_after_delay(self) -> tuple[ChatEvent, ...]:
-        await asyncio.sleep(self._poll_delay)
-        events = await self.controller.observe_once()
-        if events and isinstance(events[0], Pending):
-            self._poll_delay = min(1.0, self._poll_delay * 2)
-        else:
-            self._poll_delay = 0.1
-        return events
 
     async def _run_flat(self) -> int:
         lines: asyncio.Queue[str] = asyncio.Queue()
@@ -299,7 +318,9 @@ class TerminalChatUI:
                 fragments.extend(render_markdown_fragments(event.output_text))
                 print_formatted_text(FormattedText(fragments), output=output)
             elif isinstance(event, TranscriptCleared):
-                clear()
+                output.erase_screen()
+                output.cursor_goto(0, 0)
+                output.flush()
                 self._print_welcome(output)
             elif isinstance(event, Notice | SessionChanged):
                 text = event.text if isinstance(event, Notice) else f"Session: {event.session}"
@@ -387,3 +408,17 @@ class TerminalChatUI:
     def _write_flat(self, text: str) -> None:
         self.stdout.write(text + "\n")
         self.stdout.flush()
+
+
+async def _wait_for_activity(
+    prompt_task: asyncio.Task[str],
+    observe_task: asyncio.Task[tuple[ChatEvent, ...]] | None,
+) -> tuple[str | None, tuple[ChatEvent, ...] | None]:
+    waiting: set[asyncio.Task[object]] = {prompt_task}
+    if observe_task is not None:
+        waiting.add(observe_task)
+    done, _pending = await asyncio.wait(waiting, return_when=asyncio.FIRST_COMPLETED)
+    # Process durable state first, but never discard simultaneously completed input.
+    events = observe_task.result() if observe_task is not None and observe_task in done else None
+    text = prompt_task.result() if prompt_task in done else None
+    return text, events
