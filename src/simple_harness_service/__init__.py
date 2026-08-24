@@ -24,6 +24,7 @@ from .contracts import (
 from .credentials import CredentialBundle, load_credentials, provision_credentials
 from .identity import IdentityProjector, Principal
 from .service import HarnessAdapter, HarnessService
+from .terminal_ui import ChatUiConfig
 from .transports import UnixServiceClient, UnixServiceServer
 from .version import __version__
 
@@ -33,6 +34,7 @@ __all__ = (
     "AuthenticatedContext",
     "CancelRequest",
     "Capability",
+    "ChatUiConfig",
     "CommandKind",
     "CommandOutcome",
     "CommandReceipt",

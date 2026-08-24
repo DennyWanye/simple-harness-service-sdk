@@ -15,6 +15,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Protocol, TextIO
 
+from .chat_controller import ChatController
 from .contracts import (
     CancelRequest,
     CommandOutcome,
@@ -23,6 +24,7 @@ from .contracts import (
     ServiceError,
     StartRequest,
 )
+from .terminal_ui import ChatUiConfig, TerminalChatUI
 from .transports.unix import UnixServiceClient
 
 DEFAULT_SESSION = "main"
@@ -57,12 +59,14 @@ class CliEngine:
         stdout: TextIO = sys.stdout,
         stderr: TextIO = sys.stderr,
         now: Callable[[], float] = time.monotonic,
+        chat_ui_config: ChatUiConfig | None = None,
     ) -> None:
         self._client_factory = client_factory
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
         self._now = now
+        self._chat_ui_config = chat_ui_config or ChatUiConfig()
 
     async def run(self, argv: Sequence[str]) -> int:
         parser = _parser()
@@ -88,7 +92,22 @@ class CliEngine:
                     f"cancel-{secrets.token_hex(16)}",
                 )
             if args.command == "chat":
-                return await self._chat(client, args.session)
+                config = ChatUiConfig(
+                    brand=self._chat_ui_config.brand,
+                    model_label=self._chat_ui_config.model_label,
+                    default_session=args.session,
+                    version_label=self._chat_ui_config.version_label,
+                    help_footer=self._chat_ui_config.help_footer,
+                    screen_reader=self._chat_ui_config.screen_reader,
+                )
+                controller = ChatController(client, session=args.session, now=self._now)
+                return await TerminalChatUI(
+                    controller,
+                    config=config,
+                    stdin=self.stdin,
+                    stdout=self.stdout,
+                    stderr=self.stderr,
+                ).run()
             return ExitCode.USAGE
         except KeyboardInterrupt:
             return ExitCode.CANCELLED
@@ -134,9 +153,7 @@ class CliEngine:
                 )
             raise
 
-    def _emit_outcome(
-        self, snapshot: CommandSnapshot, *, emit_output: bool = True
-    ) -> int:
+    def _emit_outcome(self, snapshot: CommandSnapshot, *, emit_output: bool = True) -> int:
         if snapshot.outcome is CommandOutcome.COMPLETED:
             if emit_output and snapshot.output_text is not None:
                 print(snapshot.output_text, file=self.stdout)
@@ -216,9 +233,7 @@ class CliEngine:
                 if run_id is not None:
                     raise RuntimeError("chat attempted to reuse a settled run")
                 run_id = f"run-{secrets.token_hex(16)}"
-                await client.start(
-                    StartRequest(current_session, run_id, command_id, message)
-                )
+                await client.start(StartRequest(current_session, run_id, command_id, message))
                 print(
                     f"accepted run_id={run_id} command_id={command_id}",
                     file=self.stderr,
@@ -349,9 +364,15 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    chat_ui_config: ChatUiConfig | None = None,
+) -> int:
     try:
-        return asyncio.run(CliEngine().run(sys.argv[1:] if argv is None else argv))
+        return asyncio.run(
+            CliEngine(chat_ui_config=chat_ui_config).run(sys.argv[1:] if argv is None else argv)
+        )
     except KeyboardInterrupt:
         return ExitCode.CANCELLED
 

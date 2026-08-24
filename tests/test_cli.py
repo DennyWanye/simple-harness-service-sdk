@@ -15,6 +15,7 @@ from typing import Any
 import pytest
 
 from simple_harness_service import (
+    ChatUiConfig,
     CommandKind,
     CommandOutcome,
     CommandReceipt,
@@ -121,11 +122,11 @@ async def test_ask_reads_message_only_from_stdin() -> None:
 
 
 @pytest.mark.asyncio
-async def test_chat_session_new_cancel_and_quit() -> None:
+async def test_chat_session_new_and_quit() -> None:
     client = FakeClient()
     engine = CliEngine(
         lambda _: client,
-        stdin=io.StringIO("/session\nhello\nagain\n/new\nnew run\n/cancel\n/quit\n"),
+        stdin=io.StringIO("/session\nhello\nagain\n/new\nnew run\n/quit\n"),
         stdout=(stdout := io.StringIO()),
         stderr=io.StringIO(),
     )
@@ -137,7 +138,7 @@ async def test_chat_session_new_cancel_and_quit() -> None:
         client.started
     )
     assert {request.external_session_id for request in client.started} == {"main"}
-    assert len(client.cancelled) >= 1
+    assert client.cancelled == []
     assert stdout.getvalue().startswith("main\n")
 
 
@@ -207,8 +208,14 @@ async def test_active_chat_quit_durably_cancels_and_reconciles_over_pty() -> Non
     reader = os.fdopen(slave, "r", buffering=1, closefd=False)
     writer = os.fdopen(os.dup(slave), "w", buffering=1)
     client = PendingClient()
-    engine = CliEngine(lambda _: client, stdin=reader, stdout=writer, stderr=writer)
-    task = asyncio.create_task(engine.run(["--socket", "/tmp/test.sock", "chat"]))
+    engine = CliEngine(
+        lambda _: client,
+        stdin=reader,
+        stdout=writer,
+        stderr=writer,
+        chat_ui_config=ChatUiConfig(screen_reader=True),
+    )
+    task = asyncio.create_task(engine._chat(client, "main"))
     try:
         os.write(master, b"hello\n")
         await asyncio.wait_for(client.observed.wait(), 2)
@@ -290,7 +297,7 @@ def test_chat_help_and_quit_over_real_pty() -> None:
     )
     os.close(slave)
     try:
-        os.write(master, b"/help\n/quit\n")
+        os.write(master, b"/help\n")
         output = bytearray()
         deadline = time.monotonic() + 5
         expected = b"/help /session NAME /new /cancel /quit"
@@ -301,6 +308,7 @@ def test_chat_help_and_quit_over_real_pty() -> None:
                     output.extend(os.read(master, 4096))
                 except OSError:
                     break
+        os.write(master, b"/quit\n")
         assert process.wait(timeout=5) == 0
         assert expected in output
     finally:

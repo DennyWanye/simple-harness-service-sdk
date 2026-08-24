@@ -2,6 +2,7 @@
   "AuthenticatedContext",
   "CancelRequest",
   "Capability",
+  "ChatUiConfig",
   "CommandReceipt",
   "CommandOutcome",
   "CommandKind",

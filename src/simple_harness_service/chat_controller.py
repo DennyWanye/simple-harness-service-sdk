@@ -85,7 +85,7 @@ class CommandDescriptor:
 
 COMMANDS = (
     CommandDescriptor("help", "/help", "Show commands and shortcuts", True),
-    CommandDescriptor("session", "/session [NAME]", "Show or change session", False),
+    CommandDescriptor("session", "/session NAME", "Show or change session", False),
     CommandDescriptor("new", "/new", "Start a new display context", False),
     CommandDescriptor("cancel", "/cancel", "Cancel the active run", True),
     CommandDescriptor("quit", "/quit", "Cancel the active run and exit", True),
@@ -368,7 +368,8 @@ class ChatController:
         ):
             return Cancelled()
         if any(
-            item.outcome in {
+            item.outcome
+            in {
                 CommandOutcome.COMPLETED,
                 CommandOutcome.FAILED,
                 CommandOutcome.CANCELLED,

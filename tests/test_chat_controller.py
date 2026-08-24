@@ -189,12 +189,19 @@ async def test_commands_have_closed_registry_and_precise_idle_pending_semantics(
     client = FakeClient()
     controller = ChatController(client, session="main", id_factory=ids)
     assert {item.name for item in COMMANDS} == {
-        "help", "session", "new", "cancel", "quit", "status", "clear"
+        "help",
+        "session",
+        "new",
+        "cancel",
+        "quit",
+        "status",
+        "clear",
     }
     assert await controller.dispatch_text("/session demo") == (SessionChanged("demo"),)
     assert await controller.dispatch_text("/session") == (Notice("demo"),)
     assert await controller.dispatch_text("/new") == (
-        TranscriptCleared(), Notice("New display context")
+        TranscriptCleared(),
+        Notice("New display context"),
     )
     assert await controller.dispatch_text("/clear") == (TranscriptCleared(),)
     assert await controller.dispatch_text("/cancel") == (Notice("No active run"),)
@@ -204,9 +211,7 @@ async def test_commands_have_closed_registry_and_precise_idle_pending_semantics(
     assert await controller.dispatch_text("/session other") == (
         Notice("Cancel the active run before changing session"),
     )
-    assert await controller.dispatch_text("/new") == (
-        Notice("Cancel the active run before /new"),
-    )
+    assert await controller.dispatch_text("/new") == (Notice("Cancel the active run before /new"),)
     status = await controller.dispatch_text("/status")
     assert isinstance(status[0], Notice) and "state=pending" in status[0].text
 
@@ -229,9 +234,7 @@ async def test_pending_quit_waits_for_durable_reconciliation(ids: Any) -> None:
     controller = ChatController(client, id_factory=ids)
     await controller.dispatch_text("hello")
 
-    assert await controller.dispatch_text("/quit") == (
-        Pending("run-1", "command-1", "cancel-1"),
-    )
+    assert await controller.dispatch_text("/quit") == (Pending("run-1", "command-1", "cancel-1"),)
     client.snapshots["command-1"] = snapshot(
         "command-1", outcome=CommandOutcome.CANCELLED, run_state=RunState.CANCELLED
     )
