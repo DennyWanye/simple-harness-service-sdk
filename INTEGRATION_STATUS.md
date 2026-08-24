@@ -1,15 +1,7 @@
-# Simple Harness Service SDK 0.1.2 release status
+# Simple Harness Service SDK 0.1.3 release status
 
-[`v0.1.2`](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.2) is the
-current non-Draft, non-Prerelease Latest release. Its annotated tag binds source commit
-`920a0054ded4101d96195f087035669f4ef818a8`.
-The published wheel SHA-256 is
-`699c1a8744bdda45cd784b3e28b63273873fa967e203da4c6552c2ee5302c4a7`; the sdist SHA-256 is
-`23fe0fc6005f7d33672c681c9e0135925139a6a0533a4297e57b92183f2f4e30`; and the candidate
-manifest SHA-256 is `7ede2185f537274c38a8f7de2908013a080e94606f9aa9d719b19d02a28c43a3`.
-All assets were independently downloaded from the public Release and verified byte-for-byte.
-Python 3.11 and 3.13 exact public wheel installs with the `memory` extra passed BOM, import, and
-CLI smoke gates.
+Version 0.1.3 is the exact-Harness-0.5.2 release candidate. Immutable source and asset identities
+will be recorded here after formal publication and public redownload verification.
 
 Interactive chat now starts every turn after a terminal outcome as a fresh Harness run while
 preserving the external session identity. This matches Harness 0.5's public rule that terminal runs
@@ -25,7 +17,7 @@ The later candidate at commit `a326bc826e7d5bc11041e8ef0a7a35b9080d645c` (manife
 **withdrawn** after re-audit. Its receipts omitted Harness command kind and its credential
 activation did not fsync the parent directory entry.
 
-The SDK owns no SQLite schema, durable ingress, output store, or execution worker. Harness 0.5.1
+The SDK owns no SQLite schema, durable ingress, output store, or execution worker. Harness 0.5.2
 is the sole durable command authority. The optional `memory` extra pins Memory SDK 0.5.1.
 Credential admission uses the reusable create-once owner-only manifest component; operators must
 load and validate it before opening the AF_UNIX socket. Installed BOM validation requires an exact,

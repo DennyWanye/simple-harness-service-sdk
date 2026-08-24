@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Pin the formal Harness 0.5.2 wheel and compatibility BOM. SVC behavior, public API, transport
+  contracts, and stateless architecture remain unchanged.
+
 ## 0.1.2
 
 - Pin the formal Harness 0.5.1 wheel and compatibility BOM, exposing its closed durable Tool

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a byte-reproducible, content-addressable 0.1.2 candidate."""
+"""Build a byte-reproducible, content-addressable 0.1.3 candidate."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.2"
+VERSION = "0.1.3"
 
 
 def sha256(path: Path) -> str:
