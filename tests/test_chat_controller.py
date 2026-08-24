@@ -182,6 +182,30 @@ async def test_cancel_task_exception_is_supervised_when_dispatch_is_cancelled(id
 
 
 @pytest.mark.asyncio
+async def test_never_returning_cancel_dispatch_is_deadline_bound_and_cached(ids: Any) -> None:
+    client = FakeClient()
+    client.cancel_gate = asyncio.Event()
+    controller = ChatController(
+        client,
+        id_factory=ids,
+        cancel_reconcile_seconds=0.01,
+    )
+    await controller.dispatch_text("hello")
+
+    first = await asyncio.wait_for(controller.dispatch(Cancel()), timeout=0.2)
+    second = await asyncio.wait_for(controller.dispatch(Cancel()), timeout=0.2)
+
+    assert first == (CancelPending("run-1", "command-1", "cancel-1"),)
+    assert second == first
+    assert controller.active_identity == ("run-1", "command-1")
+    assert len(client.cancelled) == 1
+
+    client.cancel_gate.set()
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+
+@pytest.mark.asyncio
 async def test_late_cancel_uses_completed_run_and_start_output(ids: Any) -> None:
     client = FakeClient()
     controller = ChatController(client, id_factory=ids)

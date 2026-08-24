@@ -204,6 +204,7 @@ class ChatController:
         self._cancel_command_id: str | None = None
         self._cancel_task: asyncio.Task[object] | None = None
         self._cancel_accepted = False
+        self._cancel_pending_reported = False
         self._start_snapshot: CommandSnapshot | None = None
         self._cancel_snapshot: CommandSnapshot | None = None
         self._quit_after_settle = False
@@ -354,7 +355,23 @@ class ChatController:
             run_id = self._run_id
             start_id = self._start_command_id
             cancel_id = self._cancel_command_id
-        await asyncio.shield(task)
+            already_reported = self._cancel_pending_reported
+        if already_reported:
+            if cancel_id is None:
+                raise RuntimeError("cancel task lacks command identity") from None
+            return (CancelPending(run_id, start_id, cancel_id),)
+        try:
+            await asyncio.wait_for(
+                asyncio.shield(task), timeout=self._cancel_reconcile_seconds
+            )
+        except TimeoutError:
+            async with self._lock:
+                if self._cancel_task is task:
+                    self._cancel_pending_reported = True
+                    self._cancel_deadline = None
+            if cancel_id is None:
+                raise RuntimeError("cancel task lacks command identity") from None
+            return (CancelPending(run_id, start_id, cancel_id),)
         async with self._lock:
             if self._cancel_task is task:
                 self._cancel_accepted = True
@@ -422,6 +439,7 @@ class ChatController:
         self._cancel_command_id = None
         self._cancel_task = None
         self._cancel_accepted = False
+        self._cancel_pending_reported = False
         self._start_snapshot = None
         self._cancel_snapshot = None
         self._quit_after_settle = False

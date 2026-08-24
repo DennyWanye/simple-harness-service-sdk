@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- Bound cancel dispatch waiting to five seconds while preserving and supervising the single cached
+  physical cancel task; an unresponsive RPC now returns `CancelPending` without freezing the UI.
+
 ## 0.2.2
 
 - Gate cancel snapshot observation on the accepted receipt, supervise detached cancel tasks, keep

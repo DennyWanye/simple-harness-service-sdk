@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import fcntl
 import io
 import os
 import pty
 import select
+import signal
+import struct
 import subprocess
 import sys
+import termios
 import time
 from collections import deque
 from pathlib import Path
@@ -315,3 +319,101 @@ def test_chat_help_and_quit_over_real_pty() -> None:
         os.close(master)
         if process.poll() is None:
             process.kill()
+
+
+def _read_pty_until(master: int, process: subprocess.Popen[bytes], needle: bytes) -> bytes:
+    output = bytearray()
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline and needle not in output:
+        ready, _, _ = select.select([master], [], [], 0.1)
+        if ready:
+            try:
+                output.extend(os.read(master, 4096))
+            except OSError:
+                break
+        if process.poll() is not None and not ready:
+            break
+    return bytes(output)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="PTY is POSIX-only")
+@pytest.mark.parametrize("exit_bytes", [b"/quit\n", b"\x04"])
+def test_interactive_exit_restores_stable_terminal_state(exit_bytes: bytes) -> None:
+    master, slave = pty.openpty()
+    before = termios.tcgetattr(slave)
+    environment = dict(os.environ)
+    environment.pop("NO_COLOR", None)
+    environment["TERM"] = "xterm-256color"
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "simple_harness_service.cli",
+            "--socket",
+            "/tmp/not-used.sock",
+            "chat",
+        ],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        close_fds=True,
+        env=environment,
+    )
+    try:
+        output = _read_pty_until(master, process, b"\xe2\x9d\xaf")
+        os.write(master, exit_bytes)
+        assert process.wait(timeout=5) == 0
+        output += _read_pty_until(master, process, b"\x1b[?25h")
+        after = termios.tcgetattr(slave)
+        stable_lflag_mask = termios.ECHO | termios.ICANON | termios.ISIG
+        assert before[3] & stable_lflag_mask == after[3] & stable_lflag_mask
+        assert b"\x1b[?25h" in output
+        if b"\x1b[?2004h" in output:
+            assert output.rfind(b"\x1b[?2004l") > output.rfind(b"\x1b[?2004h")
+
+        os.write(master, b"post-exit-shell-marker\n")
+        echoed = _read_pty_until(master, process, b"post-exit-shell-marker")
+        assert b"post-exit-shell-marker" in echoed
+    finally:
+        if process.poll() is None:
+            process.kill()
+        os.close(slave)
+        os.close(master)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="PTY is POSIX-only")
+def test_interactive_resize_sigwinch_smoke() -> None:
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
+    environment = dict(os.environ)
+    environment.pop("NO_COLOR", None)
+    environment["TERM"] = "xterm-256color"
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "simple_harness_service.cli",
+            "--socket",
+            "/tmp/not-used.sock",
+            "chat",
+        ],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        close_fds=True,
+        env=environment,
+    )
+    try:
+        output = _read_pty_until(master, process, b"\xe2\x9d\xaf")
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 36, 120, 0, 0))
+        os.kill(process.pid, signal.SIGWINCH)
+        os.write(master, b"/quit\n")
+        assert process.wait(timeout=5) == 0
+        output += _read_pty_until(master, process, b"\x1b[?25h")
+        assert b"Simple Harness" in output
+        assert b"\x1b[?25h" in output
+    finally:
+        if process.poll() is None:
+            process.kill()
+        os.close(slave)
+        os.close(master)
