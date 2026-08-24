@@ -3,7 +3,7 @@
 Thin authenticated service and transport framework for Simple Harness SDK. Harness remains the
 only durable command and execution authority; this package owns no database or execution worker.
 
-Version 0.2.1 adds a product-configurable Claude-style terminal chat UI with durable observation
+Version 0.2.2 adds a product-configurable Claude-style terminal chat UI with durable observation
 deadlines and renderer-failure recovery while retaining Harness
 0.5.2 as the only durable command authority. Interactive TTYs receive command completion,
 history, multiline input, status feedback, safe Markdown rendering, and terminal restoration;
@@ -11,3 +11,8 @@ history, multiline input, status feedback, safe Markdown rendering, and terminal
 text. Existing `ask`, `status`, `cancel`, exit codes, and the product-neutral `main(argv)` entry
 remain compatible. Products may pass `ChatUiConfig` through the additive
 `main(argv, chat_ui_config=...)` composition argument.
+
+Terminal restoration tests compare the stable `ECHO`, `ICANON`, and `ISIG` local-mode flags plus
+cursor visibility and bracketed-paste shutdown. They intentionally exclude the kernel-maintained,
+transient macOS `PENDIN` bit from exact equality; the post-exit shell-marker read remains the oracle
+that pending input and visible echo work normally.

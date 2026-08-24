@@ -10,6 +10,7 @@ from simple_harness_service.chat_controller import (
     Accepted,
     Cancel,
     Cancelled,
+    CancelPending,
     ChatController,
     Completed,
     ControllerState,
@@ -117,6 +118,67 @@ async def test_cancel_is_physically_submitted_once_under_concurrency(ids: Any) -
     client.cancel_gate.set()
     assert await first == (Pending("run-1", "command-1", "cancel-1"),)
     assert await second == (Pending("run-1", "command-1", "cancel-1"),)
+
+
+@pytest.mark.asyncio
+async def test_observer_does_not_query_cancel_before_receipt_is_accepted(ids: Any) -> None:
+    class RecordingClient(FakeClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self.get_calls: list[str] = []
+
+        async def get(self, command_id: str) -> CommandSnapshot:
+            self.get_calls.append(command_id)
+            return await super().get(command_id)
+
+    client = RecordingClient()
+    client.cancel_gate = asyncio.Event()
+    controller = ChatController(client, id_factory=ids)
+    await controller.dispatch_text("hello")
+    client.snapshots["command-1"] = snapshot("command-1")
+    cancel = asyncio.create_task(controller.dispatch(Cancel()))
+    await client.cancel_called.wait()
+
+    assert await controller.observe_once() == (Pending("run-1", "command-1", "cancel-1"),)
+    assert client.get_calls == ["command-1"]
+
+    client.snapshots["cancel-1"] = snapshot("cancel-1", kind=CommandKind.CANCEL)
+    client.cancel_gate.set()
+    await cancel
+    await controller.observe_once()
+    assert client.get_calls[-2:] == ["command-1", "cancel-1"]
+
+
+@pytest.mark.asyncio
+async def test_cancel_task_exception_is_supervised_when_dispatch_is_cancelled(ids: Any) -> None:
+    class FailingCancelClient(FakeClient):
+        async def cancel(self, request: Any) -> object:
+            self.cancelled.append(request)
+            self.cancel_called.set()
+            assert self.cancel_gate is not None
+            await self.cancel_gate.wait()
+            raise RuntimeError("cancel failed")
+
+    client = FailingCancelClient()
+    client.cancel_gate = asyncio.Event()
+    controller = ChatController(client, id_factory=ids)
+    await controller.dispatch_text("hello")
+    loop = asyncio.get_running_loop()
+    unhandled: list[dict[str, object]] = []
+    previous = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, context: unhandled.append(context))
+    try:
+        dispatch = asyncio.create_task(controller.dispatch(Cancel()))
+        await client.cancel_called.wait()
+        dispatch.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await dispatch
+        client.cancel_gate.set()
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert unhandled == []
+    finally:
+        loop.set_exception_handler(previous)
 
 
 @pytest.mark.asyncio
@@ -266,9 +328,12 @@ async def test_observe_and_cancel_deadlines_preserve_active_identity(ids: Any) -
         deadline_seconds=10.0, initial_delay=0.1, maximum_delay=0.1
     )
 
-    assert events == (Timeout("run-1", "command-1"),)
+    assert events == (CancelPending("run-1", "command-1", "cancel-1"),)
     assert controller.active_identity == ("run-1", "command-1")
     assert len(client.cancelled) == 1
+
+    clock[0] = 10.0
+    assert await controller.observe_once() == (Timeout("run-1", "command-1"),)
 
 
 @pytest.mark.asyncio

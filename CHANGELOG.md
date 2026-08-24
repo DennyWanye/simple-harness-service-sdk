@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Gate cancel snapshot observation on the accepted receipt, supervise detached cancel tasks, keep
+  cancel-pending runs observable, coordinate output with active prompts, preserve history across
+  iterative terminal restarts, and recover broken stdout through stable stderr diagnostics.
+
 ## 0.2.1
 
 - Preserve pending prompt input while durable observation runs, enforce observe/cancel deadlines,
