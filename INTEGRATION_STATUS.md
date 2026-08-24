@@ -1,7 +1,15 @@
 # Simple Harness Service SDK 0.1.3 release status
 
-Version 0.1.3 is the exact-Harness-0.5.2 release candidate. Immutable source and asset identities
-will be recorded here after formal publication and public redownload verification.
+[`v0.1.3`](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.3) is the
+current non-Draft, non-Prerelease Latest release. Its annotated tag binds source commit
+`28ff026d4d99a970ffd7f9a6ae4fb9fbee7228bd`.
+The published wheel SHA-256 is
+`6f56b71989bb4293bfa076d8b507a49e8e5b66bffa82132c8aec56fd7420d137`; the sdist SHA-256 is
+`a03d15ab4ce9301161424889570a263ebbb0726113c5b2737cbcd5b9ba3dc0d7`; and the candidate
+manifest SHA-256 is `510d9b34e45d474904d2ce77ae5d6217a4d677a7c4f49fb6627c93d77d71fe85`.
+All assets were independently downloaded from the public Release and verified byte-for-byte.
+Python 3.11 and 3.13 exact public wheel installs with the `memory` extra passed BOM, import, and
+CLI smoke gates.
 
 Interactive chat now starts every turn after a terminal outcome as a fresh Harness run while
 preserving the external session identity. This matches Harness 0.5's public rule that terminal runs

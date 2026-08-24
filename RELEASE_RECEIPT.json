@@ -1,34 +1,34 @@
 {
   "schema": "simple-harness-service-release-receipt-v1",
-  "version": "0.1.2",
-  "release_url": "https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.2",
-  "source_commit": "920a0054ded4101d96195f087035669f4ef818a8",
+  "version": "0.1.3",
+  "release_url": "https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.3",
+  "source_commit": "28ff026d4d99a970ffd7f9a6ae4fb9fbee7228bd",
   "tag": {
-    "name": "v0.1.2",
-    "object": "159c4ac2b450277fd924f709ffd25fdb28c3143a",
-    "peeled_commit": "920a0054ded4101d96195f087035669f4ef818a8",
+    "name": "v0.1.3",
+    "object": "bbe740bd290ebccd2adf34d0d114cc4e280849f0",
+    "peeled_commit": "28ff026d4d99a970ffd7f9a6ae4fb9fbee7228bd",
     "annotated": true
   },
   "release": {
     "draft": false,
     "prerelease": false,
     "latest": true,
-    "published_at": "2026-08-23T22:59:02Z"
+    "published_at": "2026-08-24T00:53:19Z"
   },
   "assets": {
-    "BUILD_INFO.json": "983e943cf9a49a5ca2289071bcbc92ed12dc85e5b5ebeaa26207c6bbea2fa369",
-    "METADATA": "30a37917003f404f534d1f85e99a03d0a83c58b35fff22bfe7b58beb2ad27956",
-    "SHA256SUMS": "da11ce727002d5d87411aa47eb08c7b1528b414467af967c7eb676f7bd852dc4",
+    "BUILD_INFO.json": "4132b51f544496a675e7c4a8c7f145ca6dd9e6d117c249679cbcec5bebd20901",
+    "METADATA": "073b746e53fe65169072e123181cab91b29904f061fc00404295c1eaf21b9e53",
+    "SHA256SUMS": "71f06ff20138afa6ee626a9bcc658ba4ea6e2dc7ed3d0a0691548285115f9c69",
     "WHEEL": "ccec20e2307acd7da453dd7437e70c6b08e2bc3ead3bc3445af135da37b56d59",
-    "candidate-manifest.json": "7ede2185f537274c38a8f7de2908013a080e94606f9aa9d719b19d02a28c43a3",
-    "compatibility-bom.json": "abdcaba3d5606f3e24f458bfd762e46069177ead4c1c1c6621a85f9fcc226449",
-    "simple_harness_service_sdk-0.1.2-py3-none-any.whl": "699c1a8744bdda45cd784b3e28b63273873fa967e203da4c6552c2ee5302c4a7",
-    "simple_harness_service_sdk-0.1.2.tar.gz": "23fe0fc6005f7d33672c681c9e0135925139a6a0533a4297e57b92183f2f4e30"
+    "candidate-manifest.json": "510d9b34e45d474904d2ce77ae5d6217a4d677a7c4f49fb6627c93d77d71fe85",
+    "compatibility-bom.json": "cb5e359c84c5bce0c3965f52eeaf3a51fc5ab6bb81b8cff7cc88cef4ee3c6789",
+    "simple_harness_service_sdk-0.1.3-py3-none-any.whl": "6f56b71989bb4293bfa076d8b507a49e8e5b66bffa82132c8aec56fd7420d137",
+    "simple_harness_service_sdk-0.1.3.tar.gz": "a03d15ab4ce9301161424889570a263ebbb0726113c5b2737cbcd5b9ba3dc0d7"
   },
   "dependencies": {
     "simple-harness-sdk": {
-      "version": "0.5.1",
-      "sha256": "1298aa7d44f748ebf39265920d648f40c130bf014452dce3c6ae049aa5f6590c"
+      "version": "0.5.2",
+      "sha256": "09ba6041a0220cdd952f50e6ec8defcf1d8bbe60d9a044d9d7fc9106985639de"
     },
     "simple-harness-memory-sdk": {
       "version": "0.5.1",
