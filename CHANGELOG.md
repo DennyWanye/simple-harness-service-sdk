@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.4
+
+- Export the provider-neutral local Realtime protocol constants, PCM frame types, and codecs from
+  `simple_harness_service.realtime` so product consumers never import SDK-internal modules.
+
 ## 0.3.0
 
 - Add the provider-neutral full-duplex Realtime contracts, client, bounded session FSM, stable

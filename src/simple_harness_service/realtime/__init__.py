@@ -33,6 +33,15 @@ from .contracts import (
     TranscriptCompleted,
     TranscriptDelta,
 )
+from .local import (
+    LOCAL_PROTOCOL_VERSION,
+    AudioDirection,
+    LocalPcmFrame,
+    decode_local_message,
+    decode_pcm_frame,
+    encode_local_message,
+    encode_pcm_frame,
+)
 from .local_channel import LocalRealtimeChannelController
 from .observability import (
     NullRealtimeDiagnosticSink,
@@ -51,9 +60,12 @@ from .ports import (
 )
 
 __all__ = (
+    "LOCAL_PROTOCOL_VERSION",
+    "AudioDirection",
     "CloseDisposition",
     "CloseInitiator",
     "CredentialMinter",
+    "LocalPcmFrame",
     "LocalRealtimeChannelController",
     "MintedRealtimeCredential",
     "NullRealtimeDiagnosticSink",
@@ -94,4 +106,8 @@ __all__ = (
     "ToolCallRequested",
     "TranscriptCompleted",
     "TranscriptDelta",
+    "decode_local_message",
+    "decode_pcm_frame",
+    "encode_local_message",
+    "encode_pcm_frame",
 )
