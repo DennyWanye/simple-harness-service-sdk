@@ -1,0 +1,172 @@
+{
+  "schema": "simple-harness-realtime-protocol-authority-v1",
+  "protocol_id": "qwen-native/2026-08-28.3",
+  "provider": "qwen",
+  "retrieved_at": "2026-08-28",
+  "live_verification": {
+    "verified_at": "2026-08-28",
+    "region": "cn-beijing",
+    "credential_source": "TokenSeller dashscope pool",
+    "content_sent": true,
+    "observed_sequence": ["websocket.open", "client.session.update", "server.session.updated", "client.input_audio_buffer.append", "server.input_audio_buffer.speech_started", "server.response.created", "client.response.cancel", "server.response.done.cancelled"],
+    "server_first_event_without_session_update": null,
+    "session_updated_shape": "nested-session-audio-v1",
+    "cancel_terminal_shape": "response.done.status-cancelled-usage-optional-v2",
+    "cancel_without_usage_observation": {
+      "correlation": "corr_2B035XQ5GGEVVK1YJ691WQE9DP",
+      "top_level_keys_digest": "41823512d9e4ac1d4cbb57c15342d4e370e4ee79981b95153db387757a4f3242",
+      "response_keys_digest": "54585d5eda30140b3ad79fdb77bf149f823ee77c9a14b4889b5aad9c6c291ad9",
+      "usage_present": false,
+      "content_retained": false
+    }
+  },
+  "official_sources": [
+    "https://help.aliyun.com/zh/model-studio/realtime",
+    "https://help.aliyun.com/zh/model-studio/client-events",
+    "https://help.aliyun.com/en/model-studio/server-events",
+    "https://help.aliyun.com/zh/model-studio/qwen-function-calling",
+    "https://help.aliyun.com/zh/model-studio/model-pricing",
+    "https://help.aliyun.com/zh/model-studio/error-code/"
+  ],
+  "deployment": {
+    "region": "cn-beijing",
+    "websocket_url_template": "wss://{workspace_id}.cn-beijing.maas.aliyuncs.com/api-ws/v1/realtime",
+    "query": {"model": "qwen3.5-omni-flash-realtime-2026-03-15"},
+    "headers": ["Authorization: Bearer <provider-token>"],
+    "public_model_alias": "qwen3.5-omni-realtime",
+    "upstream_model": "qwen3.5-omni-flash-realtime-2026-03-15",
+    "voice": "Tina"
+  },
+  "event_id": {
+    "required_on_client_events": true,
+    "pattern": "^event_[A-Za-z0-9_-]{1,120}$",
+    "generation": "event_ plus UUIDv4 hex without separators",
+    "unique_scope": "one upstream WebSocket connection"
+  },
+  "audio": {
+    "input": {"type": "pcm", "sample_rate": 16000, "channels": 1, "bits_per_sample": 16},
+    "output": {"type": "pcm", "sample_rate": 24000, "channels": 1, "bits_per_sample": 16},
+    "container": "raw",
+    "byte_order": "little"
+  },
+  "session_update_shape": "nested-session-audio-v1",
+  "pricing_revision": {
+    "id": "dashscope-cn-beijing-qwen35-omni-flash-realtime-2026-08-27",
+    "role": "provider_cost_input_not_wallet_atoms",
+    "currency": "CNY",
+    "unit": "minor_per_1000000_tokens",
+    "input_text_image_video": 330,
+    "input_audio": 2700,
+    "output_text": 2000,
+    "output_text_audio_audio_only_billed": 10700
+  },
+  "client_events": [
+    "session.update",
+    "input_audio_buffer.append",
+    "input_audio_buffer.commit",
+    "input_audio_buffer.clear",
+    "response.create",
+    "response.cancel",
+    "conversation.item.create"
+  ],
+  "server_events": [
+    "error",
+    "session.updated",
+    "input_audio_buffer.speech_started",
+    "input_audio_buffer.speech_stopped",
+    "input_audio_buffer.committed",
+    "conversation.item.created",
+    "conversation.item.input_audio_transcription.delta",
+    "conversation.item.input_audio_transcription.completed",
+    "conversation.item.input_audio_transcription.failed",
+    "response.created",
+    "response.done",
+    "response.text.delta",
+    "response.text.done",
+    "response.audio.delta",
+    "response.audio.done",
+    "response.audio_transcript.delta",
+    "response.audio_transcript.done",
+    "response.function_call_arguments.delta",
+    "response.function_call_arguments.done",
+    "response.output_item.added",
+    "response.output_item.done",
+    "response.content_part.added",
+    "response.content_part.done"
+  ],
+  "features": {
+    "semantic_vad": true,
+    "automatic_response": true,
+    "interrupt_response": true,
+    "cancel_response": true,
+    "truncate_output": false,
+    "input_transcription": true,
+    "tool_calling": true,
+    "resume": false
+  },
+  "response_status_projection": {
+    "provider_statuses": ["completed", "failed", "incomplete", "cancelled"],
+    "completed": "completed",
+    "failed": "failed",
+    "cancelled_with_usage": "cancelled_and_settle_exact_usage_once",
+    "cancelled_without_usage": "cancelled_and_release_no_charge_once",
+    "incomplete_with_client_cancel_owner": "cancelled",
+    "incomplete_without_client_cancel_owner": "incomplete"
+  },
+  "relay_control_protocol": "tokenseller.realtime-control/2026-08-28.3",
+  "event_vector_map": {
+    "client": {
+      "session.update": "client-session-update.json",
+      "input_audio_buffer.append": "client-audio-append.json",
+      "input_audio_buffer.commit": "client-lifecycle-sequence.json",
+      "input_audio_buffer.clear": "client-lifecycle-sequence.json",
+      "response.create": "client-lifecycle-sequence.json",
+      "response.cancel": "client-response-cancel.json",
+      "conversation.item.create": "client-tool-result.json"
+    },
+    "server": {
+      "error": "server-error.json",
+      "session.updated": "server-lifecycle-sequence.json",
+      "input_audio_buffer.speech_started": "server-lifecycle-sequence.json",
+      "input_audio_buffer.speech_stopped": "server-lifecycle-sequence.json",
+      "input_audio_buffer.committed": "server-lifecycle-sequence.json",
+      "conversation.item.created": "server-lifecycle-sequence.json",
+      "conversation.item.input_audio_transcription.delta": "server-lifecycle-sequence.json",
+      "conversation.item.input_audio_transcription.completed": "server-lifecycle-sequence.json",
+      "conversation.item.input_audio_transcription.failed": "server-lifecycle-sequence.json",
+      "response.created": "server-lifecycle-sequence.json",
+      "response.done": "server-response-done.json",
+      "response.text.delta": "server-lifecycle-sequence.json",
+      "response.text.done": "server-lifecycle-sequence.json",
+      "response.audio.delta": "server-audio-delta.json",
+      "response.audio.done": "server-lifecycle-sequence.json",
+      "response.audio_transcript.delta": "server-lifecycle-sequence.json",
+      "response.audio_transcript.done": "server-lifecycle-sequence.json",
+      "response.function_call_arguments.delta": "server-lifecycle-sequence.json",
+      "response.function_call_arguments.done": "server-tool-call-done.json",
+      "response.output_item.added": "server-lifecycle-sequence.json",
+      "response.output_item.done": "server-lifecycle-sequence.json",
+      "response.content_part.added": "server-lifecycle-sequence.json",
+      "response.content_part.done": "server-lifecycle-sequence.json"
+    },
+    "negative_and_ordering": "negative-cases.json",
+    "barge_in_overlap": "barge-in-overlap-matrix.json"
+  },
+  "vectors": [
+    "client-lifecycle-sequence.json",
+    "client-session-update.json",
+    "client-audio-append.json",
+    "client-response-cancel.json",
+    "client-tool-result.json",
+    "server-lifecycle-sequence.json",
+    "server-audio-delta.json",
+    "server-tool-call-done.json",
+    "tool-round-trip.json",
+    "server-response-done.json",
+    "server-response-terminal-matrix.json",
+    "barge-in-overlap-matrix.json",
+    "server-error.json",
+    "error-mapping.json",
+    "negative-cases.json"
+  ]
+}

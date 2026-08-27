@@ -36,11 +36,11 @@ from ._shared import require_string as _string
 from .qwen_wire import QwenWireCodec
 
 QWEN_CAPABILITY = RealtimeCapability(
-    control_version="2026-08-28.2",
+    control_version="2026-08-28.3",
     sdk_protocol_version="simple-harness-realtime/1",
     provider="qwen",
     wire_protocol="qwen-native",
-    wire_version="2026-08-28.2",
+    wire_version="2026-08-28.3",
     input_audio=RealtimeAudioFormat(sample_rate=16_000),
     output_audio=RealtimeAudioFormat(sample_rate=24_000),
     features=RealtimeFeatureSet(
@@ -358,7 +358,7 @@ class QwenOmniAdapter:
             input_details_field="input_tokens_details",
             output_details_field="output_tokens_details",
         )
-        if status is not ResponseStatus.FAILED and usage is None:
+        if status not in {ResponseStatus.FAILED, ResponseStatus.CANCELLED} and usage is None:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "terminal usage is required")
         events: list[RealtimeEvent] = [ResponseFinished(response_id, status, usage)]
         if status is ResponseStatus.FAILED:

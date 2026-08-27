@@ -1,6 +1,6 @@
 {
   "schema": "simple-harness-realtime-protocol-authority-v1",
-  "protocol_id": "qwen-native/2026-08-28.2",
+  "protocol_id": "qwen-native/2026-08-28.3",
   "provider": "qwen",
   "retrieved_at": "2026-08-28",
   "live_verification": {
@@ -11,7 +11,14 @@
     "observed_sequence": ["websocket.open", "client.session.update", "server.session.updated", "client.input_audio_buffer.append", "server.input_audio_buffer.speech_started", "server.response.created", "client.response.cancel", "server.response.done.cancelled"],
     "server_first_event_without_session_update": null,
     "session_updated_shape": "nested-session-audio-v1",
-    "cancel_terminal_shape": "response.done.status-cancelled-with-usage-v1"
+    "cancel_terminal_shape": "response.done.status-cancelled-usage-optional-v2",
+    "cancel_without_usage_observation": {
+      "correlation": "corr_2B035XQ5GGEVVK1YJ691WQE9DP",
+      "top_level_keys_digest": "41823512d9e4ac1d4cbb57c15342d4e370e4ee79981b95153db387757a4f3242",
+      "response_keys_digest": "54585d5eda30140b3ad79fdb77bf149f823ee77c9a14b4889b5aad9c6c291ad9",
+      "usage_present": false,
+      "content_retained": false
+    }
   },
   "official_sources": [
     "https://help.aliyun.com/zh/model-studio/realtime",
@@ -101,11 +108,12 @@
     "provider_statuses": ["completed", "failed", "incomplete", "cancelled"],
     "completed": "completed",
     "failed": "failed",
-    "cancelled": "cancelled",
+    "cancelled_with_usage": "cancelled_and_settle_exact_usage_once",
+    "cancelled_without_usage": "cancelled_and_release_no_charge_once",
     "incomplete_with_client_cancel_owner": "cancelled",
     "incomplete_without_client_cancel_owner": "incomplete"
   },
-  "relay_control_protocol": "tokenseller.realtime-control/2026-08-28.2",
+  "relay_control_protocol": "tokenseller.realtime-control/2026-08-28.3",
   "event_vector_map": {
     "client": {
       "session.update": "client-session-update.json",

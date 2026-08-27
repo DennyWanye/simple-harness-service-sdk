@@ -1,0 +1,19 @@
+{
+  "kind": "negative_cases",
+  "cases": [
+    {"name": "duplicate_json_key", "input": "{\"type\":\"response.done\",\"type\":\"error\"}", "expected": "protocol_error"},
+    {"name": "unknown_client_event", "mutation": "type=unknown.event", "expected": "reject_before_upstream"},
+    {"name": "unknown_server_event", "mutation": "type=unknown.event", "expected": "protocol_error"},
+    {"name": "invalid_base64", "mutation": "audio=***", "expected": "protocol_error"},
+    {"name": "odd_decoded_pcm", "mutation": "decoded_audio_bytes=3", "expected": "protocol_error"},
+    {"name": "input_audio_oversize", "mutation": "decoded_audio_bytes=65538", "expected": "close_1009"},
+    {"name": "text_frame_oversize", "mutation": "utf8_bytes=1048577", "expected": "close_1009"},
+    {"name": "response_before_created", "mutation": "audio_delta_for_unknown_response", "expected": "protocol_error"},
+    {"name": "duplicate_event_id", "mutation": "repeat_same_audio_delta", "expected": "drop_duplicate_once"},
+    {"name": "duplicate_response_terminal", "mutation": "repeat_response.done", "expected": "one_ResponseFinished_and_one_settlement"},
+    {"name": "late_audio_after_terminal", "mutation": "audio_delta_after_response.done", "expected": "drop_and_increment_late_frame_counter"},
+    {"name": "bounded_barge_overlap", "mutation": "successor_response.created_before_cancelling_predecessor_terminal", "expected": "bind_only_to_unique_new_pending_successor_and_quarantine_predecessor_audio"},
+    {"name": "third_live_turn", "mutation": "response.created_with_cancelling_predecessor_and_bound_successor", "expected": "protocol_error_and_release_unbound_hold"},
+    {"name": "usage_totals_mismatch", "mutation": "total_tokens_not_equal_input_plus_output", "expected": "protocol_error_and_no_charge"}
+  ]
+}

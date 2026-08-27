@@ -1,0 +1,113 @@
+{
+  "schema": "simple-harness-realtime-protocol-authority-v1",
+  "protocol_id": "tokenseller.realtime-control/2026-08-28.3",
+  "sdk_protocol_version": "simple-harness-realtime/1",
+  "retrieved_at": "2026-08-28",
+  "owner": "TokenSeller control plane and simple-harness-service-sdk RelayControlCodec",
+  "strict_unknown_fields": true,
+  "strict_unknown_fields_scope": "Every object in HTTP mint and WSS control messages. Static capability fields must equal capability-manifest.json; wallet revision id/digest are selected under wallet-pricing-rollover.json, the full object must satisfy the same schema, and its per-session RFC8785 digest binds mint/open/created.",
+  "token_consume_order": [
+    "validate_upgrade_path_and_authorization_header",
+    "validate_origin_allowlist",
+    "parse_first_tokenseller.session.open_frame",
+    "validate_control_sdk_wire_correlation_and_digest_binding",
+    "consume_ephemeral_token_once",
+    "connect_provider_socket",
+    "emit_tokenseller.session.created",
+    "forward_client_session.update",
+    "require_provider_session.updated_before_audio"
+  ],
+  "message_types": {
+    "tokenseller.session.open": {
+      "direction": "client_to_relay",
+      "required": ["type", "event_id", "control_version", "sdk_protocol_version", "correlation", "capability_digest"],
+      "optional": [],
+      "allowed": ["type", "event_id", "control_version", "sdk_protocol_version", "correlation", "capability_digest"]
+    },
+    "tokenseller.session.created": {
+      "direction": "relay_to_client",
+      "required": ["type", "event_id", "related_event_id", "control_version", "sdk_protocol_version", "relay_session_id", "provider", "wire_protocol", "wire_version", "capability", "capability_digest", "expires_at_ms"],
+      "optional": [],
+      "allowed": ["type", "event_id", "related_event_id", "control_version", "sdk_protocol_version", "relay_session_id", "provider", "wire_protocol", "wire_version", "capability", "capability_digest", "expires_at_ms"]
+    },
+    "tokenseller.error": {
+      "direction": "relay_to_client",
+      "required": ["type", "event_id", "code", "retryable", "fatal", "message_class"],
+      "optional": ["related_event_id", "retry_after_ms"],
+      "allowed": ["type", "event_id", "related_event_id", "code", "retryable", "fatal", "message_class", "retry_after_ms"]
+    },
+    "tokenseller.session.expiring": {
+      "direction": "relay_to_client",
+      "required": ["type", "event_id", "remaining_ms"],
+      "optional": [],
+      "allowed": ["type", "event_id", "remaining_ms"]
+    },
+    "tokenseller.session.close": {
+      "direction": "client_to_relay",
+      "required": ["type", "event_id", "reason"],
+      "optional": [],
+      "allowed": ["type", "event_id", "reason"]
+    },
+    "tokenseller.session.closed": {
+      "direction": "relay_to_client",
+      "required": ["type", "event_id", "related_event_id", "initiator", "disposition", "active_response", "settlement"],
+      "optional": [],
+      "allowed": ["type", "event_id", "related_event_id", "initiator", "disposition", "active_response", "settlement"]
+    }
+  },
+  "http_types": {
+    "mint.request": {
+      "required": ["provider", "wire_protocol", "wire_version", "sdk_protocol_version", "public_model", "voice", "correlation", "required_features", "audio"],
+      "optional": [],
+      "allowed": ["provider", "wire_protocol", "wire_version", "sdk_protocol_version", "public_model", "voice", "correlation", "required_features", "audio"]
+    },
+    "mint.response": {
+      "required": ["client_secret", "websocket_path", "capability", "capability_digest"],
+      "optional": [],
+      "allowed": ["client_secret", "websocket_path", "capability", "capability_digest"]
+    }
+  },
+  "nested_schemas": {
+    "mint.request.audio": {"required": ["input", "output"], "optional": [], "allowed": ["input", "output"]},
+    "audio_spec": {"required": ["codec", "sample_rate", "channels"], "optional": [], "allowed": ["codec", "sample_rate", "channels"]},
+    "mint.response.client_secret": {"required": ["value", "expires_at_ms"], "optional": [], "allowed": ["value", "expires_at_ms"]},
+    "capability": {"authority": "capability-manifest.json", "comparison": "RFC8785 canonical bytes and capability_digest SHA-256"},
+    "wallet_pricing_revision": {"authority": "wallet-pricing-revision.json", "comparison": "wallet_pricing_revision id plus wallet_pricing_revision_digest SHA-256 inside capability"},
+    "wallet_pricing_rollover": {"authority": "wallet-pricing-rollover.json", "comparison": "deterministic mint selection and same-schema per-session capability binding"}
+  },
+  "enums": {
+    "close_reason": ["client_hangup", "app_shutdown"],
+    "close_initiator": ["client", "provider", "relay", "network", "timeout", "shutdown"],
+    "close_disposition": ["clean", "retryable", "fatal", "clean_expired"],
+    "active_response": ["none", "completed", "cancelled"],
+    "settlement": ["none", "settled", "released", "deferred"],
+    "error_code": ["invalid_request", "unauthenticated", "forbidden", "unsupported", "busy", "rate_limited", "unavailable", "timeout", "protocol_error", "session_expired", "billing_rejected", "internal"],
+    "message_class": ["capability_digest_mismatch", "version_mismatch", "invalid_open", "auth_failed", "forbidden", "capacity_busy", "rate_limited", "upstream_unavailable", "upstream_protocol_error", "session_expired", "billing_rejected", "internal_error"]
+  },
+  "limits": {
+    "first_open_timeout_ms": 5000,
+    "clean_close_ack_timeout_ms": 5000,
+    "event_id_max_bytes": 128,
+    "message_class_max_bytes": 64,
+    "message_class_pattern": "^[a-z][a-z0-9_]{0,63}$",
+    "retry_after_ms_min": 0,
+    "retry_after_ms_max": 3600000,
+    "correlation_pattern": "^corr_[0-9A-HJKMNP-TV-Z]{26}$",
+    "digest_pattern": "^[0-9a-f]{64}$"
+  },
+  "vectors": [
+    "capability-manifest.json",
+    "wallet-pricing-revision.json",
+    "wallet-pricing-rollover.json",
+    "mint-request.json",
+    "mint-response.json",
+    "client-session-open.json",
+    "server-session-created.json",
+    "server-error.json",
+    "server-session-expiring.json",
+    "client-session-close.json",
+    "server-session-closed.json",
+    "scenario-controlled-close.json",
+    "negative-cases.json"
+  ]
+}

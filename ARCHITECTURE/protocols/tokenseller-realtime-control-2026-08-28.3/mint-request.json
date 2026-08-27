@@ -1,7 +1,7 @@
 {
   "provider": "qwen",
   "wire_protocol": "qwen-native",
-  "wire_version": "2026-08-28.2",
+  "wire_version": "2026-08-28.3",
   "sdk_protocol_version": "simple-harness-realtime/1",
   "public_model": "qwen3.5-omni-realtime",
   "voice": "Tina",

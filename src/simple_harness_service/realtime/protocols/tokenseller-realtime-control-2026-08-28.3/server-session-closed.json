@@ -1,0 +1,9 @@
+{
+  "type": "tokenseller.session.closed",
+  "event_id": "ctl_closed_0000000000000000000001",
+  "related_event_id": "ctl_close_00000000000000000000001",
+  "initiator": "client",
+  "disposition": "clean",
+  "active_response": "cancelled",
+  "settlement": "released"
+}

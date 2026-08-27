@@ -1,0 +1,12 @@
+{
+  "kind": "negative_cases",
+  "cases": [
+    {"name": "unknown_control_type", "input": "{\"type\":\"tokenseller.unknown\"}", "expected": "protocol_error_before_provider_connect"},
+    {"name": "duplicate_json_key", "input": "{\"type\":\"tokenseller.session.open\",\"type\":\"tokenseller.session.close\"}", "expected": "protocol_error_before_token_consume"},
+    {"name": "wrong_sdk_version", "mutation": "sdk_protocol_version=simple-harness-realtime/2", "expected": "protocol_error_before_token_consume"},
+    {"name": "digest_mismatch", "mutation": "capability_digest=64_zeroes", "expected": "protocol_error_before_token_consume"},
+    {"name": "duplicate_open", "mutation": "repeat_valid_open", "expected": "protocol_error_no_second_provider_connect"},
+    {"name": "duplicate_close", "mutation": "repeat_same_close_event_id", "expected": "same_closed_ack_no_second_finalizer"},
+    {"name": "close_ack_after_timeout", "mutation": "late_closed_ack", "expected": "drop_as_late_terminal"}
+  ]
+}

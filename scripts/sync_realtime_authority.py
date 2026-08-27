@@ -22,9 +22,9 @@ INDEX_PATH = PACKAGE_REALTIME_ROOT / "authority-index.json"
 
 EXPECTED_PACKS = (
     "openai-native-2026-08-27.1",
-    "qwen-native-2026-08-28.2",
+    "qwen-native-2026-08-28.3",
     "realtime-local-2026-08-27.1",
-    "tokenseller-realtime-control-2026-08-28.2",
+    "tokenseller-realtime-control-2026-08-28.3",
 )
 SUM_LINE = re.compile(r"^(?P<digest>[0-9a-f]{64})  (?P<name>[^/\\]+)$")
 ROOT_DIGEST_ALGORITHM = "sha256(path_utf8 + NUL + lowercase_file_sha256_ascii + LF)"

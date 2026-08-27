@@ -39,8 +39,8 @@ from simple_harness_service.realtime.observability import (
 from simple_harness_service.realtime.relay_control import RelayControlCodec
 
 ROOT = Path(__file__).parents[1]
-QWEN = ROOT / "ARCHITECTURE/protocols/qwen-native-2026-08-28.2"
-CONTROL = ROOT / "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-28.2"
+QWEN = ROOT / "ARCHITECTURE/protocols/qwen-native-2026-08-28.3"
+CONTROL = ROOT / "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-28.3"
 
 
 class FakeConnection:
@@ -139,7 +139,7 @@ def _profile() -> RealtimeProfile:
         "qwen-production",
         "qwen",
         "qwen-native",
-        "2026-08-28.2",
+        "2026-08-28.3",
         "qwen3.5-omni-realtime",
         "Tina",
         QWEN_CAPABILITY,
@@ -740,7 +740,9 @@ async def test_qwen_incomplete_projects_cancelled_only_with_local_cancel_owner()
         (QWEN / "server-response-terminal-matrix.json").read_text()
     )
     cancelled = next(
-        case for case in terminal_matrix["cases"] if case["name"] == "client_cancelled"
+        case
+        for case in terminal_matrix["cases"]
+        if case["name"] == "client_cancelled_without_usage"
     )["wire_events"][0]
     cancelled["event_id"] = "event_cancel_terminal"
     cancelled["response"]["id"] = "resp_cancel"

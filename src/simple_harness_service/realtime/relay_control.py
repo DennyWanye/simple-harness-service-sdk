@@ -192,7 +192,7 @@ def parse_capability(
 def _capability_authority() -> dict[str, Any]:
     resource = files("simple_harness_service.realtime").joinpath(
         "protocols",
-        "tokenseller-realtime-control-2026-08-28.2",
+        "tokenseller-realtime-control-2026-08-28.3",
         "capability-manifest.json",
     )
     return strict_json_object(resource.read_text(encoding="utf-8"))

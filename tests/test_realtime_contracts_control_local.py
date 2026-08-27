@@ -38,7 +38,7 @@ from simple_harness_service.realtime.relay_control import (
 )
 
 ROOT = Path(__file__).parents[1]
-CONTROL = ROOT / "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-28.2"
+CONTROL = ROOT / "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-28.3"
 
 
 def _profile() -> RealtimeProfile:
@@ -46,7 +46,7 @@ def _profile() -> RealtimeProfile:
         "qwen-production",
         "qwen",
         "qwen-native",
-        "2026-08-28.2",
+        "2026-08-28.3",
         "qwen3.5-omni-realtime",
         "Tina",
         QWEN_CAPABILITY,

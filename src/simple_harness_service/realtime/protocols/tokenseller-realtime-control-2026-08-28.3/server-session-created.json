@@ -1,14 +1,21 @@
 {
-  "client_secret": {"value": "eph_fixture_redacted", "expires_at_ms": 1787875260000},
-  "websocket_path": "/v1/realtime/qwen",
+  "type": "tokenseller.session.created",
+  "event_id": "ctl_created_00000000000000000001",
+  "related_event_id": "ctl_open_000000000000000000000001",
+  "control_version": "2026-08-28.3",
+  "sdk_protocol_version": "simple-harness-realtime/1",
+  "relay_session_id": "rts_fixture_1",
+  "provider": "qwen",
+  "wire_protocol": "qwen-native",
+  "wire_version": "2026-08-28.3",
   "capability": {
     "schema": "tokenseller.realtime-capability-v1",
     "control_protocol": "tokenseller.realtime-control",
-    "control_version": "2026-08-28.2",
+    "control_version": "2026-08-28.3",
     "sdk_protocol_version": "simple-harness-realtime/1",
     "provider": "qwen",
     "wire_protocol": "qwen-native",
-    "wire_version": "2026-08-28.2",
+    "wire_version": "2026-08-28.3",
     "public_model": "qwen3.5-omni-realtime",
     "upstream_model": "qwen3.5-omni-flash-realtime-2026-03-15",
     "region": "cn-beijing",
@@ -46,5 +53,6 @@
     "wallet_pricing_revision_digest": "9c18e6b32f6649bcc6fb51dd68209f6a2eda6d1784e80c6fa43413b965ba044f",
     "session": {"resume": false, "ephemeral_ttl_ms": 60000, "max_active_turns": 1, "max_barge_in_live_turns": 2, "max_pending_successors": 1, "clean_close_ack_timeout_ms": 5000}
   },
-  "capability_digest": "dc1c207a9bf1183ac6a255fe8a21a51fcb060672624791d80e60aeac91e62bcb"
+  "capability_digest": "a480414cdf66c8442940788487f7f45efc2d7ed7086a0a0b14b66a90fcbae5d9",
+  "expires_at_ms": 1787875260000
 }

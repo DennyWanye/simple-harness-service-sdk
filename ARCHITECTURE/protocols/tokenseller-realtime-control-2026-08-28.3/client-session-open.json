@@ -1,8 +1,8 @@
 {
   "type": "tokenseller.session.open",
   "event_id": "ctl_open_000000000000000000000001",
-  "control_version": "2026-08-28.2",
+  "control_version": "2026-08-28.3",
   "sdk_protocol_version": "simple-harness-realtime/1",
   "correlation": "corr_0123456789ABCDEFGHJKMNPQRS",
-  "capability_digest": "dc1c207a9bf1183ac6a255fe8a21a51fcb060672624791d80e60aeac91e62bcb"
+  "capability_digest": "a480414cdf66c8442940788487f7f45efc2d7ed7086a0a0b14b66a90fcbae5d9"
 }
