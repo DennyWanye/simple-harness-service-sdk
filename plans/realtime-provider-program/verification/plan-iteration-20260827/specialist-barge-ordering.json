@@ -1,0 +1,23 @@
+{
+  "cluster_id": "cluster-barge-in-provider-ordering",
+  "parent_finding_ids": ["barge-in-turn-overlap-assumption-unspiked"],
+  "specialty": "performance-third-party",
+  "findings": [
+    {
+      "id": "barge-in-turn-overlap-assumption-unspiked",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-5", "AC-8"],
+      "assurance_contract_ids": ["FAIL-CROSS-SESSION", "FAIL-BILLING-DUP", "FAIL-PROTOCOL-DRIFT", "ASSET-BILLING", "ASSET-SESSION"],
+      "evidence": "The one-slot plan assumes old response.done before next commit/hold/response.created, but neither frozen authority nor official Qwen docs guarantee that order. Official samples clear the current response on speech_started after sending response.cancel, while cancel has no response_id. Current fixtures and real evidence omit overlap permutations, so next commit/response.created before old terminal can cause false protocol failure, unbound output, or unsafe cancellation.",
+      "status": "open",
+      "root_cause": "Billing and response binding rely on undocumented Qwen interruption order while cancel is response-id-free."
+    }
+  ],
+  "cross_cluster_refs": ["cluster-billing-currency-and-recovery"],
+  "conclusion": {
+    "status": "needs-spike",
+    "summary": "Run fake permutations and one real metadata-only barge-in trace. If strict serialization is not proven, use bounded overlap: tombstoned CANCELLING predecessor plus one NEW_PENDING successor, independent holds/settlement, response CAS to sole eligible successor, preauth output buffering, and old-audio quarantine."
+  }
+}

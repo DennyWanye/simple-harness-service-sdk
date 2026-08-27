@@ -1,0 +1,49 @@
+{
+  "primary_contradiction": {
+    "id": "pc-authority-boundaries-not-release-executable",
+    "summary": "The semantic authority split is coherent, but executable joins between SDK dependencies, connectors, USD settlement, crash recovery, and deployment are incomplete.",
+    "acceptance_ids": ["AC-1", "AC-3", "AC-5", "AC-6", "AC-7"]
+  },
+  "challenge_clusters": [
+    {
+      "cluster_id": "cluster-sdk-consumer-entry-chain",
+      "parent_finding_ids": ["realtime-concrete-connectors-undefined", "aiphone-production-assembly-scope-missing", "simple-harness-local-route-contract-conflict"],
+      "specialty": "architecture",
+      "question": "Can each product enter and leave one SDK-owned session through frozen local and relay boundaries without retaining product wire code or an unscoped constructor?",
+      "required_evidence": ["concrete TokenSeller minter and WSS API", "concrete local lifecycle API", "AIPhone production assembly diff", "shared Simple Harness path authority"],
+      "specialist_required": true
+    },
+    {
+      "cluster_id": "cluster-release-artifact-compatibility",
+      "parent_finding_ids": ["sdk-harness-version-conflict", "authority-artifact-handoff-undefined", "production-deploy-exact-sha-not-executable"],
+      "specialty": "release-rollback",
+      "question": "Do four slices form an installable byte-identical rollback-capable chain across Python, TypeScript, PyInstaller, and production?",
+      "required_evidence": ["compatibility matrix", "exact S1 artifact set", "consumer hash gates", "target-SHA deployment and rollback commands"],
+      "specialist_required": true
+    },
+    {
+      "cluster_id": "cluster-billing-currency-and-recovery",
+      "parent_finding_ids": ["billing-currency-domain-unresolved", "native-turn-recovery-attribution-incomplete"],
+      "specialty": "data-state",
+      "question": "Can one CNY-priced Qwen turn settle exactly once into the USD wallet across every crash point?",
+      "required_evidence": ["frozen FX authority", "USD hold formula", "complete RealtimeTurn schema", "transaction/CAS boundaries", "restart reconciliation table"],
+      "specialist_required": true
+    },
+    {
+      "cluster_id": "cluster-native-token-binding",
+      "parent_finding_ids": ["native-token-correlation-binding-not-persisted"],
+      "specialty": "security-privacy",
+      "question": "Is every mint-to-open binding value persisted and checked before one-use token consumption?",
+      "required_evidence": ["native binding schema", "mint payload", "first-frame inputs", "pre-consume negative tests"],
+      "specialist_required": true
+    },
+    {
+      "cluster_id": "cluster-barge-in-provider-ordering",
+      "parent_finding_ids": ["barge-in-turn-overlap-assumption-unspiked"],
+      "specialty": "performance-third-party",
+      "question": "Can every Qwen barge-in ordering be handled without an unbound response, cross-turn audio, or duplicate hold?",
+      "required_evidence": ["fake ordering matrix", "real metadata-only trace", "decisive overlap state rule"],
+      "specialist_required": true
+    }
+  ]
+}

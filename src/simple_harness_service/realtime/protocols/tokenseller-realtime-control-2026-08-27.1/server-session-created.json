@@ -1,0 +1,58 @@
+{
+  "type": "tokenseller.session.created",
+  "event_id": "ctl_created_00000000000000000001",
+  "related_event_id": "ctl_open_000000000000000000000001",
+  "control_version": "2026-08-27.1",
+  "sdk_protocol_version": "simple-harness-realtime/1",
+  "relay_session_id": "rts_fixture_1",
+  "provider": "qwen",
+  "wire_protocol": "qwen-native",
+  "wire_version": "2026-08-27.1",
+  "capability": {
+    "schema": "tokenseller.realtime-capability-v1",
+    "control_protocol": "tokenseller.realtime-control",
+    "control_version": "2026-08-27.1",
+    "sdk_protocol_version": "simple-harness-realtime/1",
+    "provider": "qwen",
+    "wire_protocol": "qwen-native",
+    "wire_version": "2026-08-27.1",
+    "public_model": "qwen3.5-omni-realtime",
+    "upstream_model": "qwen3.5-omni-flash-realtime-2026-03-15",
+    "region": "cn-beijing",
+    "voice": "Tina",
+    "audio": {
+      "input": {"codec": "pcm_s16le", "sample_rate": 16000, "channels": 1},
+      "output": {"codec": "pcm_s16le", "sample_rate": 24000, "channels": 1}
+    },
+    "features": {
+      "server_turn_detection": true,
+      "automatic_response": true,
+      "interruption": true,
+      "input_transcription": true,
+      "text_output": true,
+      "audio_output": true,
+      "cancel_response": true,
+      "truncate_output": false,
+      "tool_calling": true,
+      "resume": false
+    },
+    "limits": {
+      "json_frame_bytes": 1048576,
+      "input_audio_event_decoded_bytes": 65536,
+      "output_audio_event_decoded_bytes": 262144,
+      "input_queue_frames": 256,
+      "input_queue_bytes": 4194304,
+      "output_queue_frames": 512,
+      "output_queue_bytes": 16777216,
+      "text_event_bytes": 65536,
+      "text_response_bytes": 1048576,
+      "tool_payload_bytes": 65536
+    },
+    "provider_cost_revision": "dashscope-cn-beijing-qwen35-omni-flash-realtime-2026-08-27",
+    "wallet_pricing_revision": "tokenseller-qwen35-usd-v1",
+    "wallet_pricing_revision_digest": "9c18e6b32f6649bcc6fb51dd68209f6a2eda6d1784e80c6fa43413b965ba044f",
+    "session": {"resume": false, "ephemeral_ttl_ms": 60000, "max_active_turns": 1, "max_barge_in_live_turns": 2, "max_pending_successors": 1, "clean_close_ack_timeout_ms": 5000}
+  },
+  "capability_digest": "aa47849bbd8c980cd32ab3d2a8f952fbee55b7c59ce1951839484fe0fb589727",
+  "expires_at_ms": 1787875260000
+}

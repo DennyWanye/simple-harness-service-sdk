@@ -1,0 +1,45 @@
+{
+  "cluster_id": "cluster-sdk-consumer-entry-chain",
+  "parent_finding_ids": ["realtime-concrete-connectors-undefined", "aiphone-production-assembly-scope-missing", "simple-harness-local-route-contract-conflict"],
+  "specialty": "architecture",
+  "findings": [
+    {
+      "id": "realtime-concrete-connectors-undefined",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-1", "AC-5", "AC-6", "AC-7", "AC-8"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "FAIL-TOKEN-REPLAY", "FAIL-CLOSE-CLASS", "ASSET-CREDENTIALS", "ASSET-SESSION"],
+      "evidence": "S1 names only abstract minter/transport, codecs, framing, and a bounded WSS primitive. It assigns no concrete TokenSeller HTTPS minter, exact returned WSS binding, AF_UNIX host/client, loopback-WSS host/client, start ownership, or idempotent teardown. Current service-sdk short-RPC Unix transport cannot supply this; AIPhone currently owns the entire missing chain.",
+      "status": "open",
+      "root_cause": "The plan assigns no files, constructors, ownership, or lifecycle tests to concrete HTTPS mint, relay WSS, AF_UNIX, and loopback-WSS joins."
+    },
+    {
+      "id": "aiphone-production-assembly-scope-missing",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-5", "AC-7"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "ASSET-COMPAT"],
+      "evidence": "The daemon assembly is build_harness_application() in application.py and UI assembly is voice_ui.py; both construct current Realtime bridge/client and are omitted from S3 scope.",
+      "status": "open",
+      "root_cause": "S3 omits both authoritative production assembly roots that select upstream bridge and local client."
+    },
+    {
+      "id": "simple-harness-local-route-contract-conflict",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-6", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-SESSION"],
+      "evidence": "Architecture freezes /ws/realtime-voice but plan names /ws/realtime; local authority omits endpoint_path and plan lacks a frontend/backend route/auth/open/close wiring oracle.",
+      "status": "open",
+      "root_cause": "Endpoint authority exists only in conflicting prose rather than a cross-language artifact and decisive wiring test."
+    }
+  ],
+  "cross_cluster_refs": ["authority-artifact-handoff-undefined", "sdk-harness-version-conflict"],
+  "conclusion": {
+    "status": "refined",
+    "summary": "Add concrete connector and local lifecycle APIs/tests, scope application.py and voice_ui.py, and establish one cross-language /ws/realtime-voice authority."
+  }
+}

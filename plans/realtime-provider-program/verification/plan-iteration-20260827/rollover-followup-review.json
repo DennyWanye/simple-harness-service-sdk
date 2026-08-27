@@ -1,0 +1,26 @@
+{
+  "review_mode": "breadth",
+  "coverage": {
+    "acceptance_coverage": true,
+    "entry_and_trust_chain": true,
+    "data_flow_and_persistence": true,
+    "identity_permissions_concurrency_cleanup": true,
+    "failure_and_recovery": true,
+    "tests_and_evidence": true,
+    "release_and_rollback": true,
+    "trusted_boundary_stop": true
+  },
+  "findings": [
+    {
+      "id": "wallet-pricing-revision-rollover-undefined",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "patch-induced",
+      "violated_acceptance_ids": ["AC-3", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-BILLING"],
+      "evidence": "The reviewed plan and authority now close the patch-induced short-validity risk: append-only ACTIVATE/DEACTIVATE events determine eligibility before deterministic 35-minute-horizon selection; realtime-wallet-pricing-lifecycle.ts owns startup/mint/health/preflight checks, fake-clock deduplicated 7/3/1-day alerts, staging, overlap and append-only rollback while old sessions retain the mint snapshot.",
+      "status": "resolved",
+      "root_cause": "The first negotiated wallet revision originally entered the design without an executable successor, selection, alert and rollback lifecycle."
+    }
+  ]
+}

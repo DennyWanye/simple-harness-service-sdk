@@ -2,21 +2,21 @@
   "schema": "simple-harness-service-bom-v1",
   "service": {
     "distribution": "simple-harness-service-sdk",
-    "version": "0.2.3",
+    "version": "0.3.0",
     "python": ">=3.11"
   },
   "harness": {
     "distribution": "simple-harness-sdk",
-    "version": "0.5.2",
-    "url": "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.2/simple_harness_sdk-0.5.2-py3-none-any.whl",
-    "sha256": "09ba6041a0220cdd952f50e6ec8defcf1d8bbe60d9a044d9d7fc9106985639de",
-    "execution_schema": 5
+    "version": "0.6.2",
+    "url": "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.6.2/simple_harness_sdk-0.6.2-py3-none-any.whl",
+    "sha256": "ffb7c0619851f3c936fcc1d0cf527d07f49e87770291b85e57fe87032ac02c2e",
+    "execution_schema": 6
   },
   "memory": {
     "distribution": "simple-harness-memory-sdk",
-    "version": "0.5.1",
-    "url": "https://github.com/DennyWanye/simple-harness-memory-sdk/releases/download/v0.5.1/simple_harness_memory_sdk-0.5.1-py3-none-any.whl",
-    "sha256": "314c1b89a1921abef3b9900a32b753cc0a0c89a3ce92b98822ec1cb45f7a9898",
+    "version": "0.5.2",
+    "url": "https://github.com/DennyWanye/simple-harness-memory-sdk/releases/download/v0.5.2/simple_harness_memory_sdk-0.5.2-py3-none-any.whl",
+    "sha256": "deff2fa85a269a3978f2c6efcd99fda77abcb74444170361365fd00ec0164e9e",
     "memory_schema": 4,
     "extra": "memory"
   }

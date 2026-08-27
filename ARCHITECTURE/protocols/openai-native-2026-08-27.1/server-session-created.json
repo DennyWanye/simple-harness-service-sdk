@@ -1,0 +1,14 @@
+{
+  "event_id": "event_fixture_session_created_1",
+  "type": "session.created",
+  "session": {
+    "id": "sess_fixture_1",
+    "type": "realtime",
+    "model": "gpt-realtime-2.1",
+    "output_modalities": ["audio"],
+    "audio": {
+      "input": {"format": {"type": "audio/pcm", "rate": 24000}},
+      "output": {"format": {"type": "audio/pcm", "rate": 24000}, "voice": "marin"}
+    }
+  }
+}

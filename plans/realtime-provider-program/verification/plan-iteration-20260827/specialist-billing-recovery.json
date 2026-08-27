@@ -1,0 +1,40 @@
+{
+  "cluster_id": "cluster-billing-currency-and-recovery",
+  "parent_finding_ids": ["billing-currency-domain-unresolved", "native-turn-recovery-attribution-incomplete"],
+  "specialty": "data-state",
+  "findings": [
+    {
+      "id": "billing-currency-domain-unresolved",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3"],
+      "assurance_contract_ids": ["ASSET-BILLING"],
+      "evidence": "Qwen authority prices are CNY minor-per-1M, while TokenSeller WalletAccount/ModelPricing settle in USD cents and billing-precision defines 10^-13 USD atoms. Existing vector sums are CNY numerators, not wallet atoms. No immutable FX/margin revision, rational conversion, rounding, USD fixture, modality ceilings, or native hold formula exists; current FxRateCache is mutable floating point and legacy audio-second budget is not applicable.",
+      "status": "open",
+      "root_cause": "Provider CNY price inputs cross into a USD settlement/hold/ledger domain without an immutable integer conversion boundary."
+    },
+    {
+      "id": "native-turn-recovery-attribution-incomplete",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-8"],
+      "assurance_contract_ids": ["FAIL-BILLING-DUP", "ASSET-BILLING"],
+      "evidence": "Planned RealtimeTurn omits attribution ids, frozen FX/margin inputs, terminal usage, RequestLog/UsageEvent identities, settlement intent, wallet disposition, and terminal-forward state. Current RequestLog->UsageEvent creation is fire-and-forget and not a restart boundary. No state table covers crashes from row creation through terminal forwarding; Qwen cannot resume after a pre-terminal crash.",
+      "status": "open",
+      "root_cause": "RealtimeTurn is only a lifecycle marker, not a complete durable recovery source for attribution, exact settlement/release, and terminal disposition."
+    }
+  ],
+  "cross_cluster_refs": [
+    {
+      "cross_cluster_ref": "cluster-barge-in-provider-ordering",
+      "finding_ids": ["barge-in-turn-overlap-assumption-unspiked"],
+      "reason": "Cancel/overlap response ownership decides which durable turn may settle."
+    }
+  ],
+  "conclusion": {
+    "status": "needs-spike",
+    "summary": "Freeze rational CNY-to-USD plus margin/rounding and USD hold fixtures; define complete durable turn state and Postgres crash matrix with one settlement or one release before terminal forwarding."
+  }
+}

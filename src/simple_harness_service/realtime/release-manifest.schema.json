@@ -1,0 +1,246 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://simple-harness.invalid/schemas/service-sdk-candidate-manifest-v2.json",
+  "title": "Simple Harness Service SDK candidate manifest v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "package",
+    "source",
+    "artifacts",
+    "sdk_release_unit",
+    "authority",
+    "python_target_locks",
+    "evidence",
+    "rollback"
+  ],
+  "properties": {
+    "schema": {"const": "simple-harness-service-candidate-manifest-v2"},
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["distribution", "version", "planned_tag", "requires_python"],
+      "properties": {
+        "distribution": {"const": "simple-harness-service-sdk"},
+        "version": {"type": "string", "minLength": 1},
+        "planned_tag": {"type": "string", "pattern": "^v"},
+        "requires_python": {"type": "string", "minLength": 1}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "source_date_epoch"],
+      "properties": {
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "source_date_epoch": {"const": 0}
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "minProperties": 3,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "sha256", "download_url"],
+        "properties": {
+          "kind": {"type": "string", "minLength": 1},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "download_url": {"type": "string", "pattern": "^https://github\\.com/"}
+        }
+      }
+    },
+    "sdk_release_unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema", "members"],
+      "properties": {
+        "schema": {"const": "simple-harness-three-sdk-release-unit-v1"},
+        "members": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": ["role"],
+                "properties": {"role": {"const": "service"}}
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": ["role"],
+                "properties": {"role": {"const": "harness"}}
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": ["role"],
+                "properties": {"role": {"const": "memory"}}
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          ],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "role",
+              "distribution",
+              "version",
+              "wheel",
+              "sha256",
+              "download_url"
+            ],
+            "properties": {
+              "role": {"enum": ["service", "harness", "memory"]},
+              "distribution": {"type": "string", "minLength": 1},
+              "version": {"type": "string", "minLength": 1},
+              "wheel": {"type": "string", "pattern": "\\.whl$"},
+              "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "download_url": {"type": "string", "pattern": "^https://github\\.com/"}
+            }
+          }
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "root_sha256",
+        "root_digest_algorithm",
+        "bundle",
+        "bundle_sha256",
+        "index_sha256",
+        "packs"
+      ],
+      "properties": {
+        "root_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "root_digest_algorithm": {"type": "string", "minLength": 1},
+        "bundle": {"type": "string", "minLength": 1},
+        "bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "index_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "packs": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "directory",
+              "protocol_id",
+              "manifest_sha256",
+              "sha256sums_sha256"
+            ],
+            "properties": {
+              "directory": {"type": "string", "minLength": 1},
+              "protocol_id": {"type": "string", "minLength": 1},
+              "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "sha256sums_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+            }
+          }
+        }
+      }
+    },
+    "python_target_locks": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {"id": {"const": "simple-harness-py311-macos-arm64"}}
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {"id": {"const": "simple-harness-py311-windows-x86-64"}}
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {"id": {"const": "aiphone-py313-linux-aarch64"}}
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "consumer",
+          "python_version",
+          "python_platform",
+          "artifact_role",
+          "filename",
+          "sha256"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "consumer": {"enum": ["aiphone", "simple-harness"]},
+          "python_version": {"enum": ["3.11", "3.13"]},
+          "python_platform": {"type": "string", "minLength": 1},
+          "artifact_role": {"type": "string", "minLength": 1},
+          "filename": {"type": "string", "pattern": "^realtime-lock-.+\\.txt$"},
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "compatibility_bom_sha256",
+        "metadata_sha256",
+        "wheel_metadata_sha256",
+        "build_info_sha256",
+        "release_manifest_schema_sha256",
+        "release_targets_sha256",
+        "sha256sums_sha256"
+      ],
+      "properties": {
+        "compatibility_bom_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "metadata_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "wheel_metadata_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "build_info_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "release_manifest_schema_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "release_targets_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "sha256sums_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["service_sdk_version", "schema_policy"],
+      "properties": {
+        "service_sdk_version": {"type": "string", "minLength": 1},
+        "schema_policy": {"const": "consumer-pin-only-no-authority-rewrite"}
+      }
+    }
+  }
+}

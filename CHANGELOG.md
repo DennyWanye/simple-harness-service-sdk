@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 — candidate
+
+- Add the provider-neutral full-duplex Realtime contracts, client, bounded session FSM, stable
+  domain events, interruption tombstones, Tool acknowledgement, and single terminal ownership.
+- Add native Qwen Omni and offline-only OpenAI semantic adapters without exporting Provider wire
+  fields through the root public API.
+- Add exact TokenSeller HTTPS/WSS composition plus owner-only AF_UNIX and authenticated loopback
+  WebSocket transports for AIPhone and Simple Harness.
+- Package four byte-identical authority packs, a deterministic cross-language bundle, three target
+  locks, and a release manifest binding service 0.3.0, Harness 0.6.2, and Memory 0.5.2.
+- Retain the durable command/chat public API and the thin no-database/no-worker architecture.
+
 ## 0.2.3
 
 - Bound cancel dispatch waiting to five seconds while preserving and supervising the single cached

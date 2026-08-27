@@ -1,0 +1,137 @@
+{
+  "schema": "simple-harness-realtime-protocol-authority-v1",
+  "protocol_id": "simple-harness.realtime-local/2026-08-27.1",
+  "sdk_protocol_version": "simple-harness-realtime/1",
+  "owner": "simple-harness-service-sdk realtime.local",
+  "strict_unknown_fields": true,
+  "profiles": {
+    "aiphone_unix": {"transport": "af_unix", "authentication": "peer_uid", "outer_length_prefix_bytes": 4},
+    "simple_harness_websocket": {"transport": "loopback_websocket", "endpoint_path": "/ws/realtime-voice", "authentication": "first_frame_shared_secret", "origin_required": true}
+  },
+  "json_messages": {
+    "local.auth": {"direction": "product_to_sdk", "required": ["type", "version", "secret"], "optional": [], "allowed": ["type", "version", "secret"]},
+    "local.hello": {"direction": "product_to_sdk", "required": ["type", "version", "generation", "correlation"], "optional": [], "allowed": ["type", "version", "generation", "correlation"]},
+    "call.start": {"direction": "product_to_sdk", "required": ["type", "generation", "instructions", "required_features"], "optional": [], "allowed": ["type", "generation", "instructions", "required_features"]},
+    "call.ready": {"direction": "sdk_to_product", "required": ["type", "generation", "correlation", "input_audio", "output_audio"], "optional": [], "allowed": ["type", "generation", "correlation", "input_audio", "output_audio"]},
+    "call.barge_in": {"direction": "product_to_sdk", "required": ["type", "generation"], "optional": [], "allowed": ["type", "generation"]},
+    "call.stop": {"direction": "product_to_sdk", "required": ["type", "generation", "reason"], "optional": [], "allowed": ["type", "generation", "reason"]},
+    "call.state": {"direction": "sdk_to_product", "required": ["type", "generation", "state"], "optional": [], "allowed": ["type", "generation", "state"]},
+    "call.event": {"direction": "sdk_to_product", "required": ["type", "generation", "event"], "optional": [], "allowed": ["type", "generation", "event"]},
+    "call.audio_ack": {"direction": "both", "required": ["type", "generation", "direction", "highest_contiguous_sequence"], "optional": [], "allowed": ["type", "generation", "direction", "highest_contiguous_sequence"]},
+    "call.error": {"direction": "sdk_to_product", "required": ["type", "generation", "code", "retryable"], "optional": [], "allowed": ["type", "generation", "code", "retryable"]},
+    "call.closed": {"direction": "sdk_to_product", "required": ["type", "generation", "reason"], "optional": [], "allowed": ["type", "generation", "reason"]}
+  },
+  "domain_event_variants": {
+    "SpeechStarted": ["kind", "turn_id"],
+    "SpeechStopped": ["kind", "turn_id"],
+    "TranscriptDelta": ["kind", "turn_id", "text"],
+    "TranscriptCompleted": ["kind", "turn_id", "text"],
+    "ResponseStarted": ["kind", "turn_id", "response_id"],
+    "OutputText": ["kind", "response_id", "item_id", "output_index", "content_index", "text", "is_delta"],
+    "OutputAudioStarted": ["kind", "response_id", "item_id", "output_index", "content_index"],
+    "OutputAudioCompleted": ["kind", "response_id", "item_id", "output_index", "content_index"],
+    "ToolCallRequested": ["kind", "response_id", "call_id", "name", "arguments_json"],
+    "ResponseFinished": ["kind", "response_id", "status", "local"],
+    "SessionExpiring": ["kind", "remaining_ms"]
+  },
+  "enums": {
+    "call_state": ["idle", "connecting", "active", "closing", "error", "closed"],
+    "call_stop_reason": ["client_hangup", "app_shutdown"],
+    "call_closed_reason": ["client_hangup", "app_shutdown", "session_expired", "provider_error", "network_error", "timeout", "protocol_error", "busy", "internal"],
+    "response_status": ["completed", "cancelled", "incomplete", "failed"],
+    "stable_error_code": ["invalid_request", "unauthenticated", "forbidden", "unsupported", "busy", "rate_limited", "unavailable", "timeout", "protocol_error", "session_expired", "cancelled", "internal"]
+  },
+  "binary_pcm_header": {
+    "bytes": 24,
+    "byte_order": "network_big_endian",
+    "fields": [
+      {"name": "magic", "offset": 0, "bytes": 4, "constant_hex": "53485254"},
+      {"name": "version", "offset": 4, "bytes": 1, "constant": 1},
+      {"name": "direction", "offset": 5, "bytes": 1, "enum": {"input": 1, "output": 2}},
+      {"name": "flags", "offset": 6, "bytes": 2, "constant": 0},
+      {"name": "generation", "offset": 8, "bytes": 4},
+      {"name": "sequence", "offset": 12, "bytes": 8},
+      {"name": "payload_length", "offset": 20, "bytes": 4}
+    ],
+    "payload": "raw_pcm_s16le_exactly_payload_length_bytes"
+  },
+  "pcm_frame_limits": {
+    "input_max_payload_bytes": 65536,
+    "output_max_payload_bytes": 262144,
+    "payload_multiple_bytes": 2,
+    "input_oversize_policy": "product_must_chunk_before_send; codec rejects with call.error invalid_request then call.closed protocol_error",
+    "output_oversize_policy": "sdk_must_chunk before local send; codec generation of an oversize frame is an internal fatal error"
+  },
+  "framing": {
+    "af_unix": "4-byte network-order length followed by one JSON UTF-8 or binary PCM frame",
+    "websocket_text": "one strict JSON object per text message",
+    "websocket_binary": "one binary PCM header plus payload per binary message"
+  },
+  "flow_control": {
+    "window_frames_each_direction": 64,
+    "window_bytes_each_direction": 1048576,
+    "ack_every_frames": 16,
+    "ack_max_delay_ms": 100,
+    "producer_block_timeout_ms": 2000,
+    "webview_buffered_amount_limit_bytes": 1048576,
+    "overflow_result": "cancel_active_response_then_call.error_busy_then_call.closed"
+  },
+  "generation_rules": {
+    "first": 1,
+    "increment_per_call_start": 1,
+    "wrong_or_closed_generation": "drop_and_increment_late_frame_counter",
+    "sequence_scope": "one_generation_and_direction",
+    "duplicate_or_reordered_sequence": "drop_duplicate_or_fail_protocol_error_on_gap_after_window"
+  },
+  "audio_binding": {
+    "input": "all direction=1 frames belong to the active generation",
+    "output": "OutputAudioStarted identifies the only active response/item/content; following direction=2 frames bind to it until OutputAudioCompleted",
+    "interleaving": "forbidden because max_active_responses is 1",
+    "frame_after_output_completed": "drop_and_increment_late_frame_counter"
+  },
+  "terminal_order": "ResponseFinished_cancelled_if_active_then_exactly_one_call.closed_or_call.error_plus_call.closed",
+  "message_vector_map": {
+    "local.auth": "client-auth.json",
+    "local.hello": "client-hello.json",
+    "call.start": "client-call-start.json",
+    "call.ready": "server-call-ready.json",
+    "call.barge_in": "client-barge-in.json",
+    "call.stop": "client-call-stop.json",
+    "call.state": "server-call-state.json",
+    "call.event": "server-call-events.json",
+    "call.audio_ack": "audio-ack.json",
+    "call.error": "server-call-error.json",
+    "call.closed": "server-call-closed.json"
+  },
+  "domain_event_vector_map": {
+    "SpeechStarted": "server-call-events.json",
+    "SpeechStopped": "server-call-events.json",
+    "TranscriptDelta": "server-call-events.json",
+    "TranscriptCompleted": "server-call-events.json",
+    "ResponseStarted": "server-call-events.json",
+    "OutputText": "server-call-events.json",
+    "OutputAudioStarted": "server-call-events.json",
+    "OutputAudioCompleted": "server-call-events.json",
+    "ToolCallRequested": "server-call-events.json",
+    "ResponseFinished": "server-call-events.json",
+    "SessionExpiring": "server-call-events.json"
+  },
+  "vectors": [
+    "client-auth.json",
+    "client-hello.json",
+    "client-call-start.json",
+    "server-call-ready.json",
+    "server-call-event.json",
+    "server-call-events.json",
+    "client-barge-in.json",
+    "server-call-state.json",
+    "server-call-error.json",
+    "scenario-call-lifecycle.json",
+    "input-audio-frame.json",
+    "output-audio-frame.json",
+    "audio-ack.json",
+    "client-call-stop.json",
+    "server-call-closed.json",
+    "negative-cases.json"
+  ]
+}

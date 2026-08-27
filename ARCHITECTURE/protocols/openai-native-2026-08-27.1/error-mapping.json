@@ -1,0 +1,27 @@
+{
+  "kind": "ordered_provider_error_mapping",
+  "source": "https://developers.openai.com/api/reference/resources/realtime/server-events",
+  "matching": "First exact case-sensitive code match wins; then exact HTTP/transport rule; unknown values use the final fallback. Message text is never inspected.",
+  "fatal_semantics": "Every Provider error event lacks response identity, emits exactly one SessionFailed using the mapped stable code, and ends the event stream. retryable only controls fresh-session retry advice.",
+  "rules": [
+    {"codes": ["invalid_api_key"], "stable_code": "unauthenticated", "retryable": false, "fatal": true},
+    {"codes": ["permission_denied"], "stable_code": "forbidden", "retryable": false, "fatal": true},
+    {"codes": ["rate_limit_exceeded", "insufficient_quota"], "stable_code": "rate_limited", "retryable": true, "fatal": true},
+    {"codes": ["server_error"], "stable_code": "unavailable", "retryable": true, "fatal": true},
+    {"codes": ["session_expired"], "stable_code": "session_expired", "retryable": true, "fatal": true},
+    {"error_types": ["invalid_request_error"], "codes": ["invalid_value", "missing_required_parameter", "invalid_event"], "stable_code": "invalid_request", "retryable": false, "fatal": true},
+    {"http_status": 401, "stable_code": "unauthenticated", "retryable": false, "fatal": true},
+    {"http_status": 403, "stable_code": "forbidden", "retryable": false, "fatal": true},
+    {"http_status": 429, "stable_code": "rate_limited", "retryable": true, "fatal": true},
+    {"http_status_range": [500, 599], "stable_code": "unavailable", "retryable": true, "fatal": true},
+    {"transport": "timeout", "stable_code": "timeout", "retryable": true, "fatal": true},
+    {"transport": "network", "stable_code": "unavailable", "retryable": true, "fatal": true},
+    {"fallback": true, "stable_code": "protocol_error", "retryable": false, "fatal": true}
+  ],
+  "vectors": [
+    {"name": "invalid_value", "input": {"event_id": "event_error_invalid_1", "type": "error", "error": {"type": "invalid_request_error", "code": "invalid_value", "message": "fixture", "param": "session.audio.input.format", "event_id": "event_fixture_session_update_1"}}, "expected": {"stable_code": "invalid_request", "retryable": false, "fatal": true, "session_terminal": "SessionFailed.invalid_request"}},
+    {"name": "rate_limited", "input": {"event_id": "event_error_rate_1", "type": "error", "error": {"type": "rate_limit_error", "code": "rate_limit_exceeded", "message": "fixture", "param": null, "event_id": "event_fixture_response_create_1"}}, "expected": {"stable_code": "rate_limited", "retryable": true, "fatal": true, "session_terminal": "SessionFailed.rate_limited"}},
+    {"name": "server_unavailable", "input": {"event_id": "event_error_server_1", "type": "error", "error": {"type": "server_error", "code": "server_error", "message": "fixture", "param": null, "event_id": null}}, "expected": {"stable_code": "unavailable", "retryable": true, "fatal": true, "session_terminal": "SessionFailed.unavailable"}},
+    {"name": "unknown_fail_closed", "input": {"event_id": "event_error_unknown_1", "type": "error", "error": {"type": "future_error", "code": "future_code", "message": "fixture", "param": null, "event_id": null}}, "expected": {"stable_code": "protocol_error", "retryable": false, "fatal": true, "session_terminal": "SessionFailed.protocol_error"}}
+  ]
+}

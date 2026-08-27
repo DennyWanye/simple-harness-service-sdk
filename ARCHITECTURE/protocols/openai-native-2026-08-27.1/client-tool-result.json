@@ -1,0 +1,9 @@
+{
+  "event_id": "event_fixture_tool_result_1",
+  "type": "conversation.item.create",
+  "item": {
+    "type": "function_call_output",
+    "call_id": "call_fixture_1",
+    "output": "{\"temperature_c\":21}"
+  }
+}

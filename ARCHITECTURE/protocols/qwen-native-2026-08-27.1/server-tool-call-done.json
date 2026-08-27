@@ -1,0 +1,10 @@
+{
+  "event_id": "event_server_tool_call_done_1",
+  "type": "response.function_call_arguments.done",
+  "response_id": "resp_fixture_tool_1",
+  "item_id": "item_fixture_tool_1",
+  "output_index": 0,
+  "call_id": "call_fixture_1",
+  "name": "get_weather",
+  "arguments": "{\"city\":\"Hangzhou\"}"
+}

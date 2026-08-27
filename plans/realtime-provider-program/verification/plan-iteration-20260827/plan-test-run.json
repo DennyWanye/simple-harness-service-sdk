@@ -1,0 +1,2062 @@
+{
+  "acceptance": {
+    "path": "acceptance.md",
+    "sha256": "191cfa086b893b5327441af3b9b5f3d2852ec97e06bc58f5b36b31f9e4ee4e3f"
+  },
+  "active_run_required": false,
+  "applicability": {
+    "input_sensitive": {
+      "decided_by": "agent",
+      "rationale": "真实语音语义、打断时机和多轮上下文都会改变产品及 Provider 终态。",
+      "value": true
+    },
+    "llm_payload_driven": {
+      "decided_by": "agent",
+      "rationale": "Provider 的流式 transcript、audio、tool 和 terminal 事件直接驱动产品状态机。",
+      "value": true
+    },
+    "stateful_init": {
+      "decided_by": "agent",
+      "rationale": "首次 wheel 注册、ephemeral mint、adapter capability 与隔离 userdata 冷启动均属于验收范围。",
+      "value": true
+    }
+  },
+  "approvals": [
+    {
+      "approved_by": "user",
+      "kind": "all-ai-driving",
+      "message_sha256": "90d678db926dc3c86a879d1886773a15f1c8224bf11e73c30f947ef530ec8111",
+      "note": "User approved execution of the converged plan at SHA256 0fd4c770a22d4aa2a3ecf4e54a2173320fd34a0efc928dcdf0bae38bbdb483bf.",
+      "recorded_at": "2026-08-28T00:54:33+0800"
+    }
+  ],
+  "auditor_engine": null,
+  "baseline": {
+    "content_digest": "45761d80fe058862addbc2a0526d6a862d28f9db1dc49c5ecdc6088ad25f65ee",
+    "dirty_patch_sha256": "6c3d7bcb365b28b3687e7c1164021769698ab27f88c14da4d9444bf77aca05b1",
+    "exclusion_count": 1,
+    "exclusion_scope": [
+      "plans/realtime-provider-program/verification/plan-iteration-20260827"
+    ],
+    "exclusions": [
+      [
+        "plans/realtime-provider-program/verification/plan-iteration-20260827/plan-challenge-manifest.json",
+        "declared-scope:plans/realtime-provider-program/verification/plan-iteration-20260827"
+      ]
+    ],
+    "head": "f966c6c3ca7d36f5cebb88656334871b8451c3e6",
+    "recorded_at": "2026-08-27T23:32:42+0800"
+  },
+  "behavior_changes": [],
+  "behavior_contract": {
+    "approval": {
+      "approved_at": "2026-08-27T00:00:00+08:00",
+      "scope": "Realtime Provider Program acceptance criteria and four release slices",
+      "user_message_sha256": "c203cdfcf1a2352e996b6786e0924c1641da5fe658fb9de4d23700d50d9ad8b9"
+    },
+    "before_after": [
+      {
+        "after": "Product owns device audio and UI; service-sdk owns Realtime protocol/session.",
+        "before": "Product owns mint, WSS and Provider event mapping.",
+        "surface": "AIPhone"
+      },
+      {
+        "after": "A single phone-style Realtime UI consumes the same service-sdk.",
+        "before": "Legacy local voice is disabled and Realtime is absent.",
+        "surface": "Simple Harness"
+      },
+      {
+        "after": "Legacy remains; a versioned Qwen-native route shares control-plane authorities.",
+        "before": "Legacy GA-shaped relay maps to an older Qwen beta wire.",
+        "surface": "TokenSeller"
+      }
+    ],
+    "preserved": [
+      "TokenSeller 2026-07-voice-v1.1 endpoint",
+      "Text Chat and durable Harness command authority",
+      "Product ownership of microphone, playback, UI and policy",
+      "Long-lived Provider credentials remain server-side"
+    ],
+    "removed": [
+      "AIPhone product-owned Provider wire codec",
+      "Extra manual start-speaking action in the phone-style UI"
+    ],
+    "terms": [
+      {
+        "meaning": "One ephemeral full-duplex media connection; it is not a durable Harness Session or Run.",
+        "term": "Realtime session"
+      },
+      {
+        "meaning": "The only owner of one Provider native wire contract.",
+        "term": "Provider adapter"
+      },
+      {
+        "meaning": "An independently committed, tested, rollbackable delivery that consumes only immutable earlier artifacts.",
+        "term": "release slice"
+      }
+    ]
+  },
+  "challenge_loops": [
+    {
+      "acceptance_snapshots": [
+        {
+          "path": "/Users/denny/projects/simple-harness-service-sdk/acceptance.md",
+          "recorded_at": "2026-08-27T23:32:42+0800",
+          "sha256": "191cfa086b893b5327441af3b9b5f3d2852ec97e06bc58f5b36b31f9e4ee4e3f"
+        }
+      ],
+      "baseline_hash": "a5595de7c92132a5f5c742d223583860dc12e1569445c8949e1f520a5dc300b7",
+      "challenge_clusters": [
+        {
+          "cluster_id": "cluster-sdk-consumer-entry-chain",
+          "parent_finding_ids": [
+            "realtime-concrete-connectors-undefined",
+            "aiphone-production-assembly-scope-missing",
+            "simple-harness-local-route-contract-conflict"
+          ],
+          "question": "Can each product enter and leave one SDK-owned session through frozen local and relay boundaries without retaining product wire code or an unscoped constructor?",
+          "required_evidence": [
+            "concrete TokenSeller minter and WSS API",
+            "concrete local lifecycle API",
+            "AIPhone production assembly diff",
+            "shared Simple Harness path authority"
+          ],
+          "specialist_required": true,
+          "specialty": "architecture"
+        },
+        {
+          "cluster_id": "cluster-release-artifact-compatibility",
+          "parent_finding_ids": [
+            "sdk-harness-version-conflict",
+            "authority-artifact-handoff-undefined",
+            "production-deploy-exact-sha-not-executable"
+          ],
+          "question": "Do four slices form an installable byte-identical rollback-capable chain across Python, TypeScript, PyInstaller, and production?",
+          "required_evidence": [
+            "compatibility matrix",
+            "exact S1 artifact set",
+            "consumer hash gates",
+            "target-SHA deployment and rollback commands"
+          ],
+          "specialist_required": true,
+          "specialty": "release-rollback"
+        },
+        {
+          "cluster_id": "cluster-billing-currency-and-recovery",
+          "parent_finding_ids": [
+            "billing-currency-domain-unresolved",
+            "native-turn-recovery-attribution-incomplete"
+          ],
+          "question": "Can one CNY-priced Qwen turn settle exactly once into the USD wallet across every crash point?",
+          "required_evidence": [
+            "frozen FX authority",
+            "USD hold formula",
+            "complete RealtimeTurn schema",
+            "transaction/CAS boundaries",
+            "restart reconciliation table"
+          ],
+          "specialist_required": true,
+          "specialty": "data-state"
+        },
+        {
+          "cluster_id": "cluster-native-token-binding",
+          "parent_finding_ids": [
+            "native-token-correlation-binding-not-persisted"
+          ],
+          "question": "Is every mint-to-open binding value persisted and checked before one-use token consumption?",
+          "required_evidence": [
+            "native binding schema",
+            "mint payload",
+            "first-frame inputs",
+            "pre-consume negative tests"
+          ],
+          "specialist_required": true,
+          "specialty": "security-privacy"
+        },
+        {
+          "cluster_id": "cluster-barge-in-provider-ordering",
+          "parent_finding_ids": [
+            "barge-in-turn-overlap-assumption-unspiked"
+          ],
+          "question": "Can every Qwen barge-in ordering be handled without an unbound response, cross-turn audio, or duplicate hold?",
+          "required_evidence": [
+            "fake ordering matrix",
+            "real metadata-only trace",
+            "decisive overlap state rule"
+          ],
+          "specialist_required": true,
+          "specialty": "performance-third-party"
+        }
+      ],
+      "contract_snapshots": [
+        {
+          "acceptance_ids": [
+            "AC-1",
+            "AC-2",
+            "AC-3",
+            "AC-4",
+            "AC-5",
+            "AC-6",
+            "AC-7",
+            "AC-8"
+          ],
+          "acceptance_sha256": "191cfa086b893b5327441af3b9b5f3d2852ec97e06bc58f5b36b31f9e4ee4e3f",
+          "assurance_ids": [
+            "ADV-UNTRUSTED-CLIENT",
+            "ASSET-BILLING",
+            "ASSET-COMPAT",
+            "ASSET-CONTENT",
+            "ASSET-CREDENTIALS",
+            "ASSET-SESSION",
+            "FAIL-BILLING-DUP",
+            "FAIL-CLOSE-CLASS",
+            "FAIL-CROSS-SESSION",
+            "FAIL-LOG-LEAK",
+            "FAIL-OVERSIZE",
+            "FAIL-PROTOCOL-DRIFT",
+            "FAIL-TOKEN-REPLAY",
+            "FAIL-VERSION-SKEW",
+            "OOS-HOST-COMPROMISE",
+            "OOS-LOCAL-MODEL",
+            "OOS-OPENAI-LIVE",
+            "OOS-PROVIDER-OUTAGE",
+            "OOS-WEBRTC-SIP",
+            "TRUST-ARTIFACT",
+            "TRUST-DEV-HOST",
+            "TRUST-PROVIDER",
+            "TRUST-TLS"
+          ],
+          "path": "/Users/denny/projects/simple-harness-service-sdk/assurance-contract.json",
+          "profile": "standard",
+          "recorded_at": "2026-08-27T23:32:42+0800",
+          "scope_hash": "5c37e1f348a16f1afd8c8d400377f0167cc95276095aa4467ba4cf6fd8cab1b6",
+          "sha256": "a76bb6aded2d0753af9f74cfdac93769d50d5526542a657e30d714c08a13f314",
+          "threat_model_hash": "716fd53fe797f6d588fb74194099a15e69e0f65e353e57f40f15208825b27af3"
+        }
+      ],
+      "control_events": [],
+      "limits": {
+        "hard": 8,
+        "soft": 3,
+        "user_review": 5
+      },
+      "loop_id": "plan-iteration-001",
+      "loop_type": "plan-iteration",
+      "orchestration": "clustered",
+      "primary_contradiction": {
+        "acceptance_ids": [
+          "AC-1",
+          "AC-3",
+          "AC-5",
+          "AC-6",
+          "AC-7"
+        ],
+        "id": "pc-authority-boundaries-not-release-executable",
+        "summary": "The semantic authority split is coherent, but executable joins between SDK dependencies, connectors, USD settlement, crash recovery, and deployment are incomplete."
+      },
+      "rounds": [
+        {
+          "based_on_plan_hash": null,
+          "coverage": {
+            "acceptance_coverage": true,
+            "data_flow_and_persistence": true,
+            "entry_and_trust_chain": true,
+            "failure_and_recovery": true,
+            "identity_permissions_concurrency_cleanup": true,
+            "release_and_rollback": true,
+            "tests_and_evidence": true,
+            "trusted_boundary_stop": true
+          },
+          "findings": [
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "service-sdk pyproject.toml requires exact simple-harness-sdk 0.5.2, while Simple Harness backend requires and vendors 0.6.2; AIPhone consumes service-sdk 0.2.3 paired with the older dependency. The plan lacks a cross-consumer compatibility upgrade.",
+              "id": "sdk-harness-version-conflict",
+              "origin": "pre-existing",
+              "root_cause": "The release slices treat service-sdk as independently replaceable without reconciling mandatory Harness SDK dependencies across consumers.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-6",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "ASSET-BILLING"
+              ],
+              "evidence": "The Qwen authority prices in CNY minor units, while TokenSeller wallet and pricing persistence use USD cents/atoms. The architecture and plan define no FX conversion, revision, rounding denominator, or USD hold sizing.",
+              "id": "billing-currency-domain-unresolved",
+              "origin": "pre-existing",
+              "root_cause": "Provider price authority and wallet settlement authority use different currencies without a conversion authority.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "FAIL-TOKEN-REPLAY",
+                "ASSET-CREDENTIALS"
+              ],
+              "evidence": "The plan defines abstract minter/transport ports and codecs but no concrete TokenSeller HTTPS minter or SDK local AF_UNIX/loopback-WSS lifecycle. AIPhone still owns mint plus WSS in realtime_voice_bridge.py.",
+              "id": "realtime-concrete-connectors-undefined",
+              "origin": "pre-existing",
+              "root_cause": "The plan freezes abstractions but omits concrete composition adapters across local and TokenSeller trust boundaries.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-1",
+                "AC-5",
+                "AC-6",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-BILLING-DUP",
+                "ASSET-BILLING"
+              ],
+              "evidence": "The planned RealtimeTurn omits userId, parentApiKeyId, publicModel, credentialId, RequestLog/platform identity, terminal-forward state, and exact transaction transitions required to reconstruct UsageEvent and wallet settlement after declared crashes.",
+              "id": "native-turn-recovery-attribution-incomplete",
+              "origin": "pre-existing",
+              "root_cause": "The durable turn row is an idempotency marker rather than a complete downstream billing and attribution recovery record.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "FAIL-VERSION-SKEW"
+              ],
+              "evidence": "Architecture requires Python and TypeScript to consume one immutable authority artifact, complete optional dependency lock closure, PyInstaller metadata, and byte-identical receipts; the plan names only a Python wheel and no cross-language handoff or hash gate.",
+              "id": "authority-artifact-handoff-undefined",
+              "origin": "pre-existing",
+              "root_cause": "Byte identity is an invariant without an executable cross-language artifact handoff.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-2",
+                "AC-4",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-SESSION"
+              ],
+              "evidence": "The control manifest binds correlation across mint and first-frame open, but current and planned RealtimeClientSecret persistence omit the minted correlation value.",
+              "id": "native-token-correlation-binding-not-persisted",
+              "origin": "pre-existing",
+              "root_cause": "The persistence model does not retain every value required by the frozen mint-to-open binding.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-7",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "AIPhone production constructs RealtimeRelayBridge in application.py, but S3 omits that authoritative constructor from the file scope.",
+              "id": "aiphone-production-assembly-scope-missing",
+              "origin": "pre-existing",
+              "root_cause": "The migration scopes helpers but omits the production selector for the legacy bridge.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-5",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-SESSION"
+              ],
+              "evidence": "Architecture freezes /ws/realtime-voice with local.auth first, while plan names /ws/realtime and leaves frontend/backend path authority implicit.",
+              "id": "simple-harness-local-route-contract-conflict",
+              "origin": "pre-existing",
+              "root_cause": "The executable plan and approved architecture name different endpoints without a shared constant/test.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-6",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-BILLING",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "TokenSeller scripts/deploy.sh deploys branch tip and lacks target SHA, backup, migration verification, health/smoke checks, and rollback artifact retention; S2 does not scope a fix or replacement command sequence.",
+              "id": "production-deploy-exact-sha-not-executable",
+              "origin": "pre-existing",
+              "root_cause": "Release requirements are prose-only and not implemented by the intended deployment entrypoint.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-CROSS-SESSION",
+                "FAIL-BILLING-DUP"
+              ],
+              "evidence": "The one-active-turn state machine depends on Qwen ordering during interruption, but no fake or real overlap spike is required before S2 production; S3 barge-in is later.",
+              "id": "barge-in-turn-overlap-assumption-unspiked",
+              "origin": "pre-existing",
+              "root_cause": "A required provider ordering guarantee at the overlapping-turn boundary is unproven.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-5"
+              ]
+            }
+          ],
+          "new_critical_findings": 10,
+          "plan_hash": "a5595de7c92132a5f5c742d223583860dc12e1569445c8949e1f520a5dc300b7",
+          "review_mode": "breadth",
+          "reviewer_verdict": null,
+          "round": 1,
+          "scope_hash": "5c37e1f348a16f1afd8c8d400377f0167cc95276095aa4467ba4cf6fd8cab1b6",
+          "threat_model_hash": "716fd53fe797f6d588fb74194099a15e69e0f65e353e57f40f15208825b27af3",
+          "timestamp": "2026-08-27T23:44:42+0800"
+        },
+        {
+          "based_on_plan_hash": "a5595de7c92132a5f5c742d223583860dc12e1569445c8949e1f520a5dc300b7",
+          "coverage": {
+            "acceptance_coverage": true,
+            "data_flow_and_persistence": true,
+            "entry_and_trust_chain": true,
+            "failure_and_recovery": true,
+            "identity_permissions_concurrency_cleanup": true,
+            "release_and_rollback": true,
+            "tests_and_evidence": true,
+            "trusted_boundary_stop": true
+          },
+          "findings": [
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "S1-6 freezes service 0.3.0, Harness 0.6.2 and Memory 0.5.2 as one release unit with clean Python 3.11/3.13 installed-wheel BOM/provenance gates; SP-SDK-MATRIX passed 104 source/API tests on each runtime.",
+              "id": "sdk-harness-version-conflict",
+              "origin": "pre-existing",
+              "root_cause": "The three exact SDKs were previously treated as independent.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-6",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "ASSET-BILLING"
+              ],
+              "evidence": "Architecture 6.6 and the wallet revision authority define integer CNY-to-USD-atom conversion, aggregate rounding, margin, ceilings and a 23-cent hold; SP-FX-ATOMS reproduces both terminal fixtures.",
+              "id": "billing-currency-domain-unresolved",
+              "origin": "pre-existing",
+              "root_cause": "Provider price authority and wallet settlement authority used different currencies without a conversion authority.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-3"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "FAIL-TOKEN-REPLAY",
+                "FAIL-CLOSE-CLASS",
+                "ASSET-CREDENTIALS",
+                "ASSET-SESSION"
+              ],
+              "evidence": "S1-3 names the concrete TokenSeller HTTPS minter, relay WSS transport, Unix host/channel and loopback-WSS host/channel, their lifecycle boundaries, and complete positive/negative tests; S3 and S4 consume them.",
+              "id": "realtime-concrete-connectors-undefined",
+              "origin": "pre-existing",
+              "root_cause": "Only abstract ports and codecs were previously assigned.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-1",
+                "AC-5",
+                "AC-6",
+                "AC-7",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-BILLING-DUP",
+                "ASSET-BILLING"
+              ],
+              "evidence": "S2-1/4 specify a field-complete RealtimeTurn, deterministic downstream identities, pricing snapshots, settlement intent, wallet disposition and terminal-forward state; the state table and eight Postgres crash points define convergence.",
+              "id": "native-turn-recovery-attribution-incomplete",
+              "origin": "pre-existing",
+              "root_cause": "Turn state was not a complete recovery source.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "FAIL-VERSION-SKEW"
+              ],
+              "evidence": "S1-6 defines a deterministic cross-language authority bundle, release manifest, pack hashes, root digest, target locks, BOM and BUILD_INFO; S2 imports it and S3/S4 verify matching wheel and authority receipts.",
+              "id": "authority-artifact-handoff-undefined",
+              "origin": "pre-existing",
+              "root_cause": "Byte identity lacked an executable cross-language artifact flow.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-2",
+                "AC-4",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-SESSION"
+              ],
+              "evidence": "S2-1/2 persist correlation with every protocol/model/pricing/digest field in one immutable binding, compare all fields before conditional consume/connect, and require one pre-consume negative per field.",
+              "id": "native-token-correlation-binding-not-persisted",
+              "origin": "pre-existing",
+              "root_cause": "Correlation and other fields were absent from the immutable mint binding.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-7",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "S3 scopes application.py and voice_ui.py, replaces both authoritative constructors with SDK components, and adds a production import/source oracle rejecting the old bridge and local client.",
+              "id": "aiphone-production-assembly-scope-missing",
+              "origin": "pre-existing",
+              "root_cause": "Authoritative production selectors were omitted.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-5",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-SESSION"
+              ],
+              "evidence": "Local authority, architecture and S4 uniformly use /ws/realtime-voice and require frontend/backend derivation from authority or one generated constant with auth/open/close tests.",
+              "id": "simple-harness-local-route-contract-conflict",
+              "origin": "pre-existing",
+              "root_cause": "The executable plan and architecture previously named conflicting endpoints.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-6",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-BILLING",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "The release strategy and S2-6 require expected-current and target SHA, clean ancestry, backup hash, SHA-tagged images, migration/container/health/native/legacy checks, predecessor retention and additive-schema-safe rollback through the deployment entrypoint.",
+              "id": "production-deploy-exact-sha-not-executable",
+              "origin": "pre-existing",
+              "root_cause": "Release requirements were prose-only and absent from the deployment code.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-CROSS-SESSION",
+                "FAIL-BILLING-DUP",
+                "FAIL-PROTOCOL-DRIFT",
+                "ASSET-BILLING",
+                "ASSET-SESSION"
+              ],
+              "evidence": "The two-slot authority assigns independent identities and settlements; SP-BARGE-OVERLAP passed 45 legal permutations plus cancel-no-active, and S2-3 ports the oracle to Jest.",
+              "id": "barge-in-turn-overlap-assumption-unspiked",
+              "origin": "pre-existing",
+              "root_cause": "One-slot billing depended on undocumented Provider ordering.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-5",
+                "AC-8"
+              ]
+            }
+          ],
+          "new_critical_findings": 0,
+          "plan_hash": "0fd4c770a22d4aa2a3ecf4e54a2173320fd34a0efc928dcdf0bae38bbdb483bf",
+          "review_mode": "diff",
+          "reviewer_verdict": "PASS",
+          "round": 2,
+          "scope_hash": "5c37e1f348a16f1afd8c8d400377f0167cc95276095aa4467ba4cf6fd8cab1b6",
+          "threat_model_hash": "716fd53fe797f6d588fb74194099a15e69e0f65e353e57f40f15208825b27af3",
+          "timestamp": "2026-08-28T00:31:34+0800"
+        }
+      ],
+      "specialist_challenges": [
+        {
+          "cluster_id": "cluster-sdk-consumer-entry-chain",
+          "output": {
+            "cluster_id": "cluster-sdk-consumer-entry-chain",
+            "conclusion": {
+              "status": "refined",
+              "summary": "Add concrete connector and local lifecycle APIs/tests, scope application.py and voice_ui.py, and establish one cross-language /ws/realtime-voice authority."
+            },
+            "cross_cluster_refs": [
+              "authority-artifact-handoff-undefined",
+              "sdk-harness-version-conflict"
+            ],
+            "findings": [
+              {
+                "assurance_contract_ids": [
+                  "FAIL-PROTOCOL-DRIFT",
+                  "FAIL-TOKEN-REPLAY",
+                  "FAIL-CLOSE-CLASS",
+                  "ASSET-CREDENTIALS",
+                  "ASSET-SESSION"
+                ],
+                "evidence": "S1 names only abstract minter/transport, codecs, framing, and a bounded WSS primitive. It assigns no concrete TokenSeller HTTPS minter, exact returned WSS binding, AF_UNIX host/client, loopback-WSS host/client, start ownership, or idempotent teardown. Current service-sdk short-RPC Unix transport cannot supply this; AIPhone currently owns the entire missing chain.",
+                "id": "realtime-concrete-connectors-undefined",
+                "origin": "pre-existing",
+                "root_cause": "The plan assigns no files, constructors, ownership, or lifecycle tests to concrete HTTPS mint, relay WSS, AF_UNIX, and loopback-WSS joins.",
+                "scope_relation": "in-scope",
+                "severity": "P0",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-1",
+                  "AC-5",
+                  "AC-6",
+                  "AC-7",
+                  "AC-8"
+                ]
+              },
+              {
+                "assurance_contract_ids": [
+                  "FAIL-PROTOCOL-DRIFT",
+                  "ASSET-COMPAT"
+                ],
+                "evidence": "The daemon assembly is build_harness_application() in application.py and UI assembly is voice_ui.py; both construct current Realtime bridge/client and are omitted from S3 scope.",
+                "id": "aiphone-production-assembly-scope-missing",
+                "origin": "pre-existing",
+                "root_cause": "S3 omits both authoritative production assembly roots that select upstream bridge and local client.",
+                "scope_relation": "in-scope",
+                "severity": "P1",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-5",
+                  "AC-7"
+                ]
+              },
+              {
+                "assurance_contract_ids": [
+                  "FAIL-VERSION-SKEW",
+                  "ASSET-SESSION"
+                ],
+                "evidence": "Architecture freezes /ws/realtime-voice but plan names /ws/realtime; local authority omits endpoint_path and plan lacks a frontend/backend route/auth/open/close wiring oracle.",
+                "id": "simple-harness-local-route-contract-conflict",
+                "origin": "pre-existing",
+                "root_cause": "Endpoint authority exists only in conflicting prose rather than a cross-language artifact and decisive wiring test.",
+                "scope_relation": "in-scope",
+                "severity": "P1",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-6",
+                  "AC-7"
+                ]
+              }
+            ],
+            "parent_finding_ids": [
+              "realtime-concrete-connectors-undefined",
+              "aiphone-production-assembly-scope-missing",
+              "simple-harness-local-route-contract-conflict"
+            ],
+            "specialty": "architecture"
+          },
+          "output_path": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/verification/plan-iteration-20260827/specialist-entry-chain.json",
+          "output_sha256": "074d0f1f39236888ac4bdf2c957159ad71275a3193519cde8ec1d498bde66627",
+          "recorded_at": "2026-08-27T23:49:12+0800",
+          "specialty": "architecture",
+          "status": "completed"
+        },
+        {
+          "cluster_id": "cluster-release-artifact-compatibility",
+          "output": {
+            "cluster_id": "cluster-release-artifact-compatibility",
+            "conclusion": {
+              "status": "needs-spike",
+              "summary": "Revise artifact/deploy tasks and run clean Python 3.11/3.13 three-SDK closure, Simple Harness PyInstaller, and AIPhone ARM64 wheelhouse admission spikes."
+            },
+            "cross_cluster_refs": [
+              "billing-currency-domain-unresolved",
+              "native-turn-recovery-attribution-incomplete"
+            ],
+            "findings": [
+              {
+                "assurance_contract_ids": [
+                  "FAIL-VERSION-SKEW",
+                  "ASSET-COMPAT"
+                ],
+                "evidence": "service-sdk 0.2.3 exactly pins harness 0.5.2 and memory 0.5.1; AIPhone hard-codes that closure on Python 3.13, while Simple Harness vendors harness 0.6.2 and memory 0.5.2 on Python 3.11. The planned isolated service-sdk bump cannot resolve in Simple Harness. The proposed shared release unit 0.3.0/0.6.2/0.5.2 requires clean 3.11 and 3.13 install plus durable-conformance spikes.",
+                "id": "sdk-harness-version-conflict",
+                "origin": "pre-existing",
+                "root_cause": "S1 is treated as one package even though exact direct references make the three SDKs one cross-consumer release unit.",
+                "scope_relation": "in-scope",
+                "severity": "P0",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-6",
+                  "AC-7"
+                ]
+              },
+              {
+                "assurance_contract_ids": [
+                  "FAIL-PROTOCOL-DRIFT",
+                  "FAIL-VERSION-SKEW"
+                ],
+                "evidence": "Current candidate build lacks a standalone TypeScript authority bundle and target-specific realtime-extra lock closures. TokenSeller has no exact-byte import/check path. AIPhone and Simple Harness scopes omit service manifest/authority/frozen metadata checks; Simple Harness spec does not collect service package data or metadata.",
+                "id": "authority-artifact-handoff-undefined",
+                "origin": "pre-existing",
+                "root_cause": "No versioned release-manifest, immutable TypeScript handoff, target closure, or named consumer frozen-build checks carry byte identity.",
+                "scope_relation": "in-scope",
+                "severity": "P1",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-2",
+                  "AC-4",
+                  "AC-7"
+                ]
+              },
+              {
+                "assurance_contract_ids": [
+                  "FAIL-VERSION-SKEW",
+                  "ASSET-BILLING",
+                  "ASSET-COMPAT"
+                ],
+                "evidence": "deploy.sh pulls branch tip, replaces the stack, prunes rollback images, and lacks expected/target SHA, backup/hash, migration verification, health/native/legacy smokes, and explicit retained-image rollback. Task 6 does not scope deploy.sh or compose changes.",
+                "id": "production-deploy-exact-sha-not-executable",
+                "origin": "pre-existing",
+                "root_cause": "The production release contract is prose while the actual entrypoint is branch-tip based, non-transactional, and destroys its immediate rollback artifact.",
+                "scope_relation": "in-scope",
+                "severity": "P1",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-3",
+                  "AC-7"
+                ]
+              }
+            ],
+            "parent_finding_ids": [
+              "sdk-harness-version-conflict",
+              "authority-artifact-handoff-undefined",
+              "production-deploy-exact-sha-not-executable"
+            ],
+            "specialty": "release-rollback"
+          },
+          "output_path": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/verification/plan-iteration-20260827/specialist-release-chain.json",
+          "output_sha256": "77b9597aedc1bc0f18f5549b55625fe427e383727e31d893a97ec2592190031e",
+          "recorded_at": "2026-08-27T23:50:54+0800",
+          "specialty": "release-rollback",
+          "status": "completed"
+        },
+        {
+          "cluster_id": "cluster-billing-currency-and-recovery",
+          "output": {
+            "cluster_id": "cluster-billing-currency-and-recovery",
+            "conclusion": {
+              "status": "needs-spike",
+              "summary": "Freeze rational CNY-to-USD plus margin/rounding and USD hold fixtures; define complete durable turn state and Postgres crash matrix with one settlement or one release before terminal forwarding."
+            },
+            "cross_cluster_refs": [
+              {
+                "cross_cluster_ref": "cluster-barge-in-provider-ordering",
+                "finding_ids": [
+                  "barge-in-turn-overlap-assumption-unspiked"
+                ],
+                "reason": "Cancel/overlap response ownership decides which durable turn may settle."
+              }
+            ],
+            "findings": [
+              {
+                "assurance_contract_ids": [
+                  "ASSET-BILLING"
+                ],
+                "evidence": "Qwen authority prices are CNY minor-per-1M, while TokenSeller WalletAccount/ModelPricing settle in USD cents and billing-precision defines 10^-13 USD atoms. Existing vector sums are CNY numerators, not wallet atoms. No immutable FX/margin revision, rational conversion, rounding, USD fixture, modality ceilings, or native hold formula exists; current FxRateCache is mutable floating point and legacy audio-second budget is not applicable.",
+                "id": "billing-currency-domain-unresolved",
+                "origin": "pre-existing",
+                "root_cause": "Provider CNY price inputs cross into a USD settlement/hold/ledger domain without an immutable integer conversion boundary.",
+                "scope_relation": "in-scope",
+                "severity": "P0",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-3"
+                ]
+              },
+              {
+                "assurance_contract_ids": [
+                  "FAIL-BILLING-DUP",
+                  "ASSET-BILLING"
+                ],
+                "evidence": "Planned RealtimeTurn omits attribution ids, frozen FX/margin inputs, terminal usage, RequestLog/UsageEvent identities, settlement intent, wallet disposition, and terminal-forward state. Current RequestLog->UsageEvent creation is fire-and-forget and not a restart boundary. No state table covers crashes from row creation through terminal forwarding; Qwen cannot resume after a pre-terminal crash.",
+                "id": "native-turn-recovery-attribution-incomplete",
+                "origin": "pre-existing",
+                "root_cause": "RealtimeTurn is only a lifecycle marker, not a complete durable recovery source for attribution, exact settlement/release, and terminal disposition.",
+                "scope_relation": "in-scope",
+                "severity": "P1",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-3",
+                  "AC-8"
+                ]
+              }
+            ],
+            "parent_finding_ids": [
+              "billing-currency-domain-unresolved",
+              "native-turn-recovery-attribution-incomplete"
+            ],
+            "specialty": "data-state"
+          },
+          "output_path": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/verification/plan-iteration-20260827/specialist-billing-recovery.json",
+          "output_sha256": "c1e92c639af4d3993bf4df11c67d5c347cba7552e2de00df57e9b6eb76f81301",
+          "recorded_at": "2026-08-27T23:50:54+0800",
+          "specialty": "data-state",
+          "status": "completed"
+        },
+        {
+          "cluster_id": "cluster-native-token-binding",
+          "output": {
+            "cluster_id": "cluster-native-token-binding",
+            "conclusion": {
+              "status": "refined",
+              "summary": "Persist correlation and the entire native binding, atomically consume after full comparison, and add a pre-consume negative test for every bound value."
+            },
+            "cross_cluster_refs": [],
+            "findings": [
+              {
+                "assurance_contract_ids": [
+                  "FAIL-VERSION-SKEW",
+                  "ASSET-SESSION"
+                ],
+                "evidence": "Control authority requires correlation in mint and first session.open and exact validation before consume. Current schema and S2 Task 1 omit correlation and no immutable full native-binding record/atomic comparator exists. Negative tests omit correlation, control version, and persisted provider/wire/model/voice/capability tamper cases.",
+                "id": "native-token-correlation-binding-not-persisted",
+                "origin": "pre-existing",
+                "root_cause": "Native token binding is modeled as loose fields rather than one complete immutable mint record and comparator.",
+                "scope_relation": "in-scope",
+                "severity": "P1",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-3",
+                  "AC-7",
+                  "AC-8"
+                ]
+              }
+            ],
+            "parent_finding_ids": [
+              "native-token-correlation-binding-not-persisted"
+            ],
+            "specialty": "security-privacy"
+          },
+          "output_path": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/verification/plan-iteration-20260827/specialist-token-binding.json",
+          "output_sha256": "b3a1344bf62457683f391ca9395b8fe08ab48053deb27cc254b1da2449670362",
+          "recorded_at": "2026-08-27T23:51:52+0800",
+          "specialty": "security-privacy",
+          "status": "completed"
+        },
+        {
+          "cluster_id": "cluster-barge-in-provider-ordering",
+          "output": {
+            "cluster_id": "cluster-barge-in-provider-ordering",
+            "conclusion": {
+              "status": "needs-spike",
+              "summary": "Run fake permutations and one real metadata-only barge-in trace. If strict serialization is not proven, use bounded overlap: tombstoned CANCELLING predecessor plus one NEW_PENDING successor, independent holds/settlement, response CAS to sole eligible successor, preauth output buffering, and old-audio quarantine."
+            },
+            "cross_cluster_refs": [
+              "cluster-billing-currency-and-recovery"
+            ],
+            "findings": [
+              {
+                "assurance_contract_ids": [
+                  "FAIL-CROSS-SESSION",
+                  "FAIL-BILLING-DUP",
+                  "FAIL-PROTOCOL-DRIFT",
+                  "ASSET-BILLING",
+                  "ASSET-SESSION"
+                ],
+                "evidence": "The one-slot plan assumes old response.done before next commit/hold/response.created, but neither frozen authority nor official Qwen docs guarantee that order. Official samples clear the current response on speech_started after sending response.cancel, while cancel has no response_id. Current fixtures and real evidence omit overlap permutations, so next commit/response.created before old terminal can cause false protocol failure, unbound output, or unsafe cancellation.",
+                "id": "barge-in-turn-overlap-assumption-unspiked",
+                "origin": "pre-existing",
+                "root_cause": "Billing and response binding rely on undocumented Qwen interruption order while cancel is response-id-free.",
+                "scope_relation": "in-scope",
+                "severity": "P1",
+                "status": "open",
+                "violated_acceptance_ids": [
+                  "AC-3",
+                  "AC-5",
+                  "AC-8"
+                ]
+              }
+            ],
+            "parent_finding_ids": [
+              "barge-in-turn-overlap-assumption-unspiked"
+            ],
+            "specialty": "performance-third-party"
+          },
+          "output_path": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/verification/plan-iteration-20260827/specialist-barge-ordering.json",
+          "output_sha256": "492b2ec34ba74e2fcb33b8361577462f6206d72fc7e79b9267c211fa207e4f74",
+          "recorded_at": "2026-08-27T23:54:10+0800",
+          "specialty": "performance-third-party",
+          "status": "completed"
+        }
+      ],
+      "started_at": "2026-08-27T23:32:42+0800",
+      "status": "CONVERGED",
+      "synthesis": {
+        "after_round": 1,
+        "input_path": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/verification/plan-iteration-20260827/synthesis.json",
+        "input_sha256": "c73e4f128d45e3ab4050b3eea6719c744f1001d36b8941ed049a2520c98e16f5",
+        "payload": {
+          "canonical_findings": [
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "Exact direct references conflict across consumers; specialist-release-chain.json.",
+              "id": "sdk-harness-version-conflict",
+              "origin": "pre-existing",
+              "root_cause": "Three SDKs are one release unit but S1 was planned independently.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-6",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "ASSET-BILLING"
+              ],
+              "evidence": "CNY provider prices cross into USD wallet atoms without immutable conversion; specialist-billing-recovery.json.",
+              "id": "billing-currency-domain-unresolved",
+              "origin": "pre-existing",
+              "root_cause": "No integer pricing conversion authority.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "FAIL-TOKEN-REPLAY",
+                "FAIL-CLOSE-CLASS",
+                "ASSET-CREDENTIALS",
+                "ASSET-SESSION"
+              ],
+              "evidence": "Concrete relay and local lifecycle joins are unassigned; specialist-entry-chain.json.",
+              "id": "realtime-concrete-connectors-undefined",
+              "origin": "pre-existing",
+              "root_cause": "Only abstractions/codecs were scoped.",
+              "scope_relation": "in-scope",
+              "severity": "P0",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-1",
+                "AC-5",
+                "AC-6",
+                "AC-7",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-BILLING-DUP",
+                "ASSET-BILLING"
+              ],
+              "evidence": "Durable turn lacks complete attribution/settlement/terminal state; specialist-billing-recovery.json.",
+              "id": "native-turn-recovery-attribution-incomplete",
+              "origin": "pre-existing",
+              "root_cause": "Turn row is not a full recovery source.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "FAIL-VERSION-SKEW"
+              ],
+              "evidence": "No cross-language immutable authority/release handoff; specialist-release-chain.json.",
+              "id": "authority-artifact-handoff-undefined",
+              "origin": "pre-existing",
+              "root_cause": "Byte identity lacks executable artifact flow.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-2",
+                "AC-4",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-SESSION"
+              ],
+              "evidence": "Mint correlation/full binding unavailable at consume; specialist-token-binding.json.",
+              "id": "native-token-correlation-binding-not-persisted",
+              "origin": "pre-existing",
+              "root_cause": "Loose fields replace a complete immutable binding.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-7",
+                "AC-8"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-PROTOCOL-DRIFT",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "application.py and voice_ui.py production constructors omitted; specialist-entry-chain.json.",
+              "id": "aiphone-production-assembly-scope-missing",
+              "origin": "pre-existing",
+              "root_cause": "Authoritative assembly roots are out of task scope.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-5",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-SESSION"
+              ],
+              "evidence": "/ws/realtime conflicts with /ws/realtime-voice and no shared path authority exists; specialist-entry-chain.json.",
+              "id": "simple-harness-local-route-contract-conflict",
+              "origin": "pre-existing",
+              "root_cause": "Endpoint authority is conflicting prose.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-6",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-BILLING",
+                "ASSET-COMPAT"
+              ],
+              "evidence": "Actual deploy entrypoint cannot enforce the release contract; specialist-release-chain.json.",
+              "id": "production-deploy-exact-sha-not-executable",
+              "origin": "pre-existing",
+              "root_cause": "Branch-tip deployment lacks backup/admission/rollback mechanics.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-7"
+              ]
+            },
+            {
+              "assurance_contract_ids": [
+                "FAIL-CROSS-SESSION",
+                "FAIL-BILLING-DUP",
+                "FAIL-PROTOCOL-DRIFT",
+                "ASSET-BILLING",
+                "ASSET-SESSION"
+              ],
+              "evidence": "Provider does not freeze required interruption ordering; specialist-barge-ordering.json.",
+              "id": "barge-in-turn-overlap-assumption-unspiked",
+              "origin": "pre-existing",
+              "root_cause": "One-slot state relies on undocumented event order.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "open",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-5",
+                "AC-8"
+              ]
+            }
+          ],
+          "conflicts": [],
+          "decisions": [
+            {
+              "action": "spike",
+              "canonical_finding_id": "sdk-harness-version-conflict",
+              "rationale": "Treat service 0.3.0, Harness 0.6.2, and Memory 0.5.2 as one release unit and prove resolver/import/conformance on Python 3.11 and 3.13 before freezing the candidate.",
+              "source_finding_ids": [
+                "sdk-harness-version-conflict"
+              ],
+              "spike_ids": [
+                "SP-SDK-MATRIX"
+              ]
+            },
+            {
+              "action": "spike",
+              "canonical_finding_id": "billing-currency-domain-unresolved",
+              "rationale": "Define an immutable integer USD-atoms-per-CNY-minor pricing revision and prove per-turn conversion, margin, rounding, and hold fixtures without floating point.",
+              "source_finding_ids": [
+                "billing-currency-domain-unresolved"
+              ],
+              "spike_ids": [
+                "SP-FX-ATOMS"
+              ]
+            },
+            {
+              "action": "plan-change",
+              "canonical_finding_id": "realtime-concrete-connectors-undefined",
+              "rationale": "Add concrete TokenSellerHttpsMinter, RelayWebSocketTransport, UnixRealtimeHost/Channel, and LoopbackWebSocketRealtimeHost/Channel public constructors with owned lifecycle tests.",
+              "source_finding_ids": [
+                "realtime-concrete-connectors-undefined"
+              ]
+            },
+            {
+              "action": "plan-change",
+              "canonical_finding_id": "native-turn-recovery-attribution-incomplete",
+              "rationale": "Freeze a field-complete RealtimeTurn source-of-truth, transaction/CAS boundaries, and crash convergence table before implementation.",
+              "source_finding_ids": [
+                "native-turn-recovery-attribution-incomplete"
+              ]
+            },
+            {
+              "action": "plan-change",
+              "canonical_finding_id": "authority-artifact-handoff-undefined",
+              "rationale": "Define a schema-versioned release manifest plus deterministic authority bundle, target locks, TypeScript import, consumer hash receipts, and frozen-binary package metadata checks.",
+              "source_finding_ids": [
+                "authority-artifact-handoff-undefined"
+              ]
+            },
+            {
+              "action": "plan-change",
+              "canonical_finding_id": "native-token-correlation-binding-not-persisted",
+              "rationale": "Persist one complete immutable native binding including correlation and conditionally consume only after an exhaustive field comparator passes.",
+              "source_finding_ids": [
+                "native-token-correlation-binding-not-persisted"
+              ]
+            },
+            {
+              "action": "plan-change",
+              "canonical_finding_id": "aiphone-production-assembly-scope-missing",
+              "rationale": "Scope application.py and voice_ui.py and add a production-assembly oracle that fails on legacy constructors/imports.",
+              "source_finding_ids": [
+                "aiphone-production-assembly-scope-missing"
+              ]
+            },
+            {
+              "action": "plan-change",
+              "canonical_finding_id": "simple-harness-local-route-contract-conflict",
+              "rationale": "Use only /ws/realtime-voice, place endpoint_path in the local authority artifact, and test frontend/backend/auth/open/close wiring against it.",
+              "source_finding_ids": [
+                "simple-harness-local-route-contract-conflict"
+              ]
+            },
+            {
+              "action": "plan-change",
+              "canonical_finding_id": "production-deploy-exact-sha-not-executable",
+              "rationale": "Scope deploy.sh/compose changes for expected and target SHA, backup hash, SHA-tagged retained images, migration/health/native+legacy smoke, and explicit rollback.",
+              "source_finding_ids": [
+                "production-deploy-exact-sha-not-executable"
+              ]
+            },
+            {
+              "action": "spike",
+              "canonical_finding_id": "barge-in-turn-overlap-assumption-unspiked",
+              "rationale": "Do not depend on undocumented ordering: prototype and exhaustively test a bounded two-slot CANCELLING predecessor plus NEW_PENDING successor state machine; retain a real metadata-only trace as S2 admission evidence.",
+              "source_finding_ids": [
+                "barge-in-turn-overlap-assumption-unspiked"
+              ],
+              "spike_ids": [
+                "SP-BARGE-OVERLAP"
+              ]
+            }
+          ],
+          "open_finding_ids": [
+            "sdk-harness-version-conflict",
+            "billing-currency-domain-unresolved",
+            "realtime-concrete-connectors-undefined",
+            "native-turn-recovery-attribution-incomplete",
+            "authority-artifact-handoff-undefined",
+            "native-token-correlation-binding-not-persisted",
+            "aiphone-production-assembly-scope-missing",
+            "simple-harness-local-route-contract-conflict",
+            "production-deploy-exact-sha-not-executable",
+            "barge-in-turn-overlap-assumption-unspiked"
+          ],
+          "plan_actions": [
+            "Revise architecture pricing and local endpoint authority, then revalidate packs and record architecture reset.",
+            "Revise S1 artifact, dependency-matrix, concrete connector, and local lifecycle tasks.",
+            "Revise S2 binding, durable turn, FX pricing, bounded overlap, deployment entrypoint, and crash/real-provider gates.",
+            "Revise S3/S4 production assembly, endpoint authority, provenance, and frozen-binary scopes.",
+            "Run three required disposable spikes and attach raw outputs before closure review."
+          ],
+          "required_spikes": [
+            {
+              "exit": "Python 3.11 and 3.13 clean environments resolve Harness 0.6.2 plus Memory 0.5.2 and run current service durable conformance/import probes without API failure.",
+              "id": "SP-SDK-MATRIX"
+            },
+            {
+              "exit": "Integer-only CNY-minor to USD-atom conversion and BPS margin produce exact frozen output and cancelled fixtures and conservative whole-cent hold bounds.",
+              "id": "SP-FX-ATOMS"
+            },
+            {
+              "exit": "All permutations of cancel, old terminal, new commit/response.created, late audio, duplicate terminal, and cancel-no-active converge without unbound response, duplicate hold/settlement, or cross-turn audio.",
+              "id": "SP-BARGE-OVERLAP"
+            }
+          ],
+          "resolved_finding_ids": [],
+          "source_cluster_ids": [
+            "cluster-sdk-consumer-entry-chain",
+            "cluster-release-artifact-compatibility",
+            "cluster-billing-currency-and-recovery",
+            "cluster-native-token-binding",
+            "cluster-barge-in-provider-ordering"
+          ]
+        },
+        "recorded_at": "2026-08-27T23:56:31+0800"
+      },
+      "target_file": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/plan.md"
+    },
+    {
+      "acceptance_snapshots": [
+        {
+          "path": "/Users/denny/projects/simple-harness-service-sdk/acceptance.md",
+          "recorded_at": "2026-08-28T00:31:57+0800",
+          "sha256": "191cfa086b893b5327441af3b9b5f3d2852ec97e06bc58f5b36b31f9e4ee4e3f"
+        }
+      ],
+      "baseline_hash": "0fd4c770a22d4aa2a3ecf4e54a2173320fd34a0efc928dcdf0bae38bbdb483bf",
+      "contract_snapshots": [
+        {
+          "acceptance_ids": [
+            "AC-1",
+            "AC-2",
+            "AC-3",
+            "AC-4",
+            "AC-5",
+            "AC-6",
+            "AC-7",
+            "AC-8"
+          ],
+          "acceptance_sha256": "191cfa086b893b5327441af3b9b5f3d2852ec97e06bc58f5b36b31f9e4ee4e3f",
+          "assurance_ids": [
+            "ADV-UNTRUSTED-CLIENT",
+            "ASSET-BILLING",
+            "ASSET-COMPAT",
+            "ASSET-CONTENT",
+            "ASSET-CREDENTIALS",
+            "ASSET-SESSION",
+            "FAIL-BILLING-DUP",
+            "FAIL-CLOSE-CLASS",
+            "FAIL-CROSS-SESSION",
+            "FAIL-LOG-LEAK",
+            "FAIL-OVERSIZE",
+            "FAIL-PROTOCOL-DRIFT",
+            "FAIL-TOKEN-REPLAY",
+            "FAIL-VERSION-SKEW",
+            "OOS-HOST-COMPROMISE",
+            "OOS-LOCAL-MODEL",
+            "OOS-OPENAI-LIVE",
+            "OOS-PROVIDER-OUTAGE",
+            "OOS-WEBRTC-SIP",
+            "TRUST-ARTIFACT",
+            "TRUST-DEV-HOST",
+            "TRUST-PROVIDER",
+            "TRUST-TLS"
+          ],
+          "path": "/Users/denny/projects/simple-harness-service-sdk/assurance-contract.json",
+          "profile": "standard",
+          "recorded_at": "2026-08-28T00:31:57+0800",
+          "scope_hash": "5c37e1f348a16f1afd8c8d400377f0167cc95276095aa4467ba4cf6fd8cab1b6",
+          "sha256": "a76bb6aded2d0753af9f74cfdac93769d50d5526542a657e30d714c08a13f314",
+          "threat_model_hash": "716fd53fe797f6d588fb74194099a15e69e0f65e353e57f40f15208825b27af3"
+        }
+      ],
+      "control_events": [],
+      "limits": {
+        "hard": 8,
+        "soft": 3,
+        "user_review": 5
+      },
+      "loop_id": "plan-rollover-followup-002",
+      "loop_type": "plan-rollover-followup",
+      "orchestration": "legacy",
+      "rounds": [
+        {
+          "based_on_plan_hash": null,
+          "coverage": {
+            "acceptance_coverage": true,
+            "data_flow_and_persistence": true,
+            "entry_and_trust_chain": true,
+            "failure_and_recovery": true,
+            "identity_permissions_concurrency_cleanup": true,
+            "release_and_rollback": true,
+            "tests_and_evidence": true,
+            "trusted_boundary_stop": true
+          },
+          "findings": [
+            {
+              "assurance_contract_ids": [
+                "FAIL-VERSION-SKEW",
+                "ASSET-BILLING"
+              ],
+              "evidence": "The reviewed plan and authority now close the patch-induced short-validity risk: append-only ACTIVATE/DEACTIVATE events determine eligibility before deterministic 35-minute-horizon selection; realtime-wallet-pricing-lifecycle.ts owns startup/mint/health/preflight checks, fake-clock deduplicated 7/3/1-day alerts, staging, overlap and append-only rollback while old sessions retain the mint snapshot.",
+              "id": "wallet-pricing-revision-rollover-undefined",
+              "origin": "patch-induced",
+              "root_cause": "The first negotiated wallet revision originally entered the design without an executable successor, selection, alert and rollback lifecycle.",
+              "scope_relation": "in-scope",
+              "severity": "P1",
+              "status": "resolved",
+              "violated_acceptance_ids": [
+                "AC-3",
+                "AC-7"
+              ]
+            }
+          ],
+          "new_critical_findings": 0,
+          "plan_hash": "0fd4c770a22d4aa2a3ecf4e54a2173320fd34a0efc928dcdf0bae38bbdb483bf",
+          "review_mode": "breadth",
+          "reviewer_verdict": "PASS",
+          "round": 1,
+          "scope_hash": "5c37e1f348a16f1afd8c8d400377f0167cc95276095aa4467ba4cf6fd8cab1b6",
+          "threat_model_hash": "716fd53fe797f6d588fb74194099a15e69e0f65e353e57f40f15208825b27af3",
+          "timestamp": "2026-08-28T00:32:06+0800"
+        }
+      ],
+      "specialist_challenges": [],
+      "started_at": "2026-08-28T00:31:57+0800",
+      "status": "CONVERGED",
+      "target_file": "/Users/denny/projects/simple-harness-service-sdk/plans/realtime-provider-program/plan.md"
+    }
+  ],
+  "challenger_engine": "current",
+  "compiled_manifest": null,
+  "created_at": "2026-08-27T23:32:42+0800",
+  "declared_statuses": [],
+  "delivery": {},
+  "doc_only_globs": null,
+  "events": [],
+  "evidence": [],
+  "exclusion_scope": [
+    "plans/realtime-provider-program/verification/plan-iteration-20260827"
+  ],
+  "executor_engine": "current",
+  "external_run_dir": false,
+  "fixture_only": false,
+  "integrity": {
+    "chain": "05fb087d60309e7047a5177863176e1bb9d7c397bb739c7a1737f6258ff60d28",
+    "genesis": "1cb6d1bba01b75ae54ee28dbaa210281ce1f871184c8a3bd5a3842835d100207",
+    "log": [
+      {
+        "at": "2026-08-27T23:32:42+0800",
+        "chain": "8847a3a4089bed4202cd9b63fb48b7fb42ed3336eab1d7db945679e14baf96a7",
+        "facts_digest": "be56e95bbdc376f05771c29f9e96810249dcdeb105f5e5df07cc2380f72a86d2",
+        "op": "init",
+        "seq": 1
+      },
+      {
+        "at": "2026-08-27T23:32:42+0800",
+        "chain": "a804c1affcb9cfe127e2a20095b846e7cb71bc3c7f0c5140b48641bf567da073",
+        "facts_digest": "a2f5ced53d71d4d55d00b0b4bd45c342cf3ca217da4738ea610442817bf4dcc6",
+        "op": "start_challenge_loop",
+        "seq": 2
+      },
+      {
+        "at": "2026-08-27T23:44:42+0800",
+        "chain": "9cfe61ec89796bf9d28f1ebe65f0414d11000804c021bf26c254289fedb435c3",
+        "facts_digest": "7afc7fe35e0473695879321c63229addb688cfe9b52f461e2fece56b3eb08b36",
+        "op": "record_challenge_round",
+        "seq": 3
+      },
+      {
+        "at": "2026-08-27T23:44:42+0800",
+        "chain": "79afd41987c1b421da088d6b96f32b97978815cdb0fa19c8bdec7b156389d117",
+        "facts_digest": "5558f7c9eaf4cf2b440b405be3821db2f313e76c633187d6a9f168c102647363",
+        "op": "record_challenge_clusters",
+        "seq": 4
+      },
+      {
+        "at": "2026-08-27T23:49:12+0800",
+        "chain": "264885d81b43c4ece808b30971c06fa9045637714ce7c4df2e255663e77f7807",
+        "facts_digest": "38af0529c5331cdc472dc8f85c2a696ee5d85b14afb8e6a7f2e291beb29b38d1",
+        "op": "record_specialist_challenge",
+        "seq": 5
+      },
+      {
+        "at": "2026-08-27T23:50:54+0800",
+        "chain": "caf5240dafe0af392bf688289198bf52b769201eee4d025177095e310acaa800",
+        "facts_digest": "ae8c8699135aeb1eafc9223e8643973afe9757f17b5c5c76c74a91fa4ecc53b5",
+        "op": "record_specialist_challenge",
+        "seq": 6
+      },
+      {
+        "at": "2026-08-27T23:50:54+0800",
+        "chain": "4f2f071d37c6c959f2bac7d07aa9638b4e9e18d333944ec28ece7837850c15a4",
+        "facts_digest": "1e0788958cdc1cd976fc8c6c0c68cdb8f6f0627c118ca2ff5d841a6be229d584",
+        "op": "record_specialist_challenge",
+        "seq": 7
+      },
+      {
+        "at": "2026-08-27T23:51:52+0800",
+        "chain": "975ed72f065a67dd3cca76eb13591124d66b0a6cc918db9dd5867ffb7d04d099",
+        "facts_digest": "16a0f92be0ddd67c552c4d4401f654498fe76681792f43410f8989b96ba27a76",
+        "op": "record_specialist_challenge",
+        "seq": 8
+      },
+      {
+        "at": "2026-08-27T23:54:10+0800",
+        "chain": "ac18345f390bf9c123bfb2246b38bb0069e12fc4109226b364c57fdd8986a2d1",
+        "facts_digest": "bb7efa7a3d81e3a85e380cbf4758992ec9f5cc3a37e2055fc1bc489389c81ca6",
+        "op": "record_specialist_challenge",
+        "seq": 9
+      },
+      {
+        "at": "2026-08-27T23:56:31+0800",
+        "chain": "6fe89d6401f6383b2793f48c7d312540e7edd8f3659d6e2032d89be0c34c56e2",
+        "facts_digest": "12fd343776a5724dbe5fd4a64c02225ab8ede27ae9d79147b2bfd586a17a631a",
+        "op": "record_challenge_synthesis",
+        "seq": 10
+      },
+      {
+        "at": "2026-08-28T00:31:34+0800",
+        "chain": "decc3137ae42239532e2b108db8766d5e9b442cfc8df7c48bcb32e6431c18771",
+        "facts_digest": "2fc291e9aa86b92fb4128ebb895c414d7df5d874ff7b72e0a7de224bff5fb68d",
+        "op": "record_challenge_round",
+        "seq": 11
+      },
+      {
+        "at": "2026-08-28T00:31:57+0800",
+        "chain": "3bbd4d98f12338ee4baecb80dfe9f3eba2a5da52f03f445a1518b49dcdbffa7a",
+        "facts_digest": "43ae34d2851b6d84e8af65b7d1329bb56f627c0deb8658385a890e8d622f6b76",
+        "op": "start_challenge_loop",
+        "seq": 12
+      },
+      {
+        "at": "2026-08-28T00:32:06+0800",
+        "chain": "551e1e40c328e9417ab8132c7b613d31919396ad783950c526fdea0c33fa2f5b",
+        "facts_digest": "2e0acf5b01b7a40566b20637b2d060fc3ffdf79d07e241c680f8f37e6da17e22",
+        "op": "record_challenge_round",
+        "seq": 13
+      },
+      {
+        "at": "2026-08-28T00:54:33+0800",
+        "chain": "05fb087d60309e7047a5177863176e1bb9d7c397bb739c7a1737f6258ff60d28",
+        "facts_digest": "e07083ce381aae151ca75a83d02b7b0f8a6c9bfe77ffadf518f5f3a3c1004ea8",
+        "op": "record-approval",
+        "seq": 14
+      }
+    ]
+  },
+  "related_run_dirs": [],
+  "release_unit": {
+    "high_risk_subsystems": 4,
+    "must_ac_count": 8,
+    "plan_lines": 374,
+    "program_plan": true,
+    "slice_count": 4,
+    "task_count": 20
+  },
+  "repo_root": "/Users/denny/projects/simple-harness-service-sdk",
+  "revision": 14,
+  "run_id": "realtime-provider-program-plan-iteration-20260827",
+  "runs": [],
+  "runtime_attestation": {
+    "content_digest": "45761d80fe058862addbc2a0526d6a862d28f9db1dc49c5ecdc6088ad25f65ee",
+    "content_entries": [
+      [
+        ".github/workflows/ci.yml",
+        "-:de00a129d0b225359c0597f9a5fa6d04330bba19269dc09d6399dea47f7003c1"
+      ],
+      [
+        ".gitignore",
+        "-:cbb24e28ce5f5dc2ae55b1fecd490ec3913e41e32117ec10c1f6b9c5e17f2b8f"
+      ],
+      [
+        "ARCHITECTURE/ARCHITECTURE.md",
+        "-:18fd2145bcff795d158f4382d8ca2774a514bfdac5f43a3fdfbbc93abc0f186a"
+      ],
+      [
+        "ARCHITECTURE/index.md",
+        "-:76dc5c2f42e864f190da972907c77e72b3dc401173536f5a294ca16cbf026034"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/SHA256SUMS",
+        "-:cc2ebafd90ac1109bc2f0dce2e95a5c93408e8f3c62e14bc4ee6551878ac8109"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/client-audio-append.json",
+        "-:b534d7bce652d864b530eb5ab7761b2c060f1372dae6aa5085d5adb23ebe9a6c"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/client-lifecycle-sequence.json",
+        "-:402c0806cc52ad387dfec24a72577f30d5935c38d434df46e31192ce9307663b"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/client-response-cancel.json",
+        "-:4967d0a02d8c52ccfa99b9130281344ae647b8c3a813ee6801c869f2b663aebd"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/client-session-update.json",
+        "-:ebc6862085d19c62f02e806585312a85e8d4fc280365eac74c7e3b07aeeeacfc"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/client-tool-result.json",
+        "-:9928836c9618c5c4864a43f20a959bb6e746bd7f8568949a233bfb095fa9cc75"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/client-truncate.json",
+        "-:64ec28621e93f60d7d5983b018d09d75332972e3c7b5d8f0e1f9f4db63e2ff06"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/error-mapping.json",
+        "-:619d0fede9007247168da3897d2a00f3e0afaf637a9ba4e26c49ac76056e25ea"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/manifest.json",
+        "-:d55c5b9f5c1813bbdc97997f750eac6a98d1f85cdd020c32d43d7358ac49f2b2"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/negative-cases.json",
+        "-:631ff4c9a4b4b633f530a483066dcc8b568132664c3b5b4effbd91898be87568"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/server-audio-delta.json",
+        "-:5a438361b8ea9b866aa38f7b23058df47f9bf1e2b726605a48ee81368b3c3e4d"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/server-error.json",
+        "-:f4e74a852ab96788524e2951f53b98066907a66ea49022085a644c3fc9388d3b"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/server-lifecycle-sequence.json",
+        "-:cb5e90221bc96ce7c50459b1f14467dbf5e78ba2f039c1886c0af78558dc4679"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/server-response-done.json",
+        "-:c7643e555dedaf713534add80f0ad0a56e21ab74bb7befc8668a45557ffd3f30"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/server-response-terminal-matrix.json",
+        "-:e00cabe3401a9d85a77f7d179f5d129daabf498fe22a5c3aee3385b84c37d3e2"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/server-session-created.json",
+        "-:c2e0c56c91a801a568571a18a2779e43b1ce198f9cdb2e38bba639873dca1cc6"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/server-tool-call-done.json",
+        "-:766d8536c29cd4e910ae73da690792c5180fed93b60d8540d45a54f97ca41354"
+      ],
+      [
+        "ARCHITECTURE/protocols/openai-native-2026-08-27.1/tool-round-trip.json",
+        "-:fe6a185945af6b5fb633cfc00a67c9f06da9efc5b7ff8ea0333776776332be24"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/SHA256SUMS",
+        "-:6d2f5ae4e1b0a86ca2c3d9ebd08b15cf2dbfe2489e6d617daa75ec625e3aae2b"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/client-audio-append.json",
+        "-:f97fce19519e098ab6f6c3ae29a6e04a9aca4ee9321531281fda865ac54139ea"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/client-lifecycle-sequence.json",
+        "-:3461a1bb57e4854e49f6a63b4147ac6746b502cc836147aa8b6787a70c65ee44"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/client-response-cancel.json",
+        "-:2ab45755b767e658e9bf7f87d92081f858f2827e608889f45f493372dac337d8"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/client-session-update.json",
+        "-:1f2c31a849a9689c098a7dc7aca6e5e8a57f238163f0ce98463098d18defb7b1"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/client-tool-result.json",
+        "-:40332d3901f6664e120c0b4034541f0303192d3aa936cc6a593fbea6d00701d6"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/error-mapping.json",
+        "-:a9fbbef809e5cc60bd709e3b78fa31c37a2658356c6795ad6e7bcc987058c7c2"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/manifest.json",
+        "-:52b5f389dd07bc7a5c4c8f9c75649766b3b0a3b526477fa31c682a073251d347"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/negative-cases.json",
+        "-:ee89cf7c1d9cf5956afd038d5eee47cd1a51c35c5270ab26b493c8d19156a5eb"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/server-audio-delta.json",
+        "-:50b331b091d37428c1ec41ab6923c8151223638803a897f4b8700aec11989bf6"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/server-error.json",
+        "-:6a8b089873b1e8ec4f7eb720f9816bd2da9353a9651a31c64e0ace12efe57be4"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/server-lifecycle-sequence.json",
+        "-:2149ff49275c59e952670ddb3e39ad1d8b0dc8fe1fd992a8b9f63f65fb905463"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/server-response-done.json",
+        "-:217411a07b241939d7bd449364fa2d1ba4e93afbaa2ff325542dfe39b4cdcdd6"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/server-response-terminal-matrix.json",
+        "-:dab9677027b3aec2b57654831c992c6b8b1a8ad9f21a454709b2f354444b95ab"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/server-session-created.json",
+        "-:15c5c47bfe1db670016289bd2d59a6ef81e16ca4dc43ce64833cb5c500ebb26c"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/server-tool-call-done.json",
+        "-:ef1df0024583824a737598d0762267e0e9bad074d8c6d07fb02c5cbd53f032b7"
+      ],
+      [
+        "ARCHITECTURE/protocols/qwen-native-2026-08-27.1/tool-round-trip.json",
+        "-:fa63ac5a2a98f3b0b09a42ce7992bda2c2ba4a7e06c2c8d0df622850fc5f3121"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/SHA256SUMS",
+        "-:f13813b8986b6cc70fcda3b587af783dfcee0e51d41f7a7f55c1447e23caffc3"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/audio-ack.json",
+        "-:6e7bae4d1781fe4d6d232fb31d488c8106c5eb7f034a6da41969e3c8a04ad09f"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/client-auth.json",
+        "-:ff7b6f8c1ac368aa96d8e1822118fdf9ecc4511abddb477272ec10a019c8522d"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/client-barge-in.json",
+        "-:9c4e77d83095c3e2c84051fb68e562aa56bf91a1f4983482fdb46eff3fa9cf1f"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/client-call-start.json",
+        "-:456d9b1eb492f42ecbed17191a317656b698c16fc018785f46de16320e8e5896"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/client-call-stop.json",
+        "-:c65a4c9a5396c63d491b7b627f6b33144a12a96fcb5a987f2e6e4eacf4e9360a"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/client-hello.json",
+        "-:9a30913f7e933790a0d75adf3a0ceb82a9bcfb6a8f184e274c0b53638e22b87a"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/input-audio-frame.json",
+        "-:c638fb0ca45c458d634e4d0dbe619b25abfae441e946a173a9bf688698194a8e"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/manifest.json",
+        "-:6f2a37b67e430ebd923b485cb2c4dcd56b8a0a4d40a34b3b7cdbc0a810023dc3"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/negative-cases.json",
+        "-:f4824626ddb43dd9cad136a190fa8982d3a4b852345fd24563bbf4d80ac77bce"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/output-audio-frame.json",
+        "-:373bbf35c12273713b38bd0e744429477718a4763943fb3c0bd3eeb6be142cdc"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/scenario-call-lifecycle.json",
+        "-:d77489be359b58632b6914a3a4c249d0d1b17885e8bc195a8d533f37351ac4dc"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/server-call-closed.json",
+        "-:3a02168e6a013d5fe1b00c4aea7f7e2c171c0d2b08e1683d68bbd3cc2421e13e"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/server-call-error.json",
+        "-:1922c70ab214b2c84859d9a7bff33e6cf3c1a9343745b322e89310aec3e3fc80"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/server-call-event.json",
+        "-:280e163980b469587c2b71dc7f6f60b2399aed50ab6a392b5e51cdce37b0e592"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/server-call-events.json",
+        "-:79121d3ba440135492d8fdf192f8dbaa790bf42c5157f318847d6ddc8e421c65"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/server-call-ready.json",
+        "-:5b92abbcb5f2494e201d0c143c0de4c9c3f2e67a5b23ce14dec3289c0ff40cdb"
+      ],
+      [
+        "ARCHITECTURE/protocols/realtime-local-2026-08-27.1/server-call-state.json",
+        "-:ff284b65a5d74ad16104f2ba9530a8180a3626921913901cead73edc1b24a29f"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/SHA256SUMS",
+        "-:6d1c9671b39d44a8569857292a1daabc17093798180e0428a82cc27a6efd5c3f"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/capability-manifest.json",
+        "-:178c53ad96cbcf887e923b846fd9a8b44a1c360444bb73a7c8678ef37e436cb5"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/client-session-close.json",
+        "-:d3723d8c25dbf660442418cbbc5facaa41e769e6d974e3b3e5abe83e3ffe5445"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/client-session-open.json",
+        "-:be3b1b3e7e23fb2c68b6d5165e507d1f742c0ce17392ba811f400925ace853b0"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/manifest.json",
+        "-:c8814ff53f4b24b470667cef0a8022dd82ab5381f6814ffcb9ab1c871bb62dec"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/mint-request.json",
+        "-:a3278545fe6d0c16e70e3ea9a181acf43323549240b76c940284df4f313fe928"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/mint-response.json",
+        "-:e48ca184dc1f1da800461807ad8b67ce2b35ed0adf49db4db81e594ae0501faf"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/negative-cases.json",
+        "-:c266692e98ec4c981e1c9e7cc7391660d6ec79b2783aa24f3d79d44f0a3094ea"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/scenario-controlled-close.json",
+        "-:50148498f9917ddd61c8b4452a2048c39dc2e491d9a4fa880b51396fd6289435"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/server-error.json",
+        "-:56b532a427d2229f101f29f90eb1eda49ebc935e7d08d19337a7966219244ec2"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/server-session-closed.json",
+        "-:672d640ed5aec9beed38c433b38f83245c905be7641f1ca2cf316cf7a459792d"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/server-session-created.json",
+        "-:2c9ae48b621b83093865e627d65be42be8ba2e3fbe15508f2b8f4daad305ebe4"
+      ],
+      [
+        "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1/server-session-expiring.json",
+        "-:f896f3e4752e247bb7f72de265131f4587d4597a6bf51bfcd89182d9eef785ca"
+      ],
+      [
+        "CHANGELOG.md",
+        "-:b392ecb2852091087c653cdeed6293dc75e0e47988175f9a414b61c2691ac46c"
+      ],
+      [
+        "INTEGRATION_STATUS.md",
+        "-:692d204f6daac717f330da30c356604e778a4dc2cffa36036ac8f85dfff3eb27"
+      ],
+      [
+        "LICENSE",
+        "-:baef8139257b04e7c7ed0bbb93686a94265e5d0d048dafcdbbfeb53db70b7b34"
+      ],
+      [
+        "NOTICE",
+        "-:70089ce96ff8d0fe1d2af452df35f2503da2939b90fb7b41b4d734f57fa6738c"
+      ],
+      [
+        "README.md",
+        "-:2b3560d61d9d96333d44a28f650b7991970e497b4b2c73eddb892ff61b5a9a9e"
+      ],
+      [
+        "RELEASE_RECEIPT.json",
+        "-:d830898143f0ba0241571f2add02919f981e234f0624063810e1d1948b79ad26"
+      ],
+      [
+        "acceptance.md",
+        "-:191cfa086b893b5327441af3b9b5f3d2852ec97e06bc58f5b36b31f9e4ee4e3f"
+      ],
+      [
+        "assurance-contract.json",
+        "-:a76bb6aded2d0753af9f74cfdac93769d50d5526542a657e30d714c08a13f314"
+      ],
+      [
+        "docs/build-and-release.md",
+        "-:f63cfc2eaba0dad91c62283695a970f9bda1814b6b84df9977b90cab6dce6160"
+      ],
+      [
+        "plans/realtime-provider-program/plan.md",
+        "-:a5595de7c92132a5f5c742d223583860dc12e1569445c8949e1f520a5dc300b7"
+      ],
+      [
+        "pyproject.toml",
+        "-:36fc7470211caf7ecc28497b27fcdce2825140fa1d65a7e5dec37dc41385a53f"
+      ],
+      [
+        "scripts/build_candidate.py",
+        "-:02ce1cd8938b74b7dacdce99af00321129884131abd3bdfd381abb0f82894683"
+      ],
+      [
+        "scripts/check_architecture.py",
+        "-:07adefa2fc8053736e61589ac866754131a317fa29b9e15622ded321441ea742"
+      ],
+      [
+        "src/simple_harness_service/__init__.py",
+        "-:8c378511bd9bae2c887bbe5a21d2e2fff79b4e0a28e58bf862d5272d8010f62f"
+      ],
+      [
+        "src/simple_harness_service/auth.py",
+        "-:b62f7a21aee610842d015a8be2d8c175a036a6ea02e58c5e41090fca954c6c47"
+      ],
+      [
+        "src/simple_harness_service/bom.py",
+        "-:26d800fd0c75e906d841bc4ac3ae69806ce223a609b9a8041c2ce6f72f69eadf"
+      ],
+      [
+        "src/simple_harness_service/chat_controller.py",
+        "-:cabb0a258b362d9d331b1db55e8d0b3abf1c970359602597ae28aed918470e6b"
+      ],
+      [
+        "src/simple_harness_service/cli.py",
+        "-:18ddf40765d5c41af2d8d041ecf62d71e2bc2c08796f6d9ac172a4e515eaa327"
+      ],
+      [
+        "src/simple_harness_service/client.py",
+        "-:d1b2464f8b6c622a37613dceabb794dc4f1329aaa593e44ba45916e57b63f421"
+      ],
+      [
+        "src/simple_harness_service/codec.py",
+        "-:d8c6a06e5d7a449465fee4503a1c8a6e7dd67001c237d44bcc350060c788ff6f"
+      ],
+      [
+        "src/simple_harness_service/compatibility-bom.json",
+        "-:a695316c9a8c4c963ca5b533128a2a390683bf9ae443d12799e01a80c505783e"
+      ],
+      [
+        "src/simple_harness_service/contracts.py",
+        "-:469737691a111fe56654773d8d9545c116b29e7ec5d9ac127911bd6ce4517267"
+      ],
+      [
+        "src/simple_harness_service/credentials.py",
+        "-:165e31e9841e02db6d6d2666237a2ee15bfc6bd92fedd68bc8c33a172a7a4606"
+      ],
+      [
+        "src/simple_harness_service/identity.py",
+        "-:0b9acdae26b6a76d3272bce8aaa6cece188c64d6ac1b4406c450fa3fe3dae0fb"
+      ],
+      [
+        "src/simple_harness_service/py.typed",
+        "-:01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      ],
+      [
+        "src/simple_harness_service/service.py",
+        "-:5392fd67005dfc2a2cba8f9046afbd26e1ceee196d65da1364ae4f55ad61ca6d"
+      ],
+      [
+        "src/simple_harness_service/terminal_ui.py",
+        "-:89e468cfc70d0d319b84c4a49d5ee84e13eb8a513cf34b7a7ef425a71ff7ccab"
+      ],
+      [
+        "src/simple_harness_service/testing/__init__.py",
+        "-:6c04c70494163276980d252ddba7eddd92a57cefa0140da1050e855b0abd66b9"
+      ],
+      [
+        "src/simple_harness_service/testing/agentos.py",
+        "-:cfab9c37a3ec87d592679dd5760f4ca390524b4d7bcff921576c6ca65011f253"
+      ],
+      [
+        "src/simple_harness_service/testing/conformance.py",
+        "-:ec70f81103905045d0b5cb7ba20808c0b7918c8461ba75f6aad9ec38a444fbeb"
+      ],
+      [
+        "src/simple_harness_service/text_rendering.py",
+        "-:faeac77686a9584ab79e9cb8e54c8c03d6657d8cdac84142bbf5b90f00ea94a1"
+      ],
+      [
+        "src/simple_harness_service/transports/__init__.py",
+        "-:8d8339ffea7148217ed067467711fa264fc2bf49c7f9415f77c04a73e994b98c"
+      ],
+      [
+        "src/simple_harness_service/transports/unix.py",
+        "-:025aa71b92dd4322072a487fe3fe8340290945a8cfce40224bb3e44a98d9c3b9"
+      ],
+      [
+        "src/simple_harness_service/version.py",
+        "-:f2dcd426fd2f4e56e4d28574da0fcb395d9f96e3164e09f8ecfd828d9ca89c33"
+      ],
+      [
+        "tests/public-api.json",
+        "-:194758571152365a195e13d7007048da42e656515d1e2bd6c4854faeeebb728f"
+      ],
+      [
+        "tests/test_agentos_fixture.py",
+        "-:35aa0c7a7c15400b97c93e2f21b8ff190311003ecab50c268e5d2ba113c90253"
+      ],
+      [
+        "tests/test_bom_architecture.py",
+        "-:f856ac1d234f365e2810600fb54ca8c94a6a5b7ac496a5c0cd87f220b8e48d2b"
+      ],
+      [
+        "tests/test_chat_controller.py",
+        "-:95864880dc900f99da09163da63fab327a25188726b7908e99dcedab121b2fc6"
+      ],
+      [
+        "tests/test_cli.py",
+        "-:2ec1a5d507d6fb18fd8e4edcf6a6a71a3dca05f35d14506c0096dbf6ad0c2751"
+      ],
+      [
+        "tests/test_codec.py",
+        "-:1f0768187775ceaef17e6efe83911abaaa49476fba8f5fe0e79542e2e7984eda"
+      ],
+      [
+        "tests/test_conformance_kit.py",
+        "-:59997292e83ee12aa2d1699f4288af8285b87cb12c6849052d3f91be3b073165"
+      ],
+      [
+        "tests/test_credentials.py",
+        "-:26d6447eb36d1ec92bde9d37cb6c6bc165675aa94246724d51a367e26a09c6de"
+      ],
+      [
+        "tests/test_identity_auth.py",
+        "-:64e4be1afbcbe936d63a158cd8035b7efe987bfdfdfb48d5bc506c2be47896b3"
+      ],
+      [
+        "tests/test_real_harness.py",
+        "-:0fea2b2727b0aa152295e35f46cf6e4d6310fb81136b2b7928dec8e3793a4c8f"
+      ],
+      [
+        "tests/test_service.py",
+        "-:a717363cf30775e8b935a86389ad5a991508f7f376d49a62f246be9387fa5e19"
+      ],
+      [
+        "tests/test_terminal_ui.py",
+        "-:7c69bc860084178c02398960a63f3b953ac05ec7600d818ebbaacf822817099e"
+      ],
+      [
+        "tests/test_text_rendering.py",
+        "-:730b2e913be83442ab0dcbb625d65c5537f42194e9d38fcf81224ea31c72b705"
+      ],
+      [
+        "tests/test_unix_transport.py",
+        "-:a719f74121ef91459eef14062a3261140e2613c09840ceb26d9de9218f6e48bd"
+      ],
+      [
+        "tests/test_wheel_contract.py",
+        "-:01f0f3fe99ff9a5c7a5fc47ced85d1c8f99416ae1ada926464e50e8bbe0c2c50"
+      ],
+      [
+        "uv.lock",
+        "-:81dab701cbf946eedc324213db8bacc720c55de633d4f9b59557ee12da77b4c4"
+      ]
+    ],
+    "dirty_patch_sha256": "6c3d7bcb365b28b3687e7c1164021769698ab27f88c14da4d9444bf77aca05b1",
+    "exclusion_count": 1,
+    "exclusion_scope": [
+      "plans/realtime-provider-program/verification/plan-iteration-20260827"
+    ],
+    "exclusions": [
+      [
+        "plans/realtime-provider-program/verification/plan-iteration-20260827/plan-challenge-manifest.json",
+        "declared-scope:plans/realtime-provider-program/verification/plan-iteration-20260827"
+      ]
+    ],
+    "head": "f966c6c3ca7d36f5cebb88656334871b8451c3e6",
+    "recorded_at": "2026-08-27T23:32:42+0800"
+  },
+  "scenarios": [
+    {
+      "gate_type": "structural",
+      "required": false,
+      "scenario_id": "PLAN-ITERATION",
+      "ui": false
+    }
+  ],
+  "schema_version": "1.5.0",
+  "source_request": {
+    "inline": true,
+    "sha256": "6bcce0ac24ed0104358acc742d6573564ef547e74be750a2e7d06c41fb7dbee4"
+  },
+  "structured_audit_required": false,
+  "testcase_lock": {
+    "files": [],
+    "locked_at": null
+  },
+  "thresholds": {}
+}

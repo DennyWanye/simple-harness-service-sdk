@@ -1,0 +1,28 @@
+{
+  "schema": "simple-harness-service-realtime-targets-v1",
+  "dependency_cutoff": "2026-08-27T23:59:59Z",
+  "rollback_service_sdk_version": "0.2.3",
+  "targets": [
+    {
+      "id": "simple-harness-py311-macos-arm64",
+      "consumer": "simple-harness",
+      "python_version": "3.11",
+      "python_platform": "aarch64-apple-darwin",
+      "artifact_role": "isolated-real-tauri-runtime"
+    },
+    {
+      "id": "simple-harness-py311-windows-x86-64",
+      "consumer": "simple-harness",
+      "python_version": "3.11",
+      "python_platform": "x86_64-pc-windows-msvc",
+      "artifact_role": "pyinstaller-production-runtime"
+    },
+    {
+      "id": "aiphone-py313-linux-aarch64",
+      "consumer": "aiphone",
+      "python_version": "3.13",
+      "python_platform": "aarch64-manylinux2014",
+      "artifact_role": "droidian-agent-runtime"
+    }
+  ]
+}

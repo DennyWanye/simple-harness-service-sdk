@@ -1,0 +1,72 @@
+{
+  "run_id": "realtime-provider-program-plan-iteration-20260827",
+  "source_request_text": "按照统一 service-sdk API -> TokenSeller Qwen-native Realtime relay -> 原生 Qwen Omni Realtime WebSocket 架构实施，并为未来 OpenAI Realtime 保留不侵入产品和 Qwen adapter 的扩展点；用户已批准 Realtime Provider Program 验收标准与四个 release slice。",
+  "acceptance_file": "acceptance.md",
+  "assurance_contract": "assurance-contract.json",
+  "baseline": {
+    "head": "f966c6c3ca7d36f5cebb88656334871b8451c3e6",
+    "dirty_patch_sha256": "42639f4d0fa462a4fb1d4cb48380139e81f642a5866c983fb53e578c85ada82e"
+  },
+  "behavior_contract": {
+    "terms": [
+      {"term": "Realtime session", "meaning": "One ephemeral full-duplex media connection; it is not a durable Harness Session or Run."},
+      {"term": "Provider adapter", "meaning": "The only owner of one Provider native wire contract."},
+      {"term": "release slice", "meaning": "An independently committed, tested, rollbackable delivery that consumes only immutable earlier artifacts."}
+    ],
+    "before_after": [
+      {"surface": "AIPhone", "before": "Product owns mint, WSS and Provider event mapping.", "after": "Product owns device audio and UI; service-sdk owns Realtime protocol/session."},
+      {"surface": "Simple Harness", "before": "Legacy local voice is disabled and Realtime is absent.", "after": "A single phone-style Realtime UI consumes the same service-sdk."},
+      {"surface": "TokenSeller", "before": "Legacy GA-shaped relay maps to an older Qwen beta wire.", "after": "Legacy remains; a versioned Qwen-native route shares control-plane authorities."}
+    ],
+    "preserved": [
+      "TokenSeller 2026-07-voice-v1.1 endpoint",
+      "Text Chat and durable Harness command authority",
+      "Product ownership of microphone, playback, UI and policy",
+      "Long-lived Provider credentials remain server-side"
+    ],
+    "removed": [
+      "AIPhone product-owned Provider wire codec",
+      "Extra manual start-speaking action in the phone-style UI"
+    ],
+    "approval": {
+      "user_message_sha256": "c203cdfcf1a2352e996b6786e0924c1641da5fe658fb9de4d23700d50d9ad8b9",
+      "approved_at": "2026-08-27T00:00:00+08:00",
+      "scope": "Realtime Provider Program acceptance criteria and four release slices"
+    }
+  },
+  "scenarios": [
+    {
+      "scenario_id": "PLAN-ITERATION",
+      "required": false,
+      "ui": false,
+      "gate_type": "structural"
+    }
+  ],
+  "executor_engine": "current",
+  "challenger_engine": "current",
+  "applicability": {
+    "input_sensitive": {
+      "value": true,
+      "decided_by": "agent",
+      "rationale": "真实语音语义、打断时机和多轮上下文都会改变产品及 Provider 终态。"
+    },
+    "llm_payload_driven": {
+      "value": true,
+      "decided_by": "agent",
+      "rationale": "Provider 的流式 transcript、audio、tool 和 terminal 事件直接驱动产品状态机。"
+    },
+    "stateful_init": {
+      "value": true,
+      "decided_by": "agent",
+      "rationale": "首次 wheel 注册、ephemeral mint、adapter capability 与隔离 userdata 冷启动均属于验收范围。"
+    }
+  },
+  "release_unit": {
+    "must_ac_count": 8,
+    "task_count": 20,
+    "plan_lines": 374,
+    "high_risk_subsystems": 4,
+    "program_plan": true,
+    "slice_count": 4
+  }
+}

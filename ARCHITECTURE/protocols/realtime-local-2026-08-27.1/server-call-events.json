@@ -1,0 +1,16 @@
+{
+  "kind": "call_event_variants",
+  "messages": [
+    {"type": "call.event", "generation": 1, "event": {"kind": "SpeechStarted", "turn_id": "turn_fixture_1"}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "SpeechStopped", "turn_id": "turn_fixture_1"}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "TranscriptDelta", "turn_id": "turn_fixture_1", "text": "Fixture"}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "TranscriptCompleted", "turn_id": "turn_fixture_1", "text": "Fixture transcript."}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "ResponseStarted", "turn_id": "turn_fixture_1", "response_id": "response_fixture_1"}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "OutputText", "response_id": "response_fixture_1", "item_id": "item_fixture_1", "output_index": 0, "content_index": 0, "text": "Fixture response.", "is_delta": true}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "OutputAudioStarted", "response_id": "response_fixture_1", "item_id": "item_fixture_1", "output_index": 0, "content_index": 0}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "OutputAudioCompleted", "response_id": "response_fixture_1", "item_id": "item_fixture_1", "output_index": 0, "content_index": 0}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "ToolCallRequested", "response_id": "response_fixture_tool_1", "call_id": "call_fixture_1", "name": "get_weather", "arguments_json": "{\"city\":\"Hangzhou\"}"}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "ResponseFinished", "response_id": "response_fixture_1", "status": "completed", "local": false}},
+    {"type": "call.event", "generation": 1, "event": {"kind": "SessionExpiring", "remaining_ms": 10000}}
+  ]
+}

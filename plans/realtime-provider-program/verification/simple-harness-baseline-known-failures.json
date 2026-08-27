@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "signatures": [
+    "backend-m-r:exit=1",
+    "frontend-lint:exit=1",
+    "root-tests:exit=1"
+  ],
+  "note": "Plan-local baseline signatures only. The backend-m-r failure was independently reproduced on 2026-08-27 as backend/tests/test_process_list_error.py::test_process_list_with_query. This file does not modify the product repository's known-failure policy."
+}

@@ -1,0 +1,6 @@
+{
+  "type": "call.start",
+  "generation": 1,
+  "instructions": "Fixture assistant instructions.",
+  "required_features": ["server_turn_detection", "automatic_response", "interruption", "input_transcription", "audio_output"]
+}

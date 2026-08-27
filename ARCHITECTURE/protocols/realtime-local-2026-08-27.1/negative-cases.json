@@ -1,0 +1,18 @@
+{
+  "kind": "negative_cases",
+  "cases": [
+    {"name": "websocket_non_loopback_peer", "expected": "reject_before_auth"},
+    {"name": "wrong_origin", "expected": "reject_before_auth"},
+    {"name": "wrong_shared_secret", "expected": "close_1008"},
+    {"name": "binary_before_call_ready", "expected": "protocol_error"},
+    {"name": "wrong_magic_or_version", "expected": "protocol_error"},
+    {"name": "payload_length_mismatch", "expected": "protocol_error"},
+    {"name": "odd_pcm_payload_length", "expected": "protocol_error"},
+    {"name": "wrong_direction", "expected": "protocol_error"},
+    {"name": "late_generation", "expected": "drop_and_increment_late_frame_counter"},
+    {"name": "duplicate_sequence", "expected": "drop_once"},
+    {"name": "sequence_gap_beyond_window", "expected": "call.error_protocol_error_then_call.closed"},
+    {"name": "unacked_window_timeout", "expected": "cancel_active_response_then_call.error_busy_then_call.closed"},
+    {"name": "duplicate_terminal", "expected": "deliver_first_only"}
+  ]
+}

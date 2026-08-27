@@ -1,0 +1,5 @@
+{
+  "event_id": "event_fixture_audio_append_1",
+  "type": "input_audio_buffer.append",
+  "audio": "AAAAAA=="
+}

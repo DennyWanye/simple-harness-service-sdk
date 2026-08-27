@@ -1,0 +1,5 @@
+{
+  "type": "tokenseller.session.expiring",
+  "event_id": "ctl_expiring_0000000000000000001",
+  "remaining_ms": 10000
+}

@@ -1,0 +1,9 @@
+{
+  "event_id": "event_fixture_audio_delta_1",
+  "type": "response.output_audio.delta",
+  "response_id": "resp_fixture_1",
+  "item_id": "item_fixture_1",
+  "output_index": 0,
+  "content_index": 0,
+  "delta": "AAAAAA=="
+}

@@ -1,0 +1,5 @@
+{
+  "type": "call.closed",
+  "generation": 1,
+  "reason": "client_hangup"
+}

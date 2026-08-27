@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "simple-harness-service-sdk"
-version = "0.2.3"
+version = "0.3.0"
 description = "Thin authenticated service framework for Simple Harness SDK"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,13 +19,17 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "simple-harness-sdk @ https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.5.2/simple_harness_sdk-0.5.2-py3-none-any.whl#sha256=09ba6041a0220cdd952f50e6ec8defcf1d8bbe60d9a044d9d7fc9106985639de",
+  "simple-harness-sdk @ https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.6.2/simple_harness_sdk-0.6.2-py3-none-any.whl#sha256=ffb7c0619851f3c936fcc1d0cf527d07f49e87770291b85e57fe87032ac02c2e",
   "prompt-toolkit>=3.0.52,<4",
 ]
 
 [project.optional-dependencies]
 memory = [
-  "simple-harness-memory-sdk @ https://github.com/DennyWanye/simple-harness-memory-sdk/releases/download/v0.5.1/simple_harness_memory_sdk-0.5.1-py3-none-any.whl#sha256=314c1b89a1921abef3b9900a32b753cc0a0c89a3ce92b98822ec1cb45f7a9898",
+  "simple-harness-memory-sdk @ https://github.com/DennyWanye/simple-harness-memory-sdk/releases/download/v0.5.2/simple_harness_memory_sdk-0.5.2-py3-none-any.whl#sha256=deff2fa85a269a3978f2c6efcd99fda77abcb74444170361365fd00ec0164e9e",
+]
+realtime = [
+  "httpx>=0.28.1,<1",
+  "websockets>=15,<16",
 ]
 
 [project.scripts]

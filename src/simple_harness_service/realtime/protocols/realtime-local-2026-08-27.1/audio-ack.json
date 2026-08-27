@@ -1,0 +1,6 @@
+{
+  "type": "call.audio_ack",
+  "generation": 1,
+  "direction": "output",
+  "highest_contiguous_sequence": 16
+}

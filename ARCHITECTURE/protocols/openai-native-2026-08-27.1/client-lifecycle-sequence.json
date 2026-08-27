@@ -1,0 +1,7 @@
+{
+  "kind": "client_event_sequence",
+  "events": [
+    {"event_id": "event_fixture_commit_1", "type": "input_audio_buffer.commit"},
+    {"event_id": "event_fixture_response_create_1", "type": "response.create", "response": {"output_modalities": ["audio"]}}
+  ]
+}

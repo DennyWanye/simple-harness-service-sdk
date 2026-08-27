@@ -1,0 +1,45 @@
+{
+  "kind": "server_event_scenarios",
+  "identity_rule": "Each scenario is independent; every response, item, and content identity is introduced before use.",
+  "scenarios": [
+    {
+      "name": "session_and_input_transcription_completed",
+      "events": [
+        {"event_id": "event_fixture_session_updated_1", "type": "session.updated", "session": {"id": "sess_fixture_1", "type": "realtime", "model": "gpt-realtime-2.1", "output_modalities": ["audio"], "audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000}, "turn_detection": {"type": "semantic_vad", "create_response": true, "interrupt_response": true}}, "output": {"format": {"type": "audio/pcm", "rate": 24000}, "voice": "marin"}}}},
+        {"event_id": "event_fixture_speech_started_1", "type": "input_audio_buffer.speech_started", "audio_start_ms": 120, "item_id": "item_user_1"},
+        {"event_id": "event_fixture_speech_stopped_1", "type": "input_audio_buffer.speech_stopped", "audio_end_ms": 940, "item_id": "item_user_1"},
+        {"event_id": "event_fixture_committed_1", "type": "input_audio_buffer.committed", "previous_item_id": null, "item_id": "item_user_1"},
+        {"event_id": "event_fixture_conversation_item_user_1", "type": "conversation.item.created", "previous_item_id": null, "item": {"id": "item_user_1", "object": "realtime.item", "type": "message", "status": "completed", "role": "user", "content": [{"type": "input_audio", "transcript": null}]}},
+        {"event_id": "event_fixture_input_transcript_done_1", "type": "conversation.item.input_audio_transcription.completed", "item_id": "item_user_1", "content_index": 0, "transcript": "Hello world"}
+      ]
+    },
+    {
+      "name": "audio_response_completed",
+      "events": [
+        {"event_id": "event_fixture_response_created_audio_1", "type": "response.created", "response": {"id": "resp_audio_1", "object": "realtime.response", "status": "in_progress", "status_details": null, "output": []}},
+        {"event_id": "event_fixture_output_item_added_audio_1", "type": "response.output_item.added", "response_id": "resp_audio_1", "output_index": 0, "item": {"id": "item_audio_1", "object": "realtime.item", "type": "message", "status": "in_progress", "role": "assistant", "content": []}},
+        {"event_id": "event_fixture_conversation_item_audio_1", "type": "conversation.item.created", "previous_item_id": "item_user_1", "item": {"id": "item_audio_1", "object": "realtime.item", "type": "message", "status": "in_progress", "role": "assistant", "content": []}},
+        {"event_id": "event_fixture_content_added_audio_1", "type": "response.content_part.added", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "part": {"type": "audio", "transcript": ""}},
+        {"event_id": "event_fixture_audio_delta_1", "type": "response.output_audio.delta", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "delta": "AAAAAA=="},
+        {"event_id": "event_fixture_audio_done_1", "type": "response.output_audio.done", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0},
+        {"event_id": "event_fixture_audio_transcript_delta_1", "type": "response.output_audio_transcript.delta", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "delta": "Fixture"},
+        {"event_id": "event_fixture_audio_transcript_done_1", "type": "response.output_audio_transcript.done", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "transcript": "Fixture response."},
+        {"event_id": "event_fixture_content_done_audio_1", "type": "response.content_part.done", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "part": {"type": "audio", "transcript": "Fixture response."}},
+        {"event_id": "event_fixture_output_item_done_audio_1", "type": "response.output_item.done", "response_id": "resp_audio_1", "output_index": 0, "item": {"id": "item_audio_1", "object": "realtime.item", "type": "message", "status": "completed", "role": "assistant", "content": [{"type": "audio", "transcript": "Fixture response."}]}},
+        {"event_id": "event_fixture_response_done_audio_1", "type": "response.done", "response": {"id": "resp_audio_1", "object": "realtime.response", "status": "completed", "status_details": null, "output": [], "usage": {"total_tokens": 30, "input_tokens": 20, "output_tokens": 10, "input_token_details": {"text_tokens": 5, "audio_tokens": 15}, "output_token_details": {"text_tokens": 2, "audio_tokens": 8}}}}
+      ]
+    },
+    {
+      "name": "tool_response_completed",
+      "events": [
+        {"event_id": "event_fixture_response_created_tool_1", "type": "response.created", "response": {"id": "resp_tool_1", "object": "realtime.response", "status": "in_progress", "status_details": null, "output": []}},
+        {"event_id": "event_fixture_output_item_added_tool_1", "type": "response.output_item.added", "response_id": "resp_tool_1", "output_index": 0, "item": {"id": "item_tool_1", "object": "realtime.item", "type": "function_call", "status": "in_progress", "call_id": "call_fixture_1", "name": "get_weather", "arguments": ""}},
+        {"event_id": "event_fixture_conversation_item_tool_1", "type": "conversation.item.created", "previous_item_id": "item_user_1", "item": {"id": "item_tool_1", "object": "realtime.item", "type": "function_call", "status": "in_progress", "call_id": "call_fixture_1", "name": "get_weather", "arguments": ""}},
+        {"event_id": "event_fixture_function_delta_1", "type": "response.function_call_arguments.delta", "response_id": "resp_tool_1", "item_id": "item_tool_1", "output_index": 0, "call_id": "call_fixture_1", "delta": "{\"city\""},
+        {"event_id": "event_fixture_function_done_1", "type": "response.function_call_arguments.done", "response_id": "resp_tool_1", "item_id": "item_tool_1", "output_index": 0, "call_id": "call_fixture_1", "name": "get_weather", "arguments": "{\"city\":\"Hangzhou\"}"},
+        {"event_id": "event_fixture_output_item_done_tool_1", "type": "response.output_item.done", "response_id": "resp_tool_1", "output_index": 0, "item": {"id": "item_tool_1", "object": "realtime.item", "type": "function_call", "status": "completed", "call_id": "call_fixture_1", "name": "get_weather", "arguments": "{\"city\":\"Hangzhou\"}"}},
+        {"event_id": "event_fixture_response_done_tool_1", "type": "response.done", "response": {"id": "resp_tool_1", "object": "realtime.response", "status": "completed", "status_details": null, "output": [], "usage": {"total_tokens": 12, "input_tokens": 8, "output_tokens": 4, "input_token_details": {"text_tokens": 8, "audio_tokens": 0}, "output_token_details": {"text_tokens": 4, "audio_tokens": 0}}}}
+      ]
+    }
+  ]
+}

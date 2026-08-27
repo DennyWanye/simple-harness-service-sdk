@@ -1,0 +1,7 @@
+{
+  "type": "call.ready",
+  "generation": 1,
+  "correlation": "corr_0123456789ABCDEFGHJKMNPQRS",
+  "input_audio": {"codec": "pcm_s16le", "sample_rate": 16000, "channels": 1},
+  "output_audio": {"codec": "pcm_s16le", "sample_rate": 24000, "channels": 1}
+}

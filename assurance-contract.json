@@ -1,0 +1,47 @@
+{
+  "profile": "standard",
+  "acceptance_ids": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8"
+  ],
+  "protected_assets": [
+    {"id": "ASSET-CREDENTIALS", "description": "TokenSeller and upstream Provider credentials plus ephemeral handles"},
+    {"id": "ASSET-CONTENT", "description": "User PCM audio, transcripts, prompts and model replies"},
+    {"id": "ASSET-BILLING", "description": "Wallet balance, UsageEvent identity and exactly-once settlement"},
+    {"id": "ASSET-SESSION", "description": "Per-session ordering, audio isolation and terminal state"},
+    {"id": "ASSET-COMPAT", "description": "Existing text chat and legacy Realtime client availability"}
+  ],
+  "trusted_assumptions": [
+    {"id": "TRUST-DEV-HOST", "description": "The current developer account, OS and fixed absolute-path tools are trusted"},
+    {"id": "TRUST-TLS", "description": "TLS validation and configured official Provider endpoints are trusted"},
+    {"id": "TRUST-ARTIFACT", "description": "Published SDK wheels are consumed only after exact version and SHA-256 verification"},
+    {"id": "TRUST-PROVIDER", "description": "Provider protocol documentation is authoritative but Provider availability is external"}
+  ],
+  "in_scope_failures": [
+    {"id": "FAIL-PROTOCOL-DRIFT", "description": "Qwen or OpenAI wire fields are incorrectly translated or silently drift"},
+    {"id": "FAIL-TOKEN-REPLAY", "description": "An ephemeral token is reused, logged or bound to the wrong session"},
+    {"id": "FAIL-CROSS-SESSION", "description": "Late or duplicated text/audio crosses a session or turn boundary"},
+    {"id": "FAIL-BILLING-DUP", "description": "Duplicate or reordered terminal events settle a turn more than once"},
+    {"id": "FAIL-CLOSE-CLASS", "description": "Normal close, upstream rejection, transport close and timeout are conflated"},
+    {"id": "FAIL-OVERSIZE", "description": "Malformed or oversized Provider frames bypass a bounded contract"},
+    {"id": "FAIL-VERSION-SKEW", "description": "An incompatible SDK, relay or product version is admitted"},
+    {"id": "FAIL-LOG-LEAK", "description": "Credentials, raw PCM, transcript or reply content enters diagnostics"}
+  ],
+  "in_scope_adversaries": [
+    {"id": "ADV-UNTRUSTED-CLIENT", "description": "A network client attempts token replay, wrong-origin access or malformed oversized frames"}
+  ],
+  "out_of_scope_conditions": [
+    {"id": "OOS-HOST-COMPROMISE", "description": "The trusted development or production host is fully compromised"},
+    {"id": "OOS-PROVIDER-OUTAGE", "description": "DashScope or a future OpenAI service has a global outage"},
+    {"id": "OOS-OPENAI-LIVE", "description": "Real OpenAI Realtime credentials, spend and production enablement are not part of this program"},
+    {"id": "OOS-WEBRTC-SIP", "description": "WebRTC and SIP transports are not implemented in this program"},
+    {"id": "OOS-LOCAL-MODEL", "description": "The future local Realtime model implementation is not part of this program"}
+  ],
+  "maximum_acceptable_impact": "One affected voice session may fail closed with a stable actionable error; no credential or content disclosure, cross-session playback, duplicate billing, text-chat regression or silent legacy endpoint break is acceptable."
+}

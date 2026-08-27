@@ -1,0 +1,44 @@
+{
+  "kind": "ordered_local_call_scenarios",
+  "scenarios": [
+    {
+      "name": "normal_audio_call_aiphone_unix",
+      "profile": "aiphone_unix",
+      "steps": [
+        {"direction": "product_to_sdk", "message": {"type": "local.hello", "version": "2026-08-27.1", "generation": 1, "correlation": "corr_0123456789ABCDEFGHJKMNPQRS"}},
+        {"direction": "product_to_sdk", "message": {"type": "call.start", "generation": 1, "instructions": "Fixture assistant instructions.", "required_features": ["server_turn_detection", "automatic_response", "interruption", "input_transcription", "audio_output"]}},
+        {"direction": "sdk_to_product", "message": {"type": "call.state", "generation": 1, "state": "connecting"}},
+        {"direction": "sdk_to_product", "message": {"type": "call.ready", "generation": 1, "correlation": "corr_0123456789ABCDEFGHJKMNPQRS", "input_audio": {"codec": "pcm_s16le", "sample_rate": 16000, "channels": 1}, "output_audio": {"codec": "pcm_s16le", "sample_rate": 24000, "channels": 1}}},
+        {"direction": "sdk_to_product", "message": {"type": "call.state", "generation": 1, "state": "active"}},
+        {"direction": "product_to_sdk", "binary_vector": "input-audio-frame.json"},
+        {"direction": "sdk_to_product", "message": {"type": "call.event", "generation": 1, "event": {"kind": "ResponseStarted", "turn_id": "turn_fixture_1", "response_id": "response_fixture_1"}}},
+        {"direction": "sdk_to_product", "message": {"type": "call.event", "generation": 1, "event": {"kind": "OutputAudioStarted", "response_id": "response_fixture_1", "item_id": "item_fixture_1", "output_index": 0, "content_index": 0}}},
+        {"direction": "sdk_to_product", "binary_vector": "output-audio-frame.json"},
+        {"direction": "product_to_sdk", "message": {"type": "call.audio_ack", "generation": 1, "direction": "output", "highest_contiguous_sequence": 1}},
+        {"direction": "sdk_to_product", "message": {"type": "call.event", "generation": 1, "event": {"kind": "OutputAudioCompleted", "response_id": "response_fixture_1", "item_id": "item_fixture_1", "output_index": 0, "content_index": 0}}},
+        {"direction": "sdk_to_product", "message": {"type": "call.event", "generation": 1, "event": {"kind": "ResponseFinished", "response_id": "response_fixture_1", "status": "completed", "local": false}}},
+        {"direction": "product_to_sdk", "message": {"type": "call.stop", "generation": 1, "reason": "client_hangup"}},
+        {"direction": "sdk_to_product", "message": {"type": "call.state", "generation": 1, "state": "closing"}},
+        {"direction": "sdk_to_product", "message": {"type": "call.closed", "generation": 1, "reason": "client_hangup"}}
+      ]
+    },
+    {
+      "name": "simple_harness_websocket_auth_prelude",
+      "profile": "simple_harness_websocket",
+      "steps": [
+        {"direction": "product_to_sdk", "message": {"type": "local.auth", "version": "2026-08-27.1", "secret": "local_fixture_redacted"}},
+        {"direction": "product_to_sdk", "message": {"type": "local.hello", "version": "2026-08-27.1", "generation": 1, "correlation": "corr_0123456789ABCDEFGHJKMNPQRS"}},
+        {"continuation": "normal_audio_call_aiphone_unix from call.start; transport framing changes but semantic messages are byte-identical"}
+      ]
+    },
+    {
+      "name": "fatal_error",
+      "profile": "both_after_authenticated_hello",
+      "steps": [
+        {"direction": "sdk_to_product", "message": {"type": "call.state", "generation": 1, "state": "error"}},
+        {"direction": "sdk_to_product", "message": {"type": "call.error", "generation": 1, "code": "protocol_error", "retryable": false}},
+        {"direction": "sdk_to_product", "message": {"type": "call.closed", "generation": 1, "reason": "protocol_error"}}
+      ]
+    }
+  ]
+}

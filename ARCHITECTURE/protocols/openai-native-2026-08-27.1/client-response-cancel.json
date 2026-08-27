@@ -1,0 +1,5 @@
+{
+  "event_id": "event_fixture_response_cancel_1",
+  "type": "response.cancel",
+  "response_id": "resp_fixture_1"
+}

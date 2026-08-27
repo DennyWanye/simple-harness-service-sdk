@@ -1,0 +1,21 @@
+{
+  "event_id": "event_server_session_created_1",
+  "type": "session.created",
+  "session": {
+    "id": "sess_fixture_1",
+    "object": "realtime.session",
+    "model": "qwen3.5-omni-flash-realtime-2026-03-15",
+    "modalities": ["text", "audio"],
+    "voice": "Tina",
+    "input_audio_format": "pcm",
+    "output_audio_format": "pcm",
+    "input_audio_transcription": {"model": "qwen3-asr-flash-realtime"},
+    "turn_detection": {
+      "type": "semantic_vad",
+      "threshold": 0.5,
+      "silence_duration_ms": 800,
+      "create_response": true,
+      "interrupt_response": true
+    }
+  }
+}

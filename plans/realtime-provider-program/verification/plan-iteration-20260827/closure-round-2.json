@@ -1,0 +1,26 @@
+{
+  "review_mode": "consolidated",
+  "coverage": {
+    "acceptance_coverage": true,
+    "entry_and_trust_chain": true,
+    "data_flow_and_persistence": true,
+    "identity_permissions_concurrency_cleanup": true,
+    "failure_and_recovery": true,
+    "tests_and_evidence": true,
+    "release_and_rollback": true,
+    "trusted_boundary_stop": true
+  },
+  "findings": [
+    {"id":"sdk-harness-version-conflict","severity":"P0","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-6","AC-7"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-COMPAT"],"evidence":"S1-6 freezes one three-SDK release unit; matrix spikes pass and installed-wheel BOM remains a candidate gate.","status":"resolved","root_cause":"The three exact SDKs were previously treated as independent."},
+    {"id":"billing-currency-domain-unresolved","severity":"P0","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3"],"assurance_contract_ids":["ASSET-BILLING"],"evidence":"Architecture and SHA-bound wallet revision freeze integer conversion, margin, ceilings, fixtures and hold; SP-FX passes.","status":"resolved","root_cause":"CNY provider costs previously crossed into USD wallets without conversion authority."},
+    {"id":"realtime-concrete-connectors-undefined","severity":"P0","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-1","AC-5","AC-6","AC-7","AC-8"],"assurance_contract_ids":["FAIL-PROTOCOL-DRIFT","FAIL-TOKEN-REPLAY","FAIL-CLOSE-CLASS","ASSET-CREDENTIALS","ASSET-SESSION"],"evidence":"S1-3 assigns concrete TokenSeller, relay WSS, Unix, and loopback-WSS connectors and lifecycle tests.","status":"resolved","root_cause":"Only abstract ports/codecs were previously assigned."},
+    {"id":"native-turn-recovery-attribution-incomplete","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-8"],"assurance_contract_ids":["FAIL-BILLING-DUP","ASSET-BILLING"],"evidence":"S2-1/4 and the durable recovery table freeze complete attribution, settlement and terminal state with eight crash points.","status":"resolved","root_cause":"Turn state was not a complete recovery source."},
+    {"id":"authority-artifact-handoff-undefined","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-2","AC-4","AC-7"],"assurance_contract_ids":["FAIL-PROTOCOL-DRIFT","FAIL-VERSION-SKEW"],"evidence":"S1 manifest/bundle and named S2/S3/S4 consumer digest gates form an executable immutable handoff.","status":"resolved","root_cause":"Byte identity lacked an artifact flow."},
+    {"id":"native-token-correlation-binding-not-persisted","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-7","AC-8"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-SESSION"],"evidence":"S2-1/2 persist and compare the complete binding and require one pre-consume negative per field.","status":"resolved","root_cause":"Correlation and other fields were absent from immutable mint binding."},
+    {"id":"aiphone-production-assembly-scope-missing","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-5","AC-7"],"assurance_contract_ids":["FAIL-PROTOCOL-DRIFT","ASSET-COMPAT"],"evidence":"S3 scopes application.py and voice_ui.py plus a production constructor/import oracle.","status":"resolved","root_cause":"Authoritative production selectors were omitted."},
+    {"id":"simple-harness-local-route-contract-conflict","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-6","AC-7"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-SESSION"],"evidence":"Authority and S4 uniformly use /ws/realtime-voice with full wiring tests.","status":"resolved","root_cause":"Endpoint existed as conflicting prose."},
+    {"id":"production-deploy-exact-sha-not-executable","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-7"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-BILLING","ASSET-COMPAT"],"evidence":"S2-6 scopes exact deploy/compose mechanics, backup, admission, predecessor retention and rollback.","status":"resolved","root_cause":"Release contract was absent from deployment code."},
+    {"id":"barge-in-turn-overlap-assumption-unspiked","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-5","AC-8"],"assurance_contract_ids":["FAIL-CROSS-SESSION","FAIL-BILLING-DUP","FAIL-PROTOCOL-DRIFT","ASSET-BILLING","ASSET-SESSION"],"evidence":"Two-slot authority and matrix plus 45-permutation spike remove dependency on undocumented event order.","status":"resolved","root_cause":"One-slot billing depended on undocumented Provider ordering."},
+    {"id":"wallet-pricing-revision-rollover-undefined","severity":"P1","scope_relation":"in-scope","origin":"patch-induced","violated_acceptance_ids":["AC-3","AC-7"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-BILLING"],"evidence":"The first wallet revision expires 2026-09-28 and the reviewed plan/architecture had no successor creation, selection, handoff, or expiry gate.","status":"open","root_cause":"A short-lived revision entered negotiated capability without a production rollover lifecycle."}
+  ]
+}

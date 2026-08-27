@@ -1,0 +1,125 @@
+{
+  "review_mode": "diff",
+  "coverage": {
+    "acceptance_coverage": true,
+    "entry_and_trust_chain": true,
+    "data_flow_and_persistence": true,
+    "identity_permissions_concurrency_cleanup": true,
+    "failure_and_recovery": true,
+    "tests_and_evidence": true,
+    "release_and_rollback": true,
+    "trusted_boundary_stop": true
+  },
+  "findings": [
+    {
+      "id": "sdk-harness-version-conflict",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-6", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-COMPAT"],
+      "evidence": "S1-6 freezes service 0.3.0, Harness 0.6.2 and Memory 0.5.2 as one release unit with clean Python 3.11/3.13 installed-wheel BOM/provenance gates; SP-SDK-MATRIX passed 104 source/API tests on each runtime.",
+      "status": "resolved",
+      "root_cause": "The three exact SDKs were previously treated as independent."
+    },
+    {
+      "id": "billing-currency-domain-unresolved",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3"],
+      "assurance_contract_ids": ["ASSET-BILLING"],
+      "evidence": "Architecture 6.6 and the wallet revision authority define integer CNY-to-USD-atom conversion, aggregate rounding, margin, ceilings and a 23-cent hold; SP-FX-ATOMS reproduces both terminal fixtures.",
+      "status": "resolved",
+      "root_cause": "Provider price authority and wallet settlement authority used different currencies without a conversion authority."
+    },
+    {
+      "id": "realtime-concrete-connectors-undefined",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-1", "AC-5", "AC-6", "AC-7", "AC-8"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "FAIL-TOKEN-REPLAY", "FAIL-CLOSE-CLASS", "ASSET-CREDENTIALS", "ASSET-SESSION"],
+      "evidence": "S1-3 names the concrete TokenSeller HTTPS minter, relay WSS transport, Unix host/channel and loopback-WSS host/channel, their lifecycle boundaries, and complete positive/negative tests; S3 and S4 consume them.",
+      "status": "resolved",
+      "root_cause": "Only abstract ports and codecs were previously assigned."
+    },
+    {
+      "id": "native-turn-recovery-attribution-incomplete",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-8"],
+      "assurance_contract_ids": ["FAIL-BILLING-DUP", "ASSET-BILLING"],
+      "evidence": "S2-1/4 specify a field-complete RealtimeTurn, deterministic downstream identities, pricing snapshots, settlement intent, wallet disposition and terminal-forward state; the state table and eight Postgres crash points define convergence.",
+      "status": "resolved",
+      "root_cause": "Turn state was not a complete recovery source."
+    },
+    {
+      "id": "authority-artifact-handoff-undefined",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-2", "AC-4", "AC-7"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "FAIL-VERSION-SKEW"],
+      "evidence": "S1-6 defines a deterministic cross-language authority bundle, release manifest, pack hashes, root digest, target locks, BOM and BUILD_INFO; S2 imports it and S3/S4 verify matching wheel and authority receipts.",
+      "status": "resolved",
+      "root_cause": "Byte identity lacked an executable cross-language artifact flow."
+    },
+    {
+      "id": "native-token-correlation-binding-not-persisted",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-7", "AC-8"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-SESSION"],
+      "evidence": "S2-1/2 persist correlation with every protocol/model/pricing/digest field in one immutable binding, compare all fields before conditional consume/connect, and require one pre-consume negative per field.",
+      "status": "resolved",
+      "root_cause": "Correlation and other fields were absent from the immutable mint binding."
+    },
+    {
+      "id": "aiphone-production-assembly-scope-missing",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-5", "AC-7"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "ASSET-COMPAT"],
+      "evidence": "S3 scopes application.py and voice_ui.py, replaces both authoritative constructors with SDK components, and adds a production import/source oracle rejecting the old bridge and local client.",
+      "status": "resolved",
+      "root_cause": "Authoritative production selectors were omitted."
+    },
+    {
+      "id": "simple-harness-local-route-contract-conflict",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-6", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-SESSION"],
+      "evidence": "Local authority, architecture and S4 uniformly use /ws/realtime-voice and require frontend/backend derivation from authority or one generated constant with auth/open/close tests.",
+      "status": "resolved",
+      "root_cause": "The executable plan and architecture previously named conflicting endpoints."
+    },
+    {
+      "id": "production-deploy-exact-sha-not-executable",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-BILLING", "ASSET-COMPAT"],
+      "evidence": "The release strategy and S2-6 require expected-current and target SHA, clean ancestry, backup hash, SHA-tagged images, migration/container/health/native/legacy checks, predecessor retention and additive-schema-safe rollback through the deployment entrypoint.",
+      "status": "resolved",
+      "root_cause": "Release requirements were prose-only and absent from the deployment code."
+    },
+    {
+      "id": "barge-in-turn-overlap-assumption-unspiked",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-5", "AC-8"],
+      "assurance_contract_ids": ["FAIL-CROSS-SESSION", "FAIL-BILLING-DUP", "FAIL-PROTOCOL-DRIFT", "ASSET-BILLING", "ASSET-SESSION"],
+      "evidence": "The two-slot authority assigns independent identities and settlements; SP-BARGE-OVERLAP passed 45 legal permutations plus cancel-no-active, and S2-3 ports the oracle to Jest.",
+      "status": "resolved",
+      "root_cause": "One-slot billing depended on undocumented Provider ordering."
+    }
+  ]
+}

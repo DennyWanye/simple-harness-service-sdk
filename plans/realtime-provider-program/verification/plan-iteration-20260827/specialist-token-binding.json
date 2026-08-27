@@ -1,0 +1,23 @@
+{
+  "cluster_id": "cluster-native-token-binding",
+  "parent_finding_ids": ["native-token-correlation-binding-not-persisted"],
+  "specialty": "security-privacy",
+  "findings": [
+    {
+      "id": "native-token-correlation-binding-not-persisted",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-7", "AC-8"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-SESSION"],
+      "evidence": "Control authority requires correlation in mint and first session.open and exact validation before consume. Current schema and S2 Task 1 omit correlation and no immutable full native-binding record/atomic comparator exists. Negative tests omit correlation, control version, and persisted provider/wire/model/voice/capability tamper cases.",
+      "status": "open",
+      "root_cause": "Native token binding is modeled as loose fields rather than one complete immutable mint record and comparator."
+    }
+  ],
+  "cross_cluster_refs": [],
+  "conclusion": {
+    "status": "refined",
+    "summary": "Persist correlation and the entire native binding, atomically consume after full comparison, and add a pre-consume negative test for every bound value."
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "source_cluster_ids": [
+    "cluster-sdk-consumer-entry-chain",
+    "cluster-release-artifact-compatibility",
+    "cluster-billing-currency-and-recovery",
+    "cluster-native-token-binding",
+    "cluster-barge-in-provider-ordering"
+  ],
+  "canonical_findings": [
+    {"id":"sdk-harness-version-conflict","severity":"P0","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-6","AC-7"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-COMPAT"],"evidence":"Exact direct references conflict across consumers; specialist-release-chain.json.","status":"open","root_cause":"Three SDKs are one release unit but S1 was planned independently."},
+    {"id":"billing-currency-domain-unresolved","severity":"P0","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3"],"assurance_contract_ids":["ASSET-BILLING"],"evidence":"CNY provider prices cross into USD wallet atoms without immutable conversion; specialist-billing-recovery.json.","status":"open","root_cause":"No integer pricing conversion authority."},
+    {"id":"realtime-concrete-connectors-undefined","severity":"P0","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-1","AC-5","AC-6","AC-7","AC-8"],"assurance_contract_ids":["FAIL-PROTOCOL-DRIFT","FAIL-TOKEN-REPLAY","FAIL-CLOSE-CLASS","ASSET-CREDENTIALS","ASSET-SESSION"],"evidence":"Concrete relay and local lifecycle joins are unassigned; specialist-entry-chain.json.","status":"open","root_cause":"Only abstractions/codecs were scoped."},
+    {"id":"native-turn-recovery-attribution-incomplete","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-8"],"assurance_contract_ids":["FAIL-BILLING-DUP","ASSET-BILLING"],"evidence":"Durable turn lacks complete attribution/settlement/terminal state; specialist-billing-recovery.json.","status":"open","root_cause":"Turn row is not a full recovery source."},
+    {"id":"authority-artifact-handoff-undefined","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-2","AC-4","AC-7"],"assurance_contract_ids":["FAIL-PROTOCOL-DRIFT","FAIL-VERSION-SKEW"],"evidence":"No cross-language immutable authority/release handoff; specialist-release-chain.json.","status":"open","root_cause":"Byte identity lacks executable artifact flow."},
+    {"id":"native-token-correlation-binding-not-persisted","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-7","AC-8"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-SESSION"],"evidence":"Mint correlation/full binding unavailable at consume; specialist-token-binding.json.","status":"open","root_cause":"Loose fields replace a complete immutable binding."},
+    {"id":"aiphone-production-assembly-scope-missing","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-5","AC-7"],"assurance_contract_ids":["FAIL-PROTOCOL-DRIFT","ASSET-COMPAT"],"evidence":"application.py and voice_ui.py production constructors omitted; specialist-entry-chain.json.","status":"open","root_cause":"Authoritative assembly roots are out of task scope."},
+    {"id":"simple-harness-local-route-contract-conflict","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-6","AC-7"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-SESSION"],"evidence":"/ws/realtime conflicts with /ws/realtime-voice and no shared path authority exists; specialist-entry-chain.json.","status":"open","root_cause":"Endpoint authority is conflicting prose."},
+    {"id":"production-deploy-exact-sha-not-executable","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-7"],"assurance_contract_ids":["FAIL-VERSION-SKEW","ASSET-BILLING","ASSET-COMPAT"],"evidence":"Actual deploy entrypoint cannot enforce the release contract; specialist-release-chain.json.","status":"open","root_cause":"Branch-tip deployment lacks backup/admission/rollback mechanics."},
+    {"id":"barge-in-turn-overlap-assumption-unspiked","severity":"P1","scope_relation":"in-scope","origin":"pre-existing","violated_acceptance_ids":["AC-3","AC-5","AC-8"],"assurance_contract_ids":["FAIL-CROSS-SESSION","FAIL-BILLING-DUP","FAIL-PROTOCOL-DRIFT","ASSET-BILLING","ASSET-SESSION"],"evidence":"Provider does not freeze required interruption ordering; specialist-barge-ordering.json.","status":"open","root_cause":"One-slot state relies on undocumented event order."}
+  ],
+  "resolved_finding_ids": [],
+  "open_finding_ids": [
+    "sdk-harness-version-conflict",
+    "billing-currency-domain-unresolved",
+    "realtime-concrete-connectors-undefined",
+    "native-turn-recovery-attribution-incomplete",
+    "authority-artifact-handoff-undefined",
+    "native-token-correlation-binding-not-persisted",
+    "aiphone-production-assembly-scope-missing",
+    "simple-harness-local-route-contract-conflict",
+    "production-deploy-exact-sha-not-executable",
+    "barge-in-turn-overlap-assumption-unspiked"
+  ],
+  "decisions": [
+    {
+      "canonical_finding_id": "sdk-harness-version-conflict",
+      "source_finding_ids": ["sdk-harness-version-conflict"],
+      "action": "spike",
+      "spike_ids": ["SP-SDK-MATRIX"],
+      "rationale": "Treat service 0.3.0, Harness 0.6.2, and Memory 0.5.2 as one release unit and prove resolver/import/conformance on Python 3.11 and 3.13 before freezing the candidate."
+    },
+    {
+      "canonical_finding_id": "billing-currency-domain-unresolved",
+      "source_finding_ids": ["billing-currency-domain-unresolved"],
+      "action": "spike",
+      "spike_ids": ["SP-FX-ATOMS"],
+      "rationale": "Define an immutable integer USD-atoms-per-CNY-minor pricing revision and prove per-turn conversion, margin, rounding, and hold fixtures without floating point."
+    },
+    {
+      "canonical_finding_id": "realtime-concrete-connectors-undefined",
+      "source_finding_ids": ["realtime-concrete-connectors-undefined"],
+      "action": "plan-change",
+      "rationale": "Add concrete TokenSellerHttpsMinter, RelayWebSocketTransport, UnixRealtimeHost/Channel, and LoopbackWebSocketRealtimeHost/Channel public constructors with owned lifecycle tests."
+    },
+    {
+      "canonical_finding_id": "native-turn-recovery-attribution-incomplete",
+      "source_finding_ids": ["native-turn-recovery-attribution-incomplete"],
+      "action": "plan-change",
+      "rationale": "Freeze a field-complete RealtimeTurn source-of-truth, transaction/CAS boundaries, and crash convergence table before implementation."
+    },
+    {
+      "canonical_finding_id": "authority-artifact-handoff-undefined",
+      "source_finding_ids": ["authority-artifact-handoff-undefined"],
+      "action": "plan-change",
+      "rationale": "Define a schema-versioned release manifest plus deterministic authority bundle, target locks, TypeScript import, consumer hash receipts, and frozen-binary package metadata checks."
+    },
+    {
+      "canonical_finding_id": "native-token-correlation-binding-not-persisted",
+      "source_finding_ids": ["native-token-correlation-binding-not-persisted"],
+      "action": "plan-change",
+      "rationale": "Persist one complete immutable native binding including correlation and conditionally consume only after an exhaustive field comparator passes."
+    },
+    {
+      "canonical_finding_id": "aiphone-production-assembly-scope-missing",
+      "source_finding_ids": ["aiphone-production-assembly-scope-missing"],
+      "action": "plan-change",
+      "rationale": "Scope application.py and voice_ui.py and add a production-assembly oracle that fails on legacy constructors/imports."
+    },
+    {
+      "canonical_finding_id": "simple-harness-local-route-contract-conflict",
+      "source_finding_ids": ["simple-harness-local-route-contract-conflict"],
+      "action": "plan-change",
+      "rationale": "Use only /ws/realtime-voice, place endpoint_path in the local authority artifact, and test frontend/backend/auth/open/close wiring against it."
+    },
+    {
+      "canonical_finding_id": "production-deploy-exact-sha-not-executable",
+      "source_finding_ids": ["production-deploy-exact-sha-not-executable"],
+      "action": "plan-change",
+      "rationale": "Scope deploy.sh/compose changes for expected and target SHA, backup hash, SHA-tagged retained images, migration/health/native+legacy smoke, and explicit rollback."
+    },
+    {
+      "canonical_finding_id": "barge-in-turn-overlap-assumption-unspiked",
+      "source_finding_ids": ["barge-in-turn-overlap-assumption-unspiked"],
+      "action": "spike",
+      "spike_ids": ["SP-BARGE-OVERLAP"],
+      "rationale": "Do not depend on undocumented ordering: prototype and exhaustively test a bounded two-slot CANCELLING predecessor plus NEW_PENDING successor state machine; retain a real metadata-only trace as S2 admission evidence."
+    }
+  ],
+  "conflicts": [],
+  "required_spikes": [
+    {
+      "id": "SP-SDK-MATRIX",
+      "exit": "Python 3.11 and 3.13 clean environments resolve Harness 0.6.2 plus Memory 0.5.2 and run current service durable conformance/import probes without API failure."
+    },
+    {
+      "id": "SP-FX-ATOMS",
+      "exit": "Integer-only CNY-minor to USD-atom conversion and BPS margin produce exact frozen output and cancelled fixtures and conservative whole-cent hold bounds."
+    },
+    {
+      "id": "SP-BARGE-OVERLAP",
+      "exit": "All permutations of cancel, old terminal, new commit/response.created, late audio, duplicate terminal, and cancel-no-active converge without unbound response, duplicate hold/settlement, or cross-turn audio."
+    }
+  ],
+  "plan_actions": [
+    "Revise architecture pricing and local endpoint authority, then revalidate packs and record architecture reset.",
+    "Revise S1 artifact, dependency-matrix, concrete connector, and local lifecycle tasks.",
+    "Revise S2 binding, durable turn, FX pricing, bounded overlap, deployment entrypoint, and crash/real-provider gates.",
+    "Revise S3/S4 production assembly, endpoint authority, provenance, and frozen-binary scopes.",
+    "Run three required disposable spikes and attach raw outputs before closure review."
+  ]
+}

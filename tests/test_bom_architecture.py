@@ -25,9 +25,10 @@ def test_public_api_snapshot() -> None:
 
 def test_compatibility_bom_and_installed_harness_provenance() -> None:
     bom = load_bom()
-    assert bom["service"]["version"] == "0.2.3"
-    assert bom["harness"]["version"] == "0.5.2"
-    assert bom["harness"]["execution_schema"] == 5
+    assert bom["service"]["version"] == "0.3.0"
+    assert bom["harness"]["version"] == "0.6.2"
+    assert bom["memory"]["version"] == "0.5.2"
+    assert bom["harness"]["execution_schema"] == 6
     assert bom["memory"]["memory_schema"] == 4
     # The uv development environment deliberately demonstrates fail-closed behavior:
     # its direct_url.json retains the URL but drops the archive digest.

@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "signatures": [
+    "mobile-host-mypy:exit=1",
+    "root-h0-residual-verifier:exit=2",
+    "root-ruff:exit=1"
+  ],
+  "note": "Plan-local baseline signatures only. On 2026-08-27 root-ruff scanned pre-existing untracked verification artifacts; mobile-host-mypy reproduced 10 existing errors in file_access.py and camera_capture.py; the residual verifier shard referenced a missing tools/verify_known_pytest_failures.py. This file does not change AIPhone's repository baseline policy."
+}

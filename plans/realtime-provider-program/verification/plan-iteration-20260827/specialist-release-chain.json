@@ -1,0 +1,45 @@
+{
+  "cluster_id": "cluster-release-artifact-compatibility",
+  "parent_finding_ids": ["sdk-harness-version-conflict", "authority-artifact-handoff-undefined", "production-deploy-exact-sha-not-executable"],
+  "specialty": "release-rollback",
+  "findings": [
+    {
+      "id": "sdk-harness-version-conflict",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-6", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-COMPAT"],
+      "evidence": "service-sdk 0.2.3 exactly pins harness 0.5.2 and memory 0.5.1; AIPhone hard-codes that closure on Python 3.13, while Simple Harness vendors harness 0.6.2 and memory 0.5.2 on Python 3.11. The planned isolated service-sdk bump cannot resolve in Simple Harness. The proposed shared release unit 0.3.0/0.6.2/0.5.2 requires clean 3.11 and 3.13 install plus durable-conformance spikes.",
+      "status": "open",
+      "root_cause": "S1 is treated as one package even though exact direct references make the three SDKs one cross-consumer release unit."
+    },
+    {
+      "id": "authority-artifact-handoff-undefined",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-2", "AC-4", "AC-7"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "FAIL-VERSION-SKEW"],
+      "evidence": "Current candidate build lacks a standalone TypeScript authority bundle and target-specific realtime-extra lock closures. TokenSeller has no exact-byte import/check path. AIPhone and Simple Harness scopes omit service manifest/authority/frozen metadata checks; Simple Harness spec does not collect service package data or metadata.",
+      "status": "open",
+      "root_cause": "No versioned release-manifest, immutable TypeScript handoff, target closure, or named consumer frozen-build checks carry byte identity."
+    },
+    {
+      "id": "production-deploy-exact-sha-not-executable",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-BILLING", "ASSET-COMPAT"],
+      "evidence": "deploy.sh pulls branch tip, replaces the stack, prunes rollback images, and lacks expected/target SHA, backup/hash, migration verification, health/native/legacy smokes, and explicit retained-image rollback. Task 6 does not scope deploy.sh or compose changes.",
+      "status": "open",
+      "root_cause": "The production release contract is prose while the actual entrypoint is branch-tip based, non-transactional, and destroys its immediate rollback artifact."
+    }
+  ],
+  "cross_cluster_refs": ["billing-currency-domain-unresolved", "native-turn-recovery-attribution-incomplete"],
+  "conclusion": {
+    "status": "needs-spike",
+    "summary": "Revise artifact/deploy tasks and run clean Python 3.11/3.13 three-SDK closure, Simple Harness PyInstaller, and AIPhone ARM64 wheelhouse admission spikes."
+  }
+}

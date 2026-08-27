@@ -1,0 +1,9 @@
+{
+  "type": "call.event",
+  "generation": 1,
+  "event": {
+    "kind": "TranscriptCompleted",
+    "turn_id": "turn_fixture_1",
+    "text": "Fixture transcript."
+  }
+}

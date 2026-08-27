@@ -1,0 +1,10 @@
+{
+  "event_id": "event_server_error_1",
+  "type": "error",
+  "error": {
+    "type": "invalid_request_error",
+    "code": "invalid_value",
+    "message": "fixture error",
+    "param": "session.audio.input.format"
+  }
+}

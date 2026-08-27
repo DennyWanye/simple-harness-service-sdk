@@ -1,0 +1,64 @@
+{
+  "kind": "server_event_scenarios",
+  "identity_rule": "Each scenario is independent; every response, item, and content identity is introduced before use.",
+  "scenarios": [
+    {
+      "name": "session_and_input_transcription_completed",
+      "events": [
+        {"event_id": "event_fixture_session_updated_1", "type": "session.updated", "session": {"id": "sess_fixture_1", "object": "realtime.session", "model": "qwen3.5-omni-flash-realtime-2026-03-15", "modalities": ["text", "audio"], "voice": "Tina", "input_audio_format": "pcm", "output_audio_format": "pcm", "input_audio_transcription": {"model": "qwen3-asr-flash-realtime"}, "turn_detection": {"type": "semantic_vad", "threshold": 0.5, "silence_duration_ms": 800}}},
+        {"event_id": "event_fixture_speech_started_1", "type": "input_audio_buffer.speech_started", "audio_start_ms": 120, "item_id": "item_user_1"},
+        {"event_id": "event_fixture_speech_stopped_1", "type": "input_audio_buffer.speech_stopped", "audio_end_ms": 940, "item_id": "item_user_1"},
+        {"event_id": "event_fixture_committed_1", "type": "input_audio_buffer.committed", "item_id": "item_user_1"},
+        {"event_id": "event_fixture_conversation_item_1", "type": "conversation.item.created", "item": {"id": "item_user_1", "object": "realtime.item", "type": "message", "status": "completed", "role": "user", "content": [{"type": "input_audio"}]}},
+        {"event_id": "event_fixture_input_transcript_delta_1", "type": "conversation.item.input_audio_transcription.delta", "item_id": "item_user_1", "content_index": 0, "text": "Hello", "stash": " world", "language": "en", "emotion": "neutral"},
+        {"event_id": "event_fixture_input_transcript_done_1", "type": "conversation.item.input_audio_transcription.completed", "item_id": "item_user_1", "content_index": 0, "transcript": "Hello world"}
+      ]
+    },
+    {
+      "name": "input_transcription_failed",
+      "events": [
+        {"event_id": "event_fixture_conversation_item_2", "type": "conversation.item.created", "item": {"id": "item_user_2", "object": "realtime.item", "type": "message", "status": "completed", "role": "user", "content": [{"type": "input_audio"}]}},
+        {"event_id": "event_fixture_input_transcript_failed_1", "type": "conversation.item.input_audio_transcription.failed", "item_id": "item_user_2", "content_index": 0, "error": {"code": "transcription_failed", "message": "fixture transcription failure", "param": "audio"}}
+      ]
+    },
+    {
+      "name": "audio_response_completed",
+      "events": [
+        {"event_id": "event_fixture_response_created_audio_1", "type": "response.created", "response": {"id": "resp_audio_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "in_progress", "modalities": ["text", "audio"], "voice": "Tina", "output_audio_format": "pcm", "output": []}},
+        {"event_id": "event_fixture_output_item_added_audio_1", "type": "response.output_item.added", "response_id": "resp_audio_1", "output_index": 0, "item": {"id": "item_audio_1", "object": "realtime.item", "type": "message", "status": "in_progress", "role": "assistant", "content": []}},
+        {"event_id": "event_fixture_content_added_audio_1", "type": "response.content_part.added", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "part": {"type": "audio", "text": ""}},
+        {"event_id": "event_fixture_audio_transcript_delta_1", "type": "response.audio_transcript.delta", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "delta": "Fixture"},
+        {"event_id": "event_fixture_audio_delta_1", "type": "response.audio.delta", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "delta": "AAAAAA=="},
+        {"event_id": "event_fixture_audio_done_1", "type": "response.audio.done", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0},
+        {"event_id": "event_fixture_audio_transcript_done_1", "type": "response.audio_transcript.done", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "transcript": "Fixture response."},
+        {"event_id": "event_fixture_content_done_audio_1", "type": "response.content_part.done", "response_id": "resp_audio_1", "item_id": "item_audio_1", "output_index": 0, "content_index": 0, "part": {"type": "audio", "text": "Fixture response."}},
+        {"event_id": "event_fixture_output_item_done_audio_1", "type": "response.output_item.done", "response_id": "resp_audio_1", "output_index": 0, "item": {"id": "item_audio_1", "object": "realtime.item", "type": "message", "status": "completed", "role": "assistant", "content": [{"type": "audio", "transcript": "Fixture response."}]}},
+        {"event_id": "event_fixture_response_done_audio_1", "type": "response.done", "response": {"id": "resp_audio_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "completed", "modalities": ["text", "audio"], "voice": "Tina", "output_audio_format": "pcm", "output": [], "usage": {"total_tokens": 30, "input_tokens": 20, "output_tokens": 10, "input_tokens_details": {"text_tokens": 5, "audio_tokens": 15}, "output_tokens_details": {"text_tokens": 2, "audio_tokens": 8}}}}
+      ]
+    },
+    {
+      "name": "text_response_completed",
+      "events": [
+        {"event_id": "event_fixture_response_created_text_1", "type": "response.created", "response": {"id": "resp_text_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "in_progress", "modalities": ["text"], "output": []}},
+        {"event_id": "event_fixture_output_item_added_text_1", "type": "response.output_item.added", "response_id": "resp_text_1", "output_index": 0, "item": {"id": "item_text_1", "object": "realtime.item", "type": "message", "status": "in_progress", "role": "assistant", "content": []}},
+        {"event_id": "event_fixture_content_added_text_1", "type": "response.content_part.added", "response_id": "resp_text_1", "item_id": "item_text_1", "output_index": 0, "content_index": 0, "part": {"type": "text", "text": ""}},
+        {"event_id": "event_fixture_text_delta_1", "type": "response.text.delta", "response_id": "resp_text_1", "item_id": "item_text_1", "output_index": 0, "content_index": 0, "delta": "Hello"},
+        {"event_id": "event_fixture_text_done_1", "type": "response.text.done", "response_id": "resp_text_1", "item_id": "item_text_1", "output_index": 0, "content_index": 0, "text": "Hello"},
+        {"event_id": "event_fixture_content_done_text_1", "type": "response.content_part.done", "response_id": "resp_text_1", "item_id": "item_text_1", "output_index": 0, "content_index": 0, "part": {"type": "text", "text": "Hello"}},
+        {"event_id": "event_fixture_output_item_done_text_1", "type": "response.output_item.done", "response_id": "resp_text_1", "output_index": 0, "item": {"id": "item_text_1", "object": "realtime.item", "type": "message", "status": "completed", "role": "assistant", "content": [{"type": "text", "text": "Hello"}]}},
+        {"event_id": "event_fixture_response_done_text_1", "type": "response.done", "response": {"id": "resp_text_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "completed", "modalities": ["text"], "output": [], "usage": {"total_tokens": 8, "input_tokens": 5, "output_tokens": 3, "input_tokens_details": {"text_tokens": 5, "audio_tokens": 0}, "output_tokens_details": {"text_tokens": 3, "audio_tokens": 0}}}}
+      ]
+    },
+    {
+      "name": "tool_response_completed",
+      "events": [
+        {"event_id": "event_fixture_response_created_tool_1", "type": "response.created", "response": {"id": "resp_tool_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "in_progress", "modalities": ["text"], "output": []}},
+        {"event_id": "event_fixture_output_item_added_tool_1", "type": "response.output_item.added", "response_id": "resp_tool_1", "output_index": 0, "item": {"id": "item_tool_1", "object": "realtime.item", "type": "function_call", "status": "in_progress", "call_id": "call_fixture_1", "name": "get_weather", "arguments": ""}},
+        {"event_id": "event_fixture_function_delta_1", "type": "response.function_call_arguments.delta", "response_id": "resp_tool_1", "item_id": "item_tool_1", "output_index": 0, "call_id": "call_fixture_1", "delta": "{\"city\""},
+        {"event_id": "event_fixture_function_done_1", "type": "response.function_call_arguments.done", "response_id": "resp_tool_1", "item_id": "item_tool_1", "output_index": 0, "call_id": "call_fixture_1", "name": "get_weather", "arguments": "{\"city\":\"Hangzhou\"}"},
+        {"event_id": "event_fixture_output_item_done_tool_1", "type": "response.output_item.done", "response_id": "resp_tool_1", "output_index": 0, "item": {"id": "item_tool_1", "object": "realtime.item", "type": "function_call", "status": "completed", "call_id": "call_fixture_1", "name": "get_weather", "arguments": "{\"city\":\"Hangzhou\"}"}},
+        {"event_id": "event_fixture_response_done_tool_1", "type": "response.done", "response": {"id": "resp_tool_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "completed", "modalities": ["text"], "output": [], "usage": {"total_tokens": 12, "input_tokens": 8, "output_tokens": 4, "input_tokens_details": {"text_tokens": 8, "audio_tokens": 0}, "output_tokens_details": {"text_tokens": 4, "audio_tokens": 0}}}}
+      ]
+    }
+  ]
+}

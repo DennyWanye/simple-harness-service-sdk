@@ -1,0 +1,7 @@
+{
+  "round_file": "primary-round.json",
+  "clusters_file": "primary-clusters.json",
+  "source_agent": "/root/realtime_plan_primary",
+  "captured_at": "2026-08-27",
+  "note": "Machine-readable split of the primary breadth challenger output."
+}

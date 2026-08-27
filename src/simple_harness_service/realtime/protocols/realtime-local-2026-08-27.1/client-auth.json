@@ -1,0 +1,5 @@
+{
+  "type": "local.auth",
+  "version": "2026-08-27.1",
+  "secret": "local_fixture_redacted"
+}

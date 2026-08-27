@@ -1,0 +1,5 @@
+{
+  "type": "call.stop",
+  "generation": 1,
+  "reason": "client_hangup"
+}

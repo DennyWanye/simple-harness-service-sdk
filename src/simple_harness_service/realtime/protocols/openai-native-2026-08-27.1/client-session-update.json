@@ -1,0 +1,23 @@
+{
+  "event_id": "event_fixture_session_update_1",
+  "type": "session.update",
+  "session": {
+    "type": "realtime",
+    "output_modalities": ["audio"],
+    "audio": {
+      "input": {
+        "format": {"type": "audio/pcm", "rate": 24000},
+        "transcription": {"model": "gpt-realtime-whisper"},
+        "turn_detection": {
+          "type": "semantic_vad",
+          "create_response": true,
+          "interrupt_response": true
+        }
+      },
+      "output": {
+        "format": {"type": "audio/pcm", "rate": 24000},
+        "voice": "marin"
+      }
+    }
+  }
+}

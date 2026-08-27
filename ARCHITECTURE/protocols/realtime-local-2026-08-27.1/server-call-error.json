@@ -1,0 +1,6 @@
+{
+  "type": "call.error",
+  "generation": 1,
+  "code": "protocol_error",
+  "retryable": false
+}

@@ -1,0 +1,5 @@
+{
+  "type": "tokenseller.session.close",
+  "event_id": "ctl_close_00000000000000000000001",
+  "reason": "client_hangup"
+}

@@ -1,0 +1,125 @@
+{
+  "review_mode": "breadth",
+  "coverage": {
+    "acceptance_coverage": true,
+    "entry_and_trust_chain": true,
+    "data_flow_and_persistence": true,
+    "identity_permissions_concurrency_cleanup": true,
+    "failure_and_recovery": true,
+    "tests_and_evidence": true,
+    "release_and_rollback": true,
+    "trusted_boundary_stop": true
+  },
+  "findings": [
+    {
+      "id": "sdk-harness-version-conflict",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-6", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-COMPAT"],
+      "evidence": "service-sdk pyproject.toml requires exact simple-harness-sdk 0.5.2, while Simple Harness backend requires and vendors 0.6.2; AIPhone consumes service-sdk 0.2.3 paired with the older dependency. The plan lacks a cross-consumer compatibility upgrade.",
+      "status": "open",
+      "root_cause": "The release slices treat service-sdk as independently replaceable without reconciling mandatory Harness SDK dependencies across consumers."
+    },
+    {
+      "id": "billing-currency-domain-unresolved",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3"],
+      "assurance_contract_ids": ["ASSET-BILLING"],
+      "evidence": "The Qwen authority prices in CNY minor units, while TokenSeller wallet and pricing persistence use USD cents/atoms. The architecture and plan define no FX conversion, revision, rounding denominator, or USD hold sizing.",
+      "status": "open",
+      "root_cause": "Provider price authority and wallet settlement authority use different currencies without a conversion authority."
+    },
+    {
+      "id": "realtime-concrete-connectors-undefined",
+      "severity": "P0",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-1", "AC-5", "AC-6", "AC-7"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "FAIL-TOKEN-REPLAY", "ASSET-CREDENTIALS"],
+      "evidence": "The plan defines abstract minter/transport ports and codecs but no concrete TokenSeller HTTPS minter or SDK local AF_UNIX/loopback-WSS lifecycle. AIPhone still owns mint plus WSS in realtime_voice_bridge.py.",
+      "status": "open",
+      "root_cause": "The plan freezes abstractions but omits concrete composition adapters across local and TokenSeller trust boundaries."
+    },
+    {
+      "id": "native-turn-recovery-attribution-incomplete",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-8"],
+      "assurance_contract_ids": ["FAIL-BILLING-DUP", "ASSET-BILLING"],
+      "evidence": "The planned RealtimeTurn omits userId, parentApiKeyId, publicModel, credentialId, RequestLog/platform identity, terminal-forward state, and exact transaction transitions required to reconstruct UsageEvent and wallet settlement after declared crashes.",
+      "status": "open",
+      "root_cause": "The durable turn row is an idempotency marker rather than a complete downstream billing and attribution recovery record."
+    },
+    {
+      "id": "authority-artifact-handoff-undefined",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-2", "AC-4", "AC-7"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "FAIL-VERSION-SKEW"],
+      "evidence": "Architecture requires Python and TypeScript to consume one immutable authority artifact, complete optional dependency lock closure, PyInstaller metadata, and byte-identical receipts; the plan names only a Python wheel and no cross-language handoff or hash gate.",
+      "status": "open",
+      "root_cause": "Byte identity is an invariant without an executable cross-language artifact handoff."
+    },
+    {
+      "id": "native-token-correlation-binding-not-persisted",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-7", "AC-8"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-SESSION"],
+      "evidence": "The control manifest binds correlation across mint and first-frame open, but current and planned RealtimeClientSecret persistence omit the minted correlation value.",
+      "status": "open",
+      "root_cause": "The persistence model does not retain every value required by the frozen mint-to-open binding."
+    },
+    {
+      "id": "aiphone-production-assembly-scope-missing",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-5", "AC-7"],
+      "assurance_contract_ids": ["FAIL-PROTOCOL-DRIFT", "ASSET-COMPAT"],
+      "evidence": "AIPhone production constructs RealtimeRelayBridge in application.py, but S3 omits that authoritative constructor from the file scope.",
+      "status": "open",
+      "root_cause": "The migration scopes helpers but omits the production selector for the legacy bridge."
+    },
+    {
+      "id": "simple-harness-local-route-contract-conflict",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-6", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-SESSION"],
+      "evidence": "Architecture freezes /ws/realtime-voice with local.auth first, while plan names /ws/realtime and leaves frontend/backend path authority implicit.",
+      "status": "open",
+      "root_cause": "The executable plan and approved architecture name different endpoints without a shared constant/test."
+    },
+    {
+      "id": "production-deploy-exact-sha-not-executable",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-7"],
+      "assurance_contract_ids": ["FAIL-VERSION-SKEW", "ASSET-BILLING", "ASSET-COMPAT"],
+      "evidence": "TokenSeller scripts/deploy.sh deploys branch tip and lacks target SHA, backup, migration verification, health/smoke checks, and rollback artifact retention; S2 does not scope a fix or replacement command sequence.",
+      "status": "open",
+      "root_cause": "Release requirements are prose-only and not implemented by the intended deployment entrypoint."
+    },
+    {
+      "id": "barge-in-turn-overlap-assumption-unspiked",
+      "severity": "P1",
+      "scope_relation": "in-scope",
+      "origin": "pre-existing",
+      "violated_acceptance_ids": ["AC-3", "AC-5"],
+      "assurance_contract_ids": ["FAIL-CROSS-SESSION", "FAIL-BILLING-DUP"],
+      "evidence": "The one-active-turn state machine depends on Qwen ordering during interruption, but no fake or real overlap spike is required before S2 production; S3 barge-in is later.",
+      "status": "open",
+      "root_cause": "A required provider ordering guarantee at the overlapping-turn boundary is unproven."
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": "tokenseller.realtime-wallet-pricing-v1",
+  "id": "tokenseller-qwen35-usd-v1",
+  "wallet_currency": "USD",
+  "provider_cost_currency": "CNY",
+  "provider_cost_revision": "dashscope-cn-beijing-qwen35-omni-flash-realtime-2026-08-27",
+  "valid_from": "2026-08-28T00:00:00Z",
+  "valid_until": "2026-09-28T00:00:00Z",
+  "outside_validity_policy": "mint_rejects_billing_rejected_before_token_creation",
+  "fx": {
+    "source": "ECB euro foreign exchange reference rates",
+    "source_url": "https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html",
+    "observed_date": "2026-08-27",
+    "eur_to_usd_numerator": 11645,
+    "eur_to_usd_denominator": 10000,
+    "eur_to_cny_numerator": 78258,
+    "eur_to_cny_denominator": 10000,
+    "usd_atoms_per_cny_minor": 14880267833,
+    "quantization": "ceil exact cross-rate to one 1e-13 USD atom per CNY minor"
+  },
+  "margin_bps": 1000,
+  "conversion_rounding": "ceil once after aggregate provider-cost numerator",
+  "margin_rounding": "ceil once after aggregate margin",
+  "token_ceilings": {
+    "input_text": 8000,
+    "input_audio": 16000,
+    "output_text": 4000,
+    "output_audio": 8000
+  },
+  "price_cny_minor_per_1000000_tokens": {
+    "input_text": 330,
+    "input_audio": 2700,
+    "output_text": 2000,
+    "output_audio": 10700
+  },
+  "fixtures": {
+    "completed_provider_cost_numerator": 127750,
+    "completed_base_cost_atoms": 1900954216,
+    "completed_exact_charge_atoms": 2091049638,
+    "cancelled_provider_cost_numerator": 38260,
+    "cancelled_base_cost_atoms": 569319048,
+    "cancelled_exact_charge_atoms": 626250953,
+    "single_turn_hold_usd_minor": 23
+  }
+}

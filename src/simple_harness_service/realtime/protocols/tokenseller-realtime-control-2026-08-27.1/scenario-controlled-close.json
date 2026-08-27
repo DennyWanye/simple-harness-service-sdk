@@ -1,0 +1,19 @@
+{
+  "kind": "ordered_scenario",
+  "name": "controlled_client_hangup_with_active_response",
+  "steps": [
+    "sdk_cas_client_clean_intent",
+    "sdk_send_tokenseller.session.close_once",
+    "relay_cas_client_clean_owner",
+    "relay_stop_input_and_cancel_active_response",
+    "relay_finalize_or_defer_settlement_within_5000ms",
+    "relay_send_tokenseller.session.closed_once",
+    "sdk_emit_ResponseFinished_cancelled_if_active",
+    "sdk_emit_SessionClosed_once",
+    "sdk_transport_close_1000",
+    "relay_transport_close_1000"
+  ],
+  "duplicate_close": "replay_same_closed_ack_without_second_finalizer",
+  "ack_timeout": "sdk_emit_same_clean_terminals_then_close_1000_and_record_close_ack_timeout",
+  "physical_close_before_intent": "SessionFailed_unavailable_retryable"
+}
