@@ -1,0 +1,14 @@
+{
+  "provider": "qwen",
+  "wire_protocol": "qwen-native",
+  "wire_version": "2026-08-28.1",
+  "sdk_protocol_version": "simple-harness-realtime/1",
+  "public_model": "qwen3.5-omni-realtime",
+  "voice": "Tina",
+  "correlation": "corr_0123456789ABCDEFGHJKMNPQRS",
+  "required_features": ["server_turn_detection", "automatic_response", "interruption", "input_transcription", "audio_output", "cancel_response"],
+  "audio": {
+    "input": {"codec": "pcm_s16le", "sample_rate": 16000, "channels": 1},
+    "output": {"codec": "pcm_s16le", "sample_rate": 24000, "channels": 1}
+  }
+}

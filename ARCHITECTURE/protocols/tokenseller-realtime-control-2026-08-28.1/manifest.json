@@ -1,8 +1,8 @@
 {
   "schema": "simple-harness-realtime-protocol-authority-v1",
-  "protocol_id": "tokenseller.realtime-control/2026-08-27.1",
+  "protocol_id": "tokenseller.realtime-control/2026-08-28.1",
   "sdk_protocol_version": "simple-harness-realtime/1",
-  "retrieved_at": "2026-08-27",
+  "retrieved_at": "2026-08-28",
   "owner": "TokenSeller control plane and simple-harness-service-sdk RelayControlCodec",
   "strict_unknown_fields": true,
   "strict_unknown_fields_scope": "Every object in HTTP mint and WSS control messages. Static capability fields must equal capability-manifest.json; wallet revision id/digest are selected under wallet-pricing-rollover.json, the full object must satisfy the same schema, and its per-session RFC8785 digest binds mint/open/created.",
@@ -12,8 +12,10 @@
     "parse_first_tokenseller.session.open_frame",
     "validate_control_sdk_wire_correlation_and_digest_binding",
     "consume_ephemeral_token_once",
-    "connect_provider",
-    "emit_tokenseller.session.created"
+    "connect_provider_socket",
+    "emit_tokenseller.session.created",
+    "forward_client_session.update",
+    "require_provider_session.updated_before_audio"
   ],
   "message_types": {
     "tokenseller.session.open": {

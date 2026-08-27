@@ -263,15 +263,17 @@ pre-auth/settlement 与 final teardown。kernel 通过 `RelayProtocolStrategy` �
 
 ### 6.3 Qwen-native 数据面
 
-本项目不再把 TokenSeller 旧代码中的 beta-flat schema 当成 Qwen 原生协议。2026-08-27 官方
-Qwen3.5 Omni Realtime 新接入推荐 nested `session.audio.input/output.format`，客户端事件要求唯一 `event_id`；
+本项目不再把 TokenSeller 旧代码中的 beta-flat schema 当成唯一 Qwen 原生协议。2026-08-28 对北京地域
+Qwen3.5 Omni Realtime 原生 WSS 的实连校准确认 nested `session.audio.input/output.format` 可用，客户端事件要求唯一 `event_id`；
 音频输出事件是 `response.audio.*`。权威冻结为
-[`qwen-native/2026-08-27.1`](protocols/qwen-native-2026-08-27.1/manifest.json)：
+[`qwen-native/2026-08-28.1`](protocols/qwen-native-2026-08-28.1/manifest.json)：
 
 - 北京地域 workspace-scoped WSS，Bearer header，model query；不发送旧实现的 `OpenAI-Beta` header；
 - exact upstream model `qwen3.5-omni-flash-realtime-2026-03-15`，public alias 仍为
   `qwen3.5-omni-realtime`，voice=`Tina`；选择 Flash snapshot 是为了成本与行为固定，不能用移动的 alias/`latest`；
 - nested audio config，16 kHz mono raw PCM s16le 输入、24 kHz mono raw PCM s16le 输出；
+- Provider socket open 后不会先发 `session.created`；客户端先发 `session.update`，Provider 以 nested
+  `session.updated` 确认，只有该确认到达后才进入 ready；
 - `response.audio.delta/done`、`response.audio_transcript.*`、`response.done.usage` 保持官方名称与字段；
 - client `event_id` 由 SDK 生成，连接内唯一，Provider event id 不上浮为 domain identity。
 
@@ -293,7 +295,7 @@ relay 可以为限额、计费和安全读取 event type、ID 与 decoded byte c
 SDK 内独立 `RelayControlCodec` 先按 `type` namespace demux：`tokenseller.*` 交给 control codec，其他 frame 交给
 Qwen adapter。control codec 独占版本/能力、budget/limits、relay error、expiring/closed 与 clean-close ack；Qwen adapter
 不得解析这些扩展，transport 也不得把它们当 Provider frame。control protocol 固定为
-[`tokenseller.realtime-control/2026-08-27.1`](protocols/tokenseller-realtime-control-2026-08-27.1/manifest.json)。该 authority
+[`tokenseller.realtime-control/2026-08-28.1`](protocols/tokenseller-realtime-control-2026-08-28.1/manifest.json)。该 authority
 冻结 mint request/response、第一帧 open、created/error/expiring、close/closed、完整 capability manifest、digest 和失败 scenarios；
 Python SDK 与 TokenSeller TypeScript 必须消费同一目录，不得分别定义 DTO。
 
@@ -301,12 +303,13 @@ Python SDK 与 TokenSeller TypeScript 必须消费同一目录，不得分别定
 
 secret mint、WSS 第一帧及响应的完整字段由 control authority 冻结。顺序固定为：HTTP mint 返回完整 manifest+digest；WSS
 upgrade 只验证 path/header/token 的不可变 binding 且暂不连接 Provider；SDK 第一帧发送 `tokenseller.session.open`；relay
-验证 exact control/sdk/wire version、correlation 和 digest 后才 consume 一次性 token、连接 Provider并发送
-`tokenseller.session.created`。任何 mismatch 均在 token consume 与 Provider connect 前拒绝。绑定字段包括：
+验证 exact control/sdk/wire version、correlation 和 digest 后才 consume 一次性 token、连接 Provider socket并发送
+`tokenseller.session.created`。SDK 随后发送原生 `session.update`，Provider 返回 `session.updated` 后 SDK 才进入 ready。
+任何 binding mismatch 均在 token consume 与 Provider connect 前拒绝。绑定字段包括：
 
 - `provider=qwen`
 - `wire_protocol=qwen-native`
-- `wire_version=2026-08-27.1`
+- `wire_version=2026-08-28.1`
 - `sdk_protocol_version`
 - public model/voice
 - 完整 capability manifest 与其稳定 digest
@@ -321,7 +324,7 @@ WSS upgrade 必须与 token 中绑定的 provider/path/model/protocol/version/di
 consume 前拒绝，其余不兼容最迟在打开 Provider socket 前结构化失败。SDK 在发送首个 session update 前核对响应，
 不接受未知字段位置或静默 downgrade。
 协议注册表冻结为 `openai-ga-compatible/2026-07-voice-v1.1`（legacy）、
-[`qwen-native/2026-08-27.1`](protocols/qwen-native-2026-08-27.1/manifest.json) 与本轮实现但不启用的
+[`qwen-native/2026-08-28.1`](protocols/qwen-native-2026-08-28.1/manifest.json) 与本轮实现但不启用的
 [`openai-native/2026-08-27.1`](protocols/openai-native-2026-08-27.1/manifest.json)。延后的只有真实 OpenAI 凭证、
 付费和生产路由。禁止 `latest`、按 model 猜 dialect 或静默降级。
 
@@ -444,8 +447,8 @@ terminal → 才调用 transport `close(1000)`。ack timeout 只增加 `close_ac
 2. 产品调用 service-sdk `RealtimeClient.open(RealtimeOpenRequest)`。
 3. SDK 的 `CredentialMinter` 以长期 TokenSeller key 通过 HTTPS mint 一次性、单会话绑定 token。
 4. SDK 核对 provider/wire/sdk version 与 capability digest，然后由 WSS transport 连接对应 Provider 路径。
-5. Qwen adapter 按 `qwen-native/2026-08-27.1` 生成唯一 `event_id` 并发送 nested
-   `session.audio.input/output` 的原生 `session.update`，解析原生 `session.created/session.updated`，投影 `SessionReady`。
+5. Qwen adapter 按 `qwen-native/2026-08-28.1` 生成唯一 `event_id` 并发送 nested
+   `session.audio.input/output` 的原生 `session.update`，解析原生 `session.updated`，投影 `SessionReady`。
 6. 产品收到 `SessionReady` 后开始送 16 kHz mono PCM s16le；SDK base64 编码为 Qwen 原生 append frame。
 7. Qwen VAD/response 原生事件通过 TokenSeller，SDK adapter 投影为稳定 transcript/audio/terminal event。
 8. 产品只处理稳定事件：更新通话状态、播放 PCM、显示文本；TokenSeller 在内部 semantic terminal 上一次结算。

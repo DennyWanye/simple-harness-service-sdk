@@ -1,8 +1,17 @@
 {
   "schema": "simple-harness-realtime-protocol-authority-v1",
-  "protocol_id": "qwen-native/2026-08-27.1",
+  "protocol_id": "qwen-native/2026-08-28.1",
   "provider": "qwen",
-  "retrieved_at": "2026-08-27",
+  "retrieved_at": "2026-08-28",
+  "live_verification": {
+    "verified_at": "2026-08-28",
+    "region": "cn-beijing",
+    "credential_source": "TokenSeller dashscope pool",
+    "content_sent": false,
+    "observed_sequence": ["websocket.open", "client.session.update", "server.session.updated"],
+    "server_first_event_without_session_update": null,
+    "session_updated_shape": "nested-session-audio-v1"
+  },
   "official_sources": [
     "https://help.aliyun.com/zh/model-studio/realtime",
     "https://help.aliyun.com/zh/model-studio/client-events",
@@ -54,7 +63,6 @@
   ],
   "server_events": [
     "error",
-    "session.created",
     "session.updated",
     "input_audio_buffer.speech_started",
     "input_audio_buffer.speech_stopped",
@@ -95,7 +103,7 @@
     "incomplete_with_client_cancel_owner": "cancelled",
     "incomplete_without_client_cancel_owner": "incomplete"
   },
-  "relay_control_protocol": "tokenseller.realtime-control/2026-08-27.1",
+  "relay_control_protocol": "tokenseller.realtime-control/2026-08-28.1",
   "event_vector_map": {
     "client": {
       "session.update": "client-session-update.json",
@@ -108,7 +116,6 @@
     },
     "server": {
       "error": "server-error.json",
-      "session.created": "server-session-created.json",
       "session.updated": "server-lifecycle-sequence.json",
       "input_audio_buffer.speech_started": "server-lifecycle-sequence.json",
       "input_audio_buffer.speech_stopped": "server-lifecycle-sequence.json",
@@ -141,7 +148,6 @@
     "client-audio-append.json",
     "client-response-cancel.json",
     "client-tool-result.json",
-    "server-session-created.json",
     "server-lifecycle-sequence.json",
     "server-audio-delta.json",
     "server-tool-call-done.json",

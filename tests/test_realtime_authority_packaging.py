@@ -90,8 +90,8 @@ def _valid_candidate_manifest() -> dict[str, Any]:
         "schema": "simple-harness-service-candidate-manifest-v2",
         "package": {
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.0",
-            "planned_tag": "v0.3.0",
+            "version": "0.3.1",
+            "planned_tag": "v0.3.1",
             "requires_python": ">=3.11",
         },
         "source": {"commit": "0" * 40, "source_date_epoch": 0},
@@ -149,11 +149,16 @@ def test_packaged_authority_is_byte_identical_and_indexed() -> None:
     authority = _load_authority_module()
     index = authority.check_synced()
 
-    assert _files(SOURCE_ROOT) == _files(PACKAGED_ROOT)
+    assert {
+        name: path.read_bytes()
+        for name, path in authority._active_files(SOURCE_ROOT).items()
+    } == _files(PACKAGED_ROOT)
+    assert (SOURCE_ROOT / "qwen-native-2026-08-27.1").is_dir()
+    assert (SOURCE_ROOT / "tokenseller-realtime-control-2026-08-27.1").is_dir()
     assert index["schema"] == "simple-harness-realtime-authority-index-v1"
     assert index["root_digest"] == {
         "algorithm": authority.ROOT_DIGEST_ALGORITHM,
-        "sha256": "2296e55ca88a02ea800a7a70c3b83a2859badb9466539ee17fe3197fcc0c5802",
+        "sha256": "e7b2da35e616526df9e03396a89033ecdcd8fe42ce7a74ea259e78937fe019a0",
     }
     assert len(index["packs"]) == 4
     assert (PACKAGE_ROOT / "authority-index.json").read_bytes() == authority.canonical_json(
@@ -179,7 +184,7 @@ def test_authority_bundle_is_reproducible_and_normalized(tmp_path: Path) -> None
         assert [member.name for member in members] == sorted(
             member.name for member in members
         )
-        assert len(members) == 70
+        assert len(members) == 69
         assert all(member.isfile() for member in members)
         assert all(member.mtime == 0 for member in members)
         assert all(member.uid == member.gid == 0 for member in members)
@@ -337,16 +342,16 @@ def test_release_scripts_pass_strict_mypy() -> None:
 
 def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None:
     candidate = _load_build_module()
-    wheel = tmp_path / "simple_harness_service_sdk-0.3.0-py3-none-any.whl"
+    wheel = tmp_path / "simple_harness_service_sdk-0.3.1-py3-none-any.whl"
     wheel.write_bytes(b"candidate-wheel-bytes")
 
     unit = candidate._sdk_release_unit(
         metadata={
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.0",
+            "version": "0.3.1",
             "requires_python": ">=3.11",
         },
-        planned_tag="v0.3.0",
+        planned_tag="v0.3.1",
         wheel=wheel,
     )
 
@@ -357,13 +362,13 @@ def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None
         "memory",
     ]
     assert [member["version"] for member in unit["members"]] == [
-        "0.3.0",
+        "0.3.1",
         "0.6.2",
         "0.5.2",
     ]
     assert unit["members"][0]["download_url"] == (
         "https://github.com/DennyWanye/simple-harness-service-sdk/releases/download/"
-        "v0.3.0/simple_harness_service_sdk-0.3.0-py3-none-any.whl"
+        "v0.3.1/simple_harness_service_sdk-0.3.1-py3-none-any.whl"
     )
     assert all(
         member["download_url"].startswith("https://github.com/")

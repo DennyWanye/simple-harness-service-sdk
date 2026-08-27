@@ -28,7 +28,7 @@ from simple_harness_service.realtime.ports import CredentialMinter
 _CONTROL = (
     Path(__file__).parents[1]
     / "src/simple_harness_service/realtime/protocols/"
-    "tokenseller-realtime-control-2026-08-27.1"
+    "tokenseller-realtime-control-2026-08-28.1"
 )
 
 
@@ -90,15 +90,15 @@ def _profile() -> RealtimeProfile:
         name="qwen-production",
         provider="qwen",
         wire_protocol="qwen-native",
-        wire_version="2026-08-27.1",
+        wire_version="2026-08-28.1",
         public_model="qwen3.5-omni-realtime",
         voice="Tina",
         capability=RealtimeCapability(
-            control_version="2026-08-27.1",
+            control_version="2026-08-28.1",
             sdk_protocol_version="simple-harness-realtime/1",
             provider="qwen",
             wire_protocol="qwen-native",
-            wire_version="2026-08-27.1",
+            wire_version="2026-08-28.1",
             input_audio=RealtimeAudioFormat(),
             output_audio=RealtimeAudioFormat(sample_rate=24_000),
             features=RealtimeFeatureSet(

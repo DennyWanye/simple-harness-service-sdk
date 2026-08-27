@@ -22,9 +22,9 @@ INDEX_PATH = PACKAGE_REALTIME_ROOT / "authority-index.json"
 
 EXPECTED_PACKS = (
     "openai-native-2026-08-27.1",
-    "qwen-native-2026-08-27.1",
+    "qwen-native-2026-08-28.1",
     "realtime-local-2026-08-27.1",
-    "tokenseller-realtime-control-2026-08-27.1",
+    "tokenseller-realtime-control-2026-08-28.1",
 )
 SUM_LINE = re.compile(r"^(?P<digest>[0-9a-f]{64})  (?P<name>[^/\\]+)$")
 ROOT_DIGEST_ALGORITHM = "sha256(path_utf8 + NUL + lowercase_file_sha256_ascii + LF)"
@@ -62,6 +62,16 @@ def _regular_files(root: Path) -> dict[str, Path]:
         if relative.startswith(".") or "/." in relative:
             raise AuthorityError(f"hidden authority entry forbidden: {relative}")
         result[relative] = path
+    return result
+
+
+def _active_files(root: Path) -> dict[str, Path]:
+    """Return only the active release packs while retaining historical packs in source."""
+
+    result: dict[str, Path] = {}
+    for pack_name in EXPECTED_PACKS:
+        for relative, path in _regular_files(root / pack_name).items():
+            result[f"{pack_name}/{relative}"] = path
     return result
 
 
@@ -109,10 +119,7 @@ def _validate_pack(root: Path, pack_name: str) -> dict[str, Any]:
 
 
 def authority_index(root: Path) -> dict[str, Any]:
-    files = _regular_files(root)
-    observed_packs = sorted({name.partition("/")[0] for name in files})
-    if observed_packs != sorted(EXPECTED_PACKS):
-        raise AuthorityError("authority pack set mismatch")
+    files = _active_files(root)
     packs = [_validate_pack(root, name) for name in EXPECTED_PACKS]
     digest = hashlib.sha256()
     for relative, path in sorted(files.items()):
@@ -135,7 +142,7 @@ def canonical_json(value: object) -> bytes:
 
 
 def check_synced() -> dict[str, Any]:
-    source = _regular_files(SOURCE_ROOT)
+    source = _active_files(SOURCE_ROOT)
     target = _regular_files(TARGET_ROOT)
     if set(source) != set(target):
         missing = sorted(set(source) - set(target))
@@ -161,14 +168,20 @@ def sync() -> dict[str, Any]:
     source_index = authority_index(SOURCE_ROOT)
     if TARGET_ROOT.exists():
         shutil.rmtree(TARGET_ROOT)
-    shutil.copytree(SOURCE_ROOT, TARGET_ROOT, copy_function=shutil.copyfile)
+    TARGET_ROOT.mkdir(parents=True)
+    for pack_name in EXPECTED_PACKS:
+        shutil.copytree(
+            SOURCE_ROOT / pack_name,
+            TARGET_ROOT / pack_name,
+            copy_function=shutil.copyfile,
+        )
     INDEX_PATH.write_bytes(canonical_json(source_index))
     return check_synced()
 
 
 def build_bundle(output: Path, *, authority_root: Path = TARGET_ROOT) -> dict[str, Any]:
     index = authority_index(authority_root)
-    files = _regular_files(authority_root)
+    files = _active_files(authority_root)
     members: list[tuple[str, bytes]] = [
         (f"{BUNDLE_PREFIX}/authority-index.json", canonical_json(index))
     ]

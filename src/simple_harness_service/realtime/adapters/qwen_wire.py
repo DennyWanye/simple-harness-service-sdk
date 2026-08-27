@@ -25,7 +25,6 @@ QWEN_CLIENT_EVENTS = frozenset(
 QWEN_SERVER_EVENTS = frozenset(
     {
         "error",
-        "session.created",
         "session.updated",
         "input_audio_buffer.speech_started",
         "input_audio_buffer.speech_stopped",

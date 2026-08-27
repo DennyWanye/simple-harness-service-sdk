@@ -36,11 +36,11 @@ from ._shared import require_string as _string
 from .qwen_wire import QwenWireCodec
 
 QWEN_CAPABILITY = RealtimeCapability(
-    control_version="2026-08-27.1",
+    control_version="2026-08-28.1",
     sdk_protocol_version="simple-harness-realtime/1",
     provider="qwen",
     wire_protocol="qwen-native",
-    wire_version="2026-08-27.1",
+    wire_version="2026-08-28.1",
     input_audio=RealtimeAudioFormat(sample_rate=16_000),
     output_audio=RealtimeAudioFormat(sample_rate=24_000),
     features=RealtimeFeatureSet(
@@ -125,11 +125,11 @@ class QwenOmniAdapter:
         value = self._wire.decode_server_event(payload)
         event_type = _string(value.get("type"), "type")
         event_id = _string(value.get("event_id"), "event_id")
-        if event_type in {"session.created", "session.updated"}:
-            self._validate_session_ack(value, event_type)
+        if event_type == "session.updated":
+            self._validate_session_ack(value)
             return DecodedProviderEvent(
                 event_id,
-                provider_ready=event_type == "session.updated",
+                provider_ready=True,
                 session_acknowledged=True,
             )
         if event_type == "input_audio_buffer.committed":
@@ -282,7 +282,6 @@ class QwenOmniAdapter:
     @staticmethod
     def _validate_session_ack(
         value: Mapping[str, object],
-        event_type: str,
     ) -> None:
         if set(value) != {"event_id", "type", "session"}:
             raise RealtimeError(
@@ -292,12 +291,10 @@ class QwenOmniAdapter:
         session = _object(value.get("session"), "session")
         expected_keys = {
             "id",
-            "object",
-            "model",
             "modalities",
+            "instructions",
             "voice",
-            "input_audio_format",
-            "output_audio_format",
+            "audio",
             "input_audio_transcription",
             "turn_detection",
         }
@@ -307,13 +304,14 @@ class QwenOmniAdapter:
                 "Qwen session fields do not match",
             )
         _string(session.get("id"), "session.id")
+        _string(session.get("instructions"), "session.instructions")
         expected = {
-            "object": "realtime.session",
-            "model": "qwen3.5-omni-flash-realtime-2026-03-15",
             "modalities": ["text", "audio"],
             "voice": "Tina",
-            "input_audio_format": "pcm",
-            "output_audio_format": "pcm",
+            "audio": {
+                "input": {"format": {"type": "pcm", "sample_rate": 16_000}},
+                "output": {"format": {"type": "pcm", "sample_rate": 24_000}},
+            },
             "input_audio_transcription": {"model": "qwen3-asr-flash-realtime"},
         }
         if any(session.get(key) != expected_value for key, expected_value in expected.items()):
@@ -326,11 +324,9 @@ class QwenOmniAdapter:
             "type": "semantic_vad",
             "threshold": 0.5,
             "silence_duration_ms": 800,
+            "create_response": True,
+            "interrupt_response": True,
         }
-        if event_type == "session.created":
-            expected_turn_detection.update(
-                {"create_response": True, "interrupt_response": True}
-            )
         if turn_detection != expected_turn_detection:
             raise RealtimeError(
                 RealtimeErrorCode.PROTOCOL_ERROR,

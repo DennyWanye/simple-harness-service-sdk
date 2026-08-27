@@ -1,0 +1,20 @@
+{
+  "event_id": "event_00000000000000000000000000000001",
+  "type": "session.update",
+  "session": {
+    "modalities": ["text", "audio"],
+    "model": "qwen3.5-omni-flash-realtime-2026-03-15",
+    "voice": "Tina",
+    "instructions": "You are a concise voice assistant.",
+    "audio": {
+      "input": {"format": {"type": "pcm", "sample_rate": 16000}},
+      "output": {"format": {"type": "pcm", "sample_rate": 24000}}
+    },
+    "turn_detection": {
+      "type": "semantic_vad",
+      "threshold": 0.5,
+      "silence_duration_ms": 800
+    },
+    "input_audio_transcription": {"model": "qwen3-asr-flash-realtime"}
+  }
+}

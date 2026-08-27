@@ -39,8 +39,8 @@ from simple_harness_service.realtime.observability import (
 from simple_harness_service.realtime.relay_control import RelayControlCodec
 
 ROOT = Path(__file__).parents[1]
-QWEN = ROOT / "ARCHITECTURE/protocols/qwen-native-2026-08-27.1"
-CONTROL = ROOT / "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-27.1"
+QWEN = ROOT / "ARCHITECTURE/protocols/qwen-native-2026-08-28.1"
+CONTROL = ROOT / "ARCHITECTURE/protocols/tokenseller-realtime-control-2026-08-28.1"
 
 
 class FakeConnection:
@@ -139,7 +139,7 @@ def _profile() -> RealtimeProfile:
         "qwen-production",
         "qwen",
         "qwen-native",
-        "2026-08-27.1",
+        "2026-08-28.1",
         "qwen3.5-omni-realtime",
         "Tina",
         QWEN_CAPABILITY,
@@ -177,7 +177,6 @@ async def _open(
 
 
 async def _ready(connection: FakeConnection, session: Any, stream: Any) -> SessionReady:
-    await connection.incoming.put((QWEN / "server-session-created.json").read_text())
     lifecycle = json.loads((QWEN / "server-lifecycle-sequence.json").read_text())
     updated = lifecycle["scenarios"][0]["events"][0]
     await connection.incoming.put(json.dumps(updated))

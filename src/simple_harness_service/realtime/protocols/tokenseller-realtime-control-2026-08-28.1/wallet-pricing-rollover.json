@@ -1,0 +1,46 @@
+{
+  "schema": "tokenseller.realtime-wallet-pricing-rollover-v1",
+  "revision_immutability": "insert_only; id and canonical bytes digest are unique",
+  "activation_authority": {
+    "record": "append-only activation event with revision_id, action, effective_at, actor_id, reason and event_id",
+    "actions": ["ACTIVATE", "DEACTIVATE"],
+    "eligible_at_mint": "the latest activation event with effective_at <= mint_time is ACTIVATE",
+    "mutation": "activation history is never updated or deleted"
+  },
+  "selection_at_mint": {
+    "predicate": "activation eligible and valid_from <= mint_time and valid_until >= mint_time + max_session_duration_ms + settlement_grace_ms",
+    "order": "greatest valid_from, then lexicographically greatest id",
+    "max_session_duration_ms": 1800000,
+    "settlement_grace_ms": 300000,
+    "no_match": "billing_rejected_before_token_creation"
+  },
+  "staging": {
+    "minimum_before_active_expiry_ms": 604800000,
+    "successor_may_overlap": true,
+    "overlap_selection": "the greatest valid_from wins for new mints",
+    "required_checks": [
+      "canonical revision schema valid",
+      "revision digest matches canonical bytes",
+      "valid_from is before valid_until",
+      "margin and token ceilings are safe integers",
+      "integer pricing fixtures recompute exactly"
+    ]
+  },
+  "existing_session": {
+    "rule": "continue with the complete pricing snapshot and digest persisted at mint even after a newer revision activates",
+    "hot_swap": false,
+    "reconciliation": "uses only the RealtimeTurn persisted snapshot, never the current active revision"
+  },
+  "capability_binding": {
+    "rule": "capability is schema-validated per session; static protocol/model fields remain exact while wallet revision id and digest are selected dynamically",
+    "digest": "SDK recomputes RFC8785 SHA-256 over the full HTTP capability and requires the same digest in token binding, session.open, and session.created",
+    "sdk_release_required": "only for a schema or static protocol/model change, not for a new same-schema wallet revision"
+  },
+  "operations": {
+    "alerts_before_expiry_ms": [604800000, 259200000, 86400000],
+    "alert_owner": "RealtimeWalletPricingLifecycleService evaluates at API startup, every native mint, pricing health probe, and deployment preflight; it emits metadata-only revision id, threshold and remaining_ms",
+    "alert_test": "fake clock asserts exactly one threshold transition at 7d, 3d and 1d per revision and process lifetime; repeated checks inside one band are deduplicated",
+    "production_preflight": "an eligible revision must cover max session plus grace and a schema-valid successor must be inserted before the seven-day threshold and activated before the predecessor can no longer cover the mint horizon",
+    "rollback": "append DEACTIVATE for the successor; optionally append ACTIVATE for a predecessor only if it still satisfies the mint horizon; never mutate or delete a revision referenced by a token, session, turn, or UsageEvent"
+  }
+}

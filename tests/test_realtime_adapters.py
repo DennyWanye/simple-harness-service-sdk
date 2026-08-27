@@ -47,7 +47,8 @@ def test_provider_adapters_have_no_cross_provider_source_dependency(
 
 
 def _fixture(provider: str, name: str) -> str:
-    folder = f"{provider}-native-2026-08-27.1"
+    version = "2026-08-28.1" if provider == "qwen" else "2026-08-27.1"
+    folder = f"{provider}-native-{version}"
     return (PACKS / folder / name).read_text()
 
 
@@ -63,13 +64,16 @@ def test_both_adapters_decode_same_consumer_audio_and_terminal_contract(
     provider: str,
     audio_event: str,
 ) -> None:
-    session = adapter.decode_server_event(_fixture(provider, "server-session-created.json"))
-    assert session.session_acknowledged
-    assert not session.provider_ready
     lifecycle = json.loads(_fixture(provider, "server-lifecycle-sequence.json"))
     updated = adapter.decode_server_event(
         json.dumps(lifecycle["scenarios"][0]["events"][0])
     )
+    if provider == "openai":
+        session = adapter.decode_server_event(
+            _fixture(provider, "server-session-created.json")
+        )
+        assert session.session_acknowledged
+        assert not session.provider_ready
     assert updated.session_acknowledged
     assert updated.provider_ready
 
@@ -118,7 +122,11 @@ def test_session_ack_requires_frozen_negotiated_configuration(
     adapter: Any,
     mutation: str,
 ) -> None:
-    value = json.loads(_fixture(provider, "server-session-created.json"))
+    if provider == "qwen":
+        lifecycle = json.loads(_fixture(provider, "server-lifecycle-sequence.json"))
+        value = lifecycle["scenarios"][0]["events"][0]
+    else:
+        value = json.loads(_fixture(provider, "server-session-created.json"))
     if mutation == "missing_session":
         value.pop("session")
     elif mutation == "model":
@@ -129,7 +137,7 @@ def test_session_ack_requires_frozen_negotiated_configuration(
         else:
             value["session"]["audio"]["output"]["voice"] = "future-voice"
     elif provider == "qwen":
-        value["session"]["input_audio_format"] = "wav"
+        value["session"]["audio"]["input"]["format"]["sample_rate"] = 24_000
     else:
         value["session"]["audio"]["input"]["format"]["rate"] = 16_000
 

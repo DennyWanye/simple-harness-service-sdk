@@ -3,7 +3,7 @@
 Thin authenticated service and transport framework for Simple Harness SDK. Harness remains the
 only durable command and execution authority; this package owns no database or execution worker.
 
-Version 0.3.0 adds a provider-neutral, full-duplex Realtime API alongside the existing durable
+Version 0.3.1 adds a provider-neutral, full-duplex Realtime API alongside the existing durable
 command and Claude-style terminal chat APIs. `RealtimeClient` owns session ordering, bounded
 queues, interruption tombstones, one terminal owner, Tool acknowledgement, and stable domain
 events. Products provide only microphone/playback/UI policy and select a composition profile;
@@ -23,7 +23,7 @@ sink failures never change session behavior.
 
 Four frozen authority packs are shipped as package data and as a deterministic cross-language
 bundle. A release manifest binds their root digest, three Python consumer locks, and the exact
-three-SDK release unit: service `0.3.0`, Harness `0.6.2`, and Memory `0.5.2`. Harness remains the
+three-SDK release unit: service `0.3.1`, Harness `0.6.2`, and Memory `0.5.2`. Harness remains the
 only durable command authority; Realtime adds no database or execution worker.
 
 The 0.2.x terminal behavior remains compatible. Interactive TTYs receive command completion,
