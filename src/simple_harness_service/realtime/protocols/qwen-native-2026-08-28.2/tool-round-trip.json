@@ -1,0 +1,18 @@
+{
+  "kind": "ordered_tool_round_trip",
+  "call_id": "call_fixture_1",
+  "steps": [
+    {"direction": "provider_to_sdk", "sdk_stage_after": "NONE", "event": {"event_id": "event_fixture_tool_response_created_1", "type": "response.created", "response": {"id": "resp_tool_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "in_progress", "modalities": ["text"], "output": []}}},
+    {"direction": "provider_to_sdk", "sdk_stage_after": "NONE", "event": {"event_id": "event_fixture_tool_item_added_1", "type": "response.output_item.added", "response_id": "resp_tool_1", "output_index": 0, "item": {"id": "item_tool_1", "object": "realtime.item", "type": "function_call", "status": "in_progress", "call_id": "call_fixture_1", "name": "get_weather", "arguments": ""}}},
+    {"direction": "provider_to_sdk", "sdk_stage_after": "REQUESTED", "event": {"event_id": "event_fixture_tool_requested_1", "type": "response.function_call_arguments.done", "response_id": "resp_tool_1", "item_id": "item_tool_1", "output_index": 0, "call_id": "call_fixture_1", "name": "get_weather", "arguments": "{\"city\":\"Hangzhou\"}"}},
+    {"direction": "sdk_to_provider", "sdk_stage_after": "RESULT_SENT", "event": {"event_id": "event_fixture_tool_result_1", "type": "conversation.item.create", "item": {"type": "function_call_output", "call_id": "call_fixture_1", "output": "{\"temperature_c\":21}"}}},
+    {"direction": "provider_to_sdk", "sdk_stage_after": "RESULT_ACKED", "event": {"event_id": "event_fixture_tool_result_ack_1", "type": "conversation.item.created", "item": {"id": "item_tool_output_1", "object": "realtime.item", "type": "function_call_output", "status": "completed", "call_id": "call_fixture_1", "output": "{\"temperature_c\":21}"}}},
+    {"direction": "sdk_to_provider", "sdk_stage_after": "FOLLOWUP_REQUESTED", "event": {"event_id": "event_fixture_tool_followup_create_1", "type": "response.create"}},
+    {"direction": "provider_to_sdk", "sdk_stage_after": "FOLLOWUP_STARTED", "event": {"event_id": "event_fixture_tool_followup_started_1", "type": "response.created", "response": {"id": "resp_tool_followup_1", "object": "realtime.response", "conversation_id": "conv_fixture_1", "status": "in_progress", "modalities": ["text", "audio"], "voice": "Tina", "output_audio_format": "pcm", "output": []}}}
+  ],
+  "retry_rules": {
+    "before_RESULT_ACKED": "resend the identical conversation.item.create event_id; never send response.create",
+    "at_or_after_RESULT_ACKED_before_FOLLOWUP_STARTED": "send or resend the identical response.create event_id; never duplicate the function_call_output item",
+    "duplicate_ack_or_response_created": "drop duplicate and retain the highest stage"
+  }
+}

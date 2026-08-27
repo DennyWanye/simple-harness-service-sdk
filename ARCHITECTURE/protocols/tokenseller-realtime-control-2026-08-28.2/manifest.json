@@ -1,6 +1,6 @@
 {
   "schema": "simple-harness-realtime-protocol-authority-v1",
-  "protocol_id": "tokenseller.realtime-control/2026-08-28.1",
+  "protocol_id": "tokenseller.realtime-control/2026-08-28.2",
   "sdk_protocol_version": "simple-harness-realtime/1",
   "retrieved_at": "2026-08-28",
   "owner": "TokenSeller control plane and simple-harness-service-sdk RelayControlCodec",

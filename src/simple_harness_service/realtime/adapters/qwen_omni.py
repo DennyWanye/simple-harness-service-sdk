@@ -36,11 +36,11 @@ from ._shared import require_string as _string
 from .qwen_wire import QwenWireCodec
 
 QWEN_CAPABILITY = RealtimeCapability(
-    control_version="2026-08-28.1",
+    control_version="2026-08-28.2",
     sdk_protocol_version="simple-harness-realtime/1",
     provider="qwen",
     wire_protocol="qwen-native",
-    wire_version="2026-08-28.1",
+    wire_version="2026-08-28.2",
     input_audio=RealtimeAudioFormat(sample_rate=16_000),
     output_audio=RealtimeAudioFormat(sample_rate=24_000),
     features=RealtimeFeatureSet(
@@ -349,6 +349,8 @@ class QwenOmniAdapter:
                 "turn_detected",
             }
             status = ResponseStatus.CANCELLED if cancelled else ResponseStatus.INCOMPLETE
+        elif provider_status == "cancelled":
+            status = ResponseStatus.CANCELLED
         else:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "unknown response status")
         usage = parse_terminal_usage(

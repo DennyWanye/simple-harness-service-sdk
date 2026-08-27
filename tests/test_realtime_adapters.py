@@ -47,7 +47,7 @@ def test_provider_adapters_have_no_cross_provider_source_dependency(
 
 
 def _fixture(provider: str, name: str) -> str:
-    version = "2026-08-28.1" if provider == "qwen" else "2026-08-27.1"
+    version = "2026-08-28.2" if provider == "qwen" else "2026-08-27.1"
     folder = f"{provider}-native-{version}"
     return (PACKS / folder / name).read_text()
 
@@ -101,6 +101,28 @@ def test_qwen_session_update_is_nested_native_shape_and_cancel_has_no_response_i
     with pytest.raises(RealtimeError) as caught:
         adapter.truncate_output("item", 0, 100)
     assert caught.value.code is RealtimeErrorCode.UNSUPPORTED
+
+
+def test_qwen_native_cancelled_terminal_projects_exact_usage() -> None:
+    matrix = json.loads(_fixture("qwen", "server-response-terminal-matrix.json"))
+    terminal = next(
+        case for case in matrix["cases"] if case["name"] == "client_cancelled"
+    )["wire_events"][0]
+
+    decoded = QwenOmniAdapter().decode_server_event(json.dumps(terminal))
+
+    assert len(decoded.events) == 1
+    event = decoded.events[0]
+    assert isinstance(event, ResponseFinished)
+    assert event.response_id == "resp_terminal_1"
+    assert event.status is ResponseStatus.CANCELLED
+    assert event.usage is not None
+    assert (
+        event.usage.input_text_tokens
+        + event.usage.input_audio_tokens
+        + event.usage.output_text_tokens
+        + event.usage.output_audio_tokens
+    ) == 10
 
 
 def test_openai_offline_seam_supports_truncate_but_refuses_live_enablement() -> None:

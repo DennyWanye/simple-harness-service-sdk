@@ -1,0 +1,21 @@
+{
+  "event_id": "event_server_response_done_1",
+  "type": "response.done",
+  "response": {
+    "id": "resp_fixture_1",
+    "object": "realtime.response",
+    "conversation_id": "conv_fixture_1",
+    "status": "completed",
+    "modalities": ["text", "audio"],
+    "voice": "Tina",
+    "output_audio_format": "pcm",
+    "output": [],
+    "usage": {
+      "total_tokens": 30,
+      "input_tokens": 20,
+      "output_tokens": 10,
+      "input_tokens_details": {"text_tokens": 5, "audio_tokens": 15},
+      "output_tokens_details": {"text_tokens": 2, "audio_tokens": 8}
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "event_id": "event_00000000000000000000000000000002",
+  "type": "input_audio_buffer.append",
+  "audio": "AAAAAA=="
+}

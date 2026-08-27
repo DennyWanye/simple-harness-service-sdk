@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "simple-harness-service-sdk"
-version = "0.3.1"
+version = "0.3.2"
 description = "Thin authenticated service framework for Simple Harness SDK"
 readme = "README.md"
 requires-python = ">=3.11"

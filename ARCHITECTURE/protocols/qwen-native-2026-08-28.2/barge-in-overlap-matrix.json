@@ -19,7 +19,7 @@
         {"type": "input_audio_buffer.committed", "item_id": "item_new", "action": "create_successor_turn_and_hold_once"},
         {"type": "response.created", "response_id": "resp_new", "action": "cas_bind_only_successor_and_buffer_until_hold"},
         {"type": "response.audio.delta", "response_id": "resp_old", "action": "drop_as_predecessor_late_audio"},
-        {"type": "response.done", "response_id": "resp_old", "status": "incomplete", "action": "settle_turn_key_old_once"},
+        {"type": "response.done", "response_id": "resp_old", "status": "cancelled", "action": "settle_turn_key_old_once"},
         {"type": "response.done", "response_id": "resp_new", "status": "completed", "action": "settle_turn_key_new_once"}
       ],
       "expected": {"holds": ["turn_key_old", "turn_key_new"], "usage_events": ["turn_key_old", "turn_key_new"], "forwarded_old_audio_deltas": 0, "session_failure": "none"}
@@ -28,7 +28,7 @@
       "name": "old_terminal_before_successor_created",
       "ordered_observations": [
         {"type": "input_audio_buffer.speech_started", "action": "tombstone_old_audio_and_send_cancel_once"},
-        {"type": "response.done", "response_id": "resp_old", "status": "incomplete", "action": "settle_turn_key_old_once"},
+        {"type": "response.done", "response_id": "resp_old", "status": "cancelled", "action": "settle_turn_key_old_once"},
         {"type": "input_audio_buffer.committed", "item_id": "item_new", "action": "create_successor_turn_and_hold_once"},
         {"type": "response.created", "response_id": "resp_new", "action": "cas_bind_only_successor_and_buffer_until_hold"},
         {"type": "response.done", "response_id": "resp_new", "status": "completed", "action": "settle_turn_key_new_once"}
@@ -38,7 +38,7 @@
     {
       "name": "duplicate_old_terminal_and_cancel_no_active",
       "ordered_observations": [
-        {"type": "response.done", "response_id": "resp_old", "status": "incomplete", "action": "return_existing_old_disposition"},
+        {"type": "response.done", "response_id": "resp_old", "status": "cancelled", "action": "return_existing_old_disposition"},
         {"type": "response.cancel", "provider_current_response": "none", "action": "do_not_send_provider_cancel"}
       ],
       "expected": {"additional_holds": 0, "additional_usage_events": 0, "session_failure": "none"}

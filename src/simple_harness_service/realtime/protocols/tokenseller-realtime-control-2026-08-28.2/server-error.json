@@ -1,0 +1,9 @@
+{
+  "type": "tokenseller.error",
+  "event_id": "ctl_error_00000000000000000000001",
+  "related_event_id": "ctl_open_000000000000000000000001",
+  "code": "protocol_error",
+  "retryable": false,
+  "fatal": true,
+  "message_class": "capability_digest_mismatch"
+}

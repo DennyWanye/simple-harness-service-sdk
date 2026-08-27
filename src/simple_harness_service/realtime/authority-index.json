@@ -81,15 +81,15 @@
       "sha256sums_sha256": "cc2ebafd90ac1109bc2f0dce2e95a5c93408e8f3c62e14bc4ee6551878ac8109"
     },
     {
-      "directory": "qwen-native-2026-08-28.1",
+      "directory": "qwen-native-2026-08-28.2",
       "files": [
         {
           "path": "SHA256SUMS",
-          "sha256": "bf46e944888dbd192569a3427f1b08a65f8079ef024eb5854859d1609192a494"
+          "sha256": "2708097bb8717ad7c92aeaa154bd07367ac2ca8950fff18c496fad88d33d6c5d"
         },
         {
           "path": "barge-in-overlap-matrix.json",
-          "sha256": "8aa0464a3e90ee3510c760593c1a637ad3f3e84f2c2c4aff07712af5b6bb966f"
+          "sha256": "df78eb97a15b896279cb7e50be4ca9155b6417bf9d5ea28c148f6acb4022ce09"
         },
         {
           "path": "client-audio-append.json",
@@ -117,7 +117,7 @@
         },
         {
           "path": "manifest.json",
-          "sha256": "dd66b4910130f6dc460e249d5edf89ce769e7737c093504acbf945ff54095716"
+          "sha256": "2a4252232898067d7364b6b9a207d36f39c6318f24d1beaf2993dd4f6d869916"
         },
         {
           "path": "negative-cases.json",
@@ -141,7 +141,7 @@
         },
         {
           "path": "server-response-terminal-matrix.json",
-          "sha256": "fc3d634fa51d46ef3ad4265a5ec3c647d603b70dd96f58ce85d4731209ea1b24"
+          "sha256": "f38f22dc185351c8791996957f52e58c71d16f209ea8b007c8726259b6f9cbf8"
         },
         {
           "path": "server-tool-call-done.json",
@@ -152,9 +152,9 @@
           "sha256": "fa63ac5a2a98f3b0b09a42ce7992bda2c2ba4a7e06c2c8d0df622850fc5f3121"
         }
       ],
-      "manifest_sha256": "dd66b4910130f6dc460e249d5edf89ce769e7737c093504acbf945ff54095716",
-      "protocol_id": "qwen-native/2026-08-28.1",
-      "sha256sums_sha256": "bf46e944888dbd192569a3427f1b08a65f8079ef024eb5854859d1609192a494"
+      "manifest_sha256": "2a4252232898067d7364b6b9a207d36f39c6318f24d1beaf2993dd4f6d869916",
+      "protocol_id": "qwen-native/2026-08-28.2",
+      "sha256sums_sha256": "2708097bb8717ad7c92aeaa154bd07367ac2ca8950fff18c496fad88d33d6c5d"
     },
     {
       "directory": "realtime-local-2026-08-27.1",
@@ -237,15 +237,15 @@
       "sha256sums_sha256": "a682f9658203ad6265400382709592fd1ce12540c25029fff41f7d66e874582a"
     },
     {
-      "directory": "tokenseller-realtime-control-2026-08-28.1",
+      "directory": "tokenseller-realtime-control-2026-08-28.2",
       "files": [
         {
           "path": "SHA256SUMS",
-          "sha256": "7fa1b0dcbbb258611ac4bb0f9978f232c7018aaca3912120daa5ca2700619f71"
+          "sha256": "22a72f6764637b5dc813c33124540b3d4b22417a018fb3e9dfda049bf9059fa5"
         },
         {
           "path": "capability-manifest.json",
-          "sha256": "575e683a14da7e1c09554eadbe580848a0de77f8d59d40c0290b1f263227da74"
+          "sha256": "ce9681646ce2d923f7a0b0d2578625287e73f29159a9eadee865b09e4262c1bb"
         },
         {
           "path": "client-session-close.json",
@@ -253,19 +253,19 @@
         },
         {
           "path": "client-session-open.json",
-          "sha256": "9b5f1e45b6a480f4bf6842d9d2a674f3c544b77015c2589f987b19c7cbff3335"
+          "sha256": "73a279e6f676e718ec92ac9613a8e28241ff7535600ecf8e366358560765c159"
         },
         {
           "path": "manifest.json",
-          "sha256": "37420ec3b0cd584e72a4ce3b40160b1ad329e6e2c0ccc4e6ccf4f301e0374767"
+          "sha256": "000da109afb2b30e555765375d3adcdac51e1891a8f483ad51f16a2a051111b8"
         },
         {
           "path": "mint-request.json",
-          "sha256": "fbc4726b5f9b21692c3cb9e04a057a094f776fea581c3c888451c1fca1d1b458"
+          "sha256": "223cd846262c2fd570c76eeb219483aeea12905cb51df78264784d792aafc87e"
         },
         {
           "path": "mint-response.json",
-          "sha256": "1c1ade4ab439a81179e129a2ce353c0e651b97ffc1179b8450e1c530ce586c1f"
+          "sha256": "8a5b75202920900f266504cb08a2b10f589b13a4d5400cb9a723a5413d92237c"
         },
         {
           "path": "negative-cases.json",
@@ -285,7 +285,7 @@
         },
         {
           "path": "server-session-created.json",
-          "sha256": "3aea8cc49670bae1326a7b552e26ba91fa5f1177271c668080be2e11d3e90818"
+          "sha256": "75662750229c6728df161dd7cc8d876ed1956d45f1420afc3e52aeebe429aaf8"
         },
         {
           "path": "server-session-expiring.json",
@@ -300,14 +300,14 @@
           "sha256": "d22d3b58f3210683a2dfa6bac85cd1c2b0cebd2da6b586e5afcdcd3f6e90cd06"
         }
       ],
-      "manifest_sha256": "37420ec3b0cd584e72a4ce3b40160b1ad329e6e2c0ccc4e6ccf4f301e0374767",
-      "protocol_id": "tokenseller.realtime-control/2026-08-28.1",
-      "sha256sums_sha256": "7fa1b0dcbbb258611ac4bb0f9978f232c7018aaca3912120daa5ca2700619f71"
+      "manifest_sha256": "000da109afb2b30e555765375d3adcdac51e1891a8f483ad51f16a2a051111b8",
+      "protocol_id": "tokenseller.realtime-control/2026-08-28.2",
+      "sha256sums_sha256": "22a72f6764637b5dc813c33124540b3d4b22417a018fb3e9dfda049bf9059fa5"
     }
   ],
   "root_digest": {
     "algorithm": "sha256(path_utf8 + NUL + lowercase_file_sha256_ascii + LF)",
-    "sha256": "e7b2da35e616526df9e03396a89033ecdcd8fe42ce7a74ea259e78937fe019a0"
+    "sha256": "1050b06d53ae340cd6f0183c6387fc7a8b34a5daab8245dc4de05a107d3e32b7"
   },
   "schema": "simple-harness-realtime-authority-index-v1"
 }

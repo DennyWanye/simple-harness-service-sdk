@@ -1,0 +1,24 @@
+{
+  "kind": "ordered_provider_error_mapping",
+  "source": "https://help.aliyun.com/zh/model-studio/error-code/",
+  "matching": "First exact case-sensitive code match wins; then exact HTTP status rule; unknown values use the final fallback. Message text is never inspected.",
+  "fatal_semantics": "Every Provider error event lacks response identity, emits exactly one SessionFailed using the mapped stable code, and ends the event stream. retryable only controls fresh-session retry advice.",
+  "rules": [
+    {"codes": ["InvalidApiKey", "invalid_api_key"], "stable_code": "unauthenticated", "retryable": false, "fatal": true},
+    {"codes": ["AccessDenied", "access_denied", "Endpoint.AccessDenied", "AllocationQuota.FreeTierOnly", "Arrearage", "CommodityNotPurchased", "PrepaidBillOverdue", "PostpaidBillOverdue"], "stable_code": "forbidden", "retryable": false, "fatal": true},
+    {"codes": ["Throttling", "Throttling.RateQuota", "LimitRequests", "limit_requests", "ResourceExhausted", "Throttling.BurstRate", "limit_burst_rate", "Throttling.AllocationQuota", "insufficient_quota", "Throttling.Concurrency"], "stable_code": "rate_limited", "retryable": true, "fatal": true},
+    {"codes": ["ModelServingError"], "stable_code": "unavailable", "retryable": true, "fatal": true},
+    {"error_types": ["invalid_request_error"], "codes": ["invalid_value", "missing_required_parameter", "invalid_event", "audio_format_invalid"], "stable_code": "invalid_request", "retryable": false, "fatal": true},
+    {"http_status": 401, "stable_code": "unauthenticated", "retryable": false, "fatal": true},
+    {"http_status": 403, "stable_code": "forbidden", "retryable": false, "fatal": true},
+    {"http_status": 429, "stable_code": "rate_limited", "retryable": true, "fatal": true},
+    {"http_status_range": [500, 599], "stable_code": "unavailable", "retryable": true, "fatal": true},
+    {"fallback": true, "stable_code": "protocol_error", "retryable": false, "fatal": true}
+  ],
+  "vectors": [
+    {"name": "invalid_value", "input": {"event_id": "event_error_invalid_1", "type": "error", "error": {"type": "invalid_request_error", "code": "invalid_value", "message": "fixture", "param": "session.audio.input.format"}}, "expected": {"stable_code": "invalid_request", "retryable": false, "fatal": true, "session_terminal": "SessionFailed.invalid_request"}},
+    {"name": "rate_limited", "input": {"event_id": "event_error_rate_1", "type": "error", "error": {"type": "Throttling", "code": "Throttling.RateQuota", "message": "fixture", "param": null}}, "expected": {"stable_code": "rate_limited", "retryable": true, "fatal": true, "session_terminal": "SessionFailed.rate_limited"}},
+    {"name": "server_unavailable", "input": {"event_id": "event_error_server_1", "type": "error", "error": {"type": "ModelServingError", "code": "ModelServingError", "message": "fixture", "param": null}}, "expected": {"stable_code": "unavailable", "retryable": true, "fatal": true, "session_terminal": "SessionFailed.unavailable"}},
+    {"name": "unknown_fail_closed", "input": {"event_id": "event_error_unknown_1", "type": "error", "error": {"type": "future_error", "code": "future_code", "message": "fixture", "param": null}}, "expected": {"stable_code": "protocol_error", "retryable": false, "fatal": true, "session_terminal": "SessionFailed.protocol_error"}}
+  ]
+}
