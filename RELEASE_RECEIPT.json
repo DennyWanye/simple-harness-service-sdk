@@ -1,47 +1,71 @@
 {
   "schema": "simple-harness-service-release-receipt-v1",
-  "version": "0.1.3",
-  "release_url": "https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.3",
-  "source_commit": "28ff026d4d99a970ffd7f9a6ae4fb9fbee7228bd",
+  "version": "0.3.0",
+  "release_url": "https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.3.0",
+  "source_commit": "2b52c3fba50b9cb6a7d482ccd4e430007962c1dd",
   "tag": {
-    "name": "v0.1.3",
-    "object": "bbe740bd290ebccd2adf34d0d114cc4e280849f0",
-    "peeled_commit": "28ff026d4d99a970ffd7f9a6ae4fb9fbee7228bd",
+    "name": "v0.3.0",
+    "object": "8d3c3980033c8e5fd1efd785a9cacf543039ac04",
+    "peeled_commit": "2b52c3fba50b9cb6a7d482ccd4e430007962c1dd",
     "annotated": true
   },
   "release": {
     "draft": false,
     "prerelease": false,
     "latest": true,
-    "published_at": "2026-08-24T00:53:19Z"
+    "github_immutable": false,
+    "published_at": "2026-08-27T18:38:31Z"
   },
   "assets": {
-    "BUILD_INFO.json": "4132b51f544496a675e7c4a8c7f145ca6dd9e6d117c249679cbcec5bebd20901",
-    "METADATA": "073b746e53fe65169072e123181cab91b29904f061fc00404295c1eaf21b9e53",
-    "SHA256SUMS": "71f06ff20138afa6ee626a9bcc658ba4ea6e2dc7ed3d0a0691548285115f9c69",
+    "BUILD_INFO.json": "ef9cbb5faa01f2d70c557e1d06a258709fc4ec75c291871c20d26d58bb9ca3fc",
+    "METADATA": "332feb00f09ea6b536cb459ac0c22506a640ccd0031981f7d6d9fff9828292fa",
+    "SHA256SUMS": "6fbcfd24932a632474b3a1d8f72f7ed0c33fc673cab77b7bb1ebfb9a1f052864",
     "WHEEL": "ccec20e2307acd7da453dd7437e70c6b08e2bc3ead3bc3445af135da37b56d59",
-    "candidate-manifest.json": "510d9b34e45d474904d2ce77ae5d6217a4d677a7c4f49fb6627c93d77d71fe85",
-    "compatibility-bom.json": "cb5e359c84c5bce0c3965f52eeaf3a51fc5ab6bb81b8cff7cc88cef4ee3c6789",
-    "simple_harness_service_sdk-0.1.3-py3-none-any.whl": "6f56b71989bb4293bfa076d8b507a49e8e5b66bffa82132c8aec56fd7420d137",
-    "simple_harness_service_sdk-0.1.3.tar.gz": "a03d15ab4ce9301161424889570a263ebbb0726113c5b2737cbcd5b9ba3dc0d7"
+    "authority-index.json": "29a5e797036f54a4806774922102d204d5f244c2dcc82db53be1d2857b6e9485",
+    "candidate-manifest.json": "326ce978f61ced2a019a920060dfd91fc764d750ed6f932da2dab9a032104a35",
+    "compatibility-bom.json": "c04ebe09d28a0983533c9fd91d24a158644bf2e495dacd27e07761163cc6cdec",
+    "realtime-authority-bundle.tar.gz": "e81b4311188a5e4c574134b132339c32e2d5c74d78169d3bcd0495372c64a385",
+    "realtime-lock-aiphone-py313-linux-aarch64.txt": "fe3e2bcc0f8db078bf1fa7d0ca1dbc0db8362eb2837e7c1cf9d828da23d046de",
+    "realtime-lock-simple-harness-py311-macos-arm64.txt": "6e5b870e63e8e56dc805892a76da49bfd7b212083535536f98085741ad05a780",
+    "realtime-lock-simple-harness-py311-windows-x86-64.txt": "6e5b870e63e8e56dc805892a76da49bfd7b212083535536f98085741ad05a780",
+    "realtime-release-targets.json": "6ba900b21f068e099c782391c3ac0ed2085faacc610b1fe3fb5e01c3f0b8d24f",
+    "release-manifest.schema.json": "16e212130fcc6f796485aaf123a073a23c7c4d1e34f597e673399616354d0f45",
+    "simple_harness_service_sdk-0.3.0-py3-none-any.whl": "a88ce965ec90c547d4f2cc76e1ace1c21ee1aaddabdfdd2fcfed3ed038bb7cfe",
+    "simple_harness_service_sdk-0.3.0.tar.gz": "cf3b9cde7c05dab91dba2c8f8b3f970f0f148c905af4cf1a396cdd6612277332"
   },
   "dependencies": {
     "simple-harness-sdk": {
-      "version": "0.5.2",
-      "sha256": "09ba6041a0220cdd952f50e6ec8defcf1d8bbe60d9a044d9d7fc9106985639de"
+      "version": "0.6.2",
+      "sha256": "ffb7c0619851f3c936fcc1d0cf527d07f49e87770291b85e57fe87032ac02c2e"
     },
     "simple-harness-memory-sdk": {
-      "version": "0.5.1",
-      "sha256": "314c1b89a1921abef3b9900a32b753cc0a0c89a3ce92b98822ec1cb45f7a9898"
+      "version": "0.5.2",
+      "sha256": "deff2fa85a269a3978f2c6efcd99fda77abcb74444170361365fd00ec0164e9e"
     }
   },
+  "authority": {
+    "root_sha256": "2296e55ca88a02ea800a7a70c3b83a2859badb9466539ee17fe3197fcc0c5802",
+    "bundle_sha256": "e81b4311188a5e4c574134b132339c32e2d5c74d78169d3bcd0495372c64a385",
+    "pack_count": 4
+  },
   "verification": {
+    "source_test_count": 309,
+    "source_ruff": true,
+    "source_mypy": true,
+    "source_architecture": true,
+    "independent_candidate_rebuild_byte_identical": true,
+    "remote_asset_count": 15,
     "remote_assets_byte_identical": true,
-    "sdist_tag_source_files_identical": true,
     "reproducible_wheel_and_sdist": true,
+    "authority_bundle_matches_wheel_package_data": true,
     "python_3_11_exact_public_install": true,
     "python_3_13_exact_public_install": true,
+    "provenance_installer": "pip 26.2.1",
     "bom_validation": true,
-    "cli_import_smoke": true
+    "pip_check": true,
+    "public_import_smoke": true,
+    "installed_candidate_realtime_conformance": true,
+    "twine_check": true,
+    "uv_url_only_provenance_rejected": true
   }
 }

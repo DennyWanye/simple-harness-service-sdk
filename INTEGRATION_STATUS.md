@@ -1,9 +1,12 @@
-# Simple Harness Service SDK 0.3.0 candidate status
+# Simple Harness Service SDK 0.3.0 release status
 
-The 0.3.0 source candidate implements the approved Realtime Provider Program S1 boundary. It is
-not a release until its scoped source commit, reproducible wheel/sdist, authority bundle, three
-target locks, installed-wheel Python 3.11/3.13 matrix, download-back hashes, and consumer handoff
-are complete.
+[`v0.3.0`](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.3.0)
+is the released Realtime Provider Program S1 boundary. Its annotated tag peels to source commit
+`2b52c3fba50b9cb6a7d482ccd4e430007962c1dd`. The independently rebuilt candidate, all 15 public
+release assets, and the downloaded copies were byte-identical. The wheel SHA-256 is
+`a88ce965ec90c547d4f2cc76e1ace1c21ee1aaddabdfdd2fcfed3ed038bb7cfe`; the sdist SHA-256 is
+`cf3b9cde7c05dab91dba2c8f8b3f970f0f148c905af4cf1a396cdd6612277332`; and the candidate
+manifest SHA-256 is `326ce978f61ced2a019a920060dfd91fc764d750ed6f932da2dab9a032104a35`.
 
 The release unit uses the published immutable Harness
 [`v0.6.2`](https://github.com/DennyWanye/simple-harness-sdk/releases/tag/v0.6.2) wheel SHA-256
@@ -19,12 +22,18 @@ database, or execution worker. Qwen and OpenAI wire contracts remain confined to
 the OpenAI adapter has no enabled live connector in 0.3.0. The packaged authority root SHA-256 is
 `2296e55ca88a02ea800a7a70c3b83a2859badb9466539ee17fe3197fcc0c5802`.
 
-The currently published service fallback remains 0.2.3. Historical 0.1.3 release facts follow.
+Fresh standard-pip installs from the public wheel URL passed `pip check`, public imports, and the
+full installed BOM/provenance gate under CPython 3.11.15 and 3.13.13. `uv` currently omits the
+archive hash from PEP 610 direct-URL records and is deliberately rejected by this provenance gate;
+consumer release installs must use the exact standard-pip URL+SHA path or an equivalent trusted
+artifact receipt.
+
+The supported consumer rollback pin remains 0.2.3. Historical 0.1.3 release facts follow.
 
 ## Historical 0.1.3 release
 
-[`v0.1.3`](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.3) is the
-current non-Draft, non-Prerelease Latest release. Its annotated tag binds source commit
+[`v0.1.3`](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.1.3) was an
+earlier non-Draft, non-Prerelease release. Its annotated tag binds source commit
 `28ff026d4d99a970ffd7f9a6ae4fb9fbee7228bd`.
 The published wheel SHA-256 is
 `6f56b71989bb4293bfa076d8b507a49e8e5b66bffa82132c8aec56fd7420d137`; the sdist SHA-256 is

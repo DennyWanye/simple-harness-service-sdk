@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 — candidate
+## 0.3.0
 
 - Add the provider-neutral full-duplex Realtime contracts, client, bounded session FSM, stable
   domain events, interruption tombstones, Tool acknowledgement, and single terminal ownership.

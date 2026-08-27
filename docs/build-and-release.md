@@ -24,4 +24,6 @@ enforces one `service`, `harness`, and `memory` member plus the exact three uniq
 Before promotion, install the exact wheel with its `memory,realtime` extras in clean Python 3.11
 and 3.13 environments, run `validate_installed_bom(include_memory=True)`, compare the packaged
 authority bytes with the release bundle, and download every published asset back. Never move a tag
-or use asset clobber.
+or use asset clobber. Use standard `python -m pip install` with the exact `URL#sha256=...` for the
+installed-provenance gate. `uv` currently drops the archive hash from PEP 610 `direct_url.json` and
+therefore fails closed by design; a URL-only record is not release provenance.
