@@ -11,7 +11,8 @@ uv run --frozen mypy src/simple_harness_service scripts/build_candidate.py scrip
 python3 scripts/check_architecture.py
 python3 scripts/sync_realtime_authority.py --check
 python3 scripts/build_candidate.py --output /tmp/svc-candidate --planned-tag v0.3.2
-uv run --frozen twine check /tmp/svc-candidate/*.whl /tmp/svc-candidate/*.tar.gz
+uv run --frozen twine check /tmp/svc-candidate/*.whl \
+  /tmp/svc-candidate/simple_harness_service_sdk-*.tar.gz
 ```
 
 The candidate builder requires a committed clean tree. It performs two distribution builds, two
