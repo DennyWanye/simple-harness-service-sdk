@@ -48,7 +48,10 @@ _WINDOW_FRAMES = 64
 _WINDOW_BYTES = 1_048_576
 _ACK_EVERY_FRAMES = 16
 _ACK_MAX_DELAY_SECONDS = 0.1
-_PRODUCER_BLOCK_TIMEOUT_SECONDS = 2.0
+# The managed provider transport has its own two-second write deadline. Keep the
+# local product deadline outside it so the provider layer can publish the exact
+# transport failure instead of losing the race and collapsing it to local busy.
+_PRODUCER_BLOCK_TIMEOUT_SECONDS = 3.0
 _OUTPUT_PCM_CHUNK_BYTES = 262_144
 
 

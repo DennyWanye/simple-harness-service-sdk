@@ -39,6 +39,7 @@ class RealtimeDiagnosticStage(StrEnum):
     PROVIDER_EVENT_RECEIVED = "provider_event_received"
     PROVIDER_EVENT_DECODE_FAILED = "provider_event_decode_failed"
     PROVIDER_EVENT_APPLY_FAILED = "provider_event_apply_failed"
+    PROVIDER_SEND_FAILED = "provider_send_failed"
     PROVIDER_RECEIVE_FAILED = "provider_receive_failed"
     SESSION_TERMINAL = "session_terminal"
     CONTROLLED_CLOSE_STARTED = "controlled_close_started"

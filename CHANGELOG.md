@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.9
+
+- Preserve the provider transport's exact send-timeout classification by keeping the local
+  producer deadline outside the bounded WebSocket write deadline.
+- Emit privacy-safe `provider_send_failed` diagnostics so a stalled relay write is distinguishable
+  from local product backpressure.
+
 ## 0.3.8
 
 - Preserve one opaque Realtime correlation across product, SDK, and relay logs.

@@ -303,13 +303,31 @@ class ManagedRealtimeSession:
                 timeout=self._write_timeout,
             )
         except TimeoutError as error:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_SEND_FAILED,
+                operation_kind="transport.send.timeout",
+                stable_code=RealtimeErrorCode.TIMEOUT,
+            )
             await self._fail(RealtimeErrorCode.TIMEOUT, retryable=True)
             raise RealtimeError(
                 RealtimeErrorCode.TIMEOUT,
                 "provider write timed out",
                 retryable=True,
             ) from error
+        except RealtimeError as error:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_SEND_FAILED,
+                operation_kind=_transport_failure_kind(error),
+                stable_code=error.code,
+            )
+            await self._fail(error.code, retryable=error.retryable)
+            raise
         except Exception as error:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_SEND_FAILED,
+                operation_kind=_transport_failure_kind(error),
+                stable_code=RealtimeErrorCode.UNAVAILABLE,
+            )
             await self._fail(RealtimeErrorCode.UNAVAILABLE, retryable=True)
             raise RealtimeError(
                 RealtimeErrorCode.UNAVAILABLE,

@@ -1570,8 +1570,14 @@ async def test_open_writes_are_bounded_and_close_on_timeout(blocked_type: str) -
 
 @pytest.mark.asyncio
 async def test_runtime_audio_write_timeout_is_bounded_and_terminal() -> None:
+    diagnostics = RealtimeDiagnostics()
     connection = FakeConnection()
-    session = await _open(connection, write_timeout=0.01, close_timeout=0.01)
+    session = await _open(
+        connection,
+        write_timeout=0.01,
+        close_timeout=0.01,
+        diagnostics=diagnostics,
+    )
     stream = session.events()
     await _ready(connection, session, stream)
     connection.block_types["input_audio_buffer.append"] = asyncio.Event()
@@ -1584,3 +1590,10 @@ async def test_runtime_audio_write_timeout_is_bounded_and_terminal() -> None:
         RealtimeErrorCode.TIMEOUT,
         True,
     )
+    failed = next(
+        event
+        for event in diagnostics.snapshot().events
+        if event.stage is RealtimeDiagnosticStage.PROVIDER_SEND_FAILED
+    )
+    assert failed.operation_kind == "transport.send.timeout"
+    assert failed.stable_code is RealtimeErrorCode.TIMEOUT
