@@ -426,14 +426,14 @@ class ManagedRealtimeSession:
                     except RealtimeError as error:
                         self._record_provider_diagnostic(
                             RealtimeDiagnosticStage.PROVIDER_RECEIVE_FAILED,
-                            operation_kind=operation_kind,
+                            operation_kind=_transport_failure_kind(error),
                             stable_code=error.code,
                         )
                         raise
-                    except Exception:
+                    except Exception as error:
                         self._record_provider_diagnostic(
                             RealtimeDiagnosticStage.PROVIDER_RECEIVE_FAILED,
-                            operation_kind=operation_kind,
+                            operation_kind=_transport_failure_kind(error),
                             stable_code=RealtimeErrorCode.INTERNAL,
                         )
                         raise
@@ -922,6 +922,22 @@ def _provider_event_metadata(payload: str) -> tuple[str, str]:
     except (RecursionError, TypeError, ValueError):
         encoded = b"shape-unavailable"
     return operation_kind, hashlib.sha256(encoded).hexdigest()
+
+
+def _transport_failure_kind(error: Exception) -> str:
+    close_code = getattr(error, "close_code", None)
+    if (
+        isinstance(close_code, int)
+        and not isinstance(close_code, bool)
+        and 1000 <= close_code <= 4999
+    ):
+        return f"transport.close.{close_code}"
+    transport_code = getattr(error, "transport_code", None)
+    if isinstance(transport_code, str):
+        candidate = f"transport.{transport_code}"
+        if _DIAGNOSTIC_EVENT_KIND.fullmatch(candidate) is not None:
+            return candidate
+    return "transport.failure"
 
 
 def _json_shape(value: object) -> object:

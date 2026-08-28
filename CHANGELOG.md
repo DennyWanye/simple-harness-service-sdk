@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.7
+
+- Record content-free mint HTTP/transport/response categories and WebSocket close codes so
+  production failures remain distinguishable without retaining response bodies or exception text.
+
 ## 0.3.6
 
 - Accept Qwen's observed empty `conversation.item.input_audio_transcription.delta` as an ordered

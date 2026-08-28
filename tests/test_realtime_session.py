@@ -566,6 +566,38 @@ async def test_physical_close_before_clean_intent_is_retryable_unavailable() -> 
 
 
 @pytest.mark.asyncio
+async def test_provider_close_code_is_retained_without_exception_content() -> None:
+    class ClosingConnection(FakeConnection):
+        async def receive_text(self) -> str | None:
+            payload = await super().receive_text()
+            if payload == "fixture-close":
+                failure = RealtimeError(RealtimeErrorCode.UNAVAILABLE, "private reason")
+                failure.transport_code = "unavailable"  # type: ignore[attr-defined]
+                failure.close_code = 1006  # type: ignore[attr-defined]
+                raise failure
+            return payload
+
+    diagnostics = RealtimeDiagnostics()
+    connection = ClosingConnection()
+    session = await _open(connection, diagnostics=diagnostics)
+    stream = session.events()
+    await _ready(connection, session, stream)
+    connection.bind_created_to_open = False
+    await connection.incoming.put("fixture-close")
+
+    assert await asyncio.wait_for(anext(stream), 1) == SessionFailed(
+        RealtimeErrorCode.UNAVAILABLE, False
+    )
+    failed = next(
+        event
+        for event in diagnostics.snapshot().events
+        if event.stage is RealtimeDiagnosticStage.PROVIDER_RECEIVE_FAILED
+    )
+    assert failed.operation_kind == "transport.close.1006"
+    assert "private reason" not in repr(diagnostics.snapshot())
+
+
+@pytest.mark.asyncio
 async def test_active_response_terminals_wait_for_matching_close_ack() -> None:
     connection = FakeConnection()
     connection.auto_close_ack = False
@@ -667,6 +699,40 @@ async def test_local_controller_correlation_reaches_mint_open_and_session() -> N
     assert json.loads(connection.sent[0])["correlation"] == correlation
     assert session.correlation == correlation
     await session.close()
+
+
+@pytest.mark.asyncio
+async def test_mint_failure_retains_only_safe_diagnostic_kind() -> None:
+    class FailingMinter:
+        async def mint(
+            self,
+            profile: RealtimeProfile,
+            request: RealtimeOpenRequest,
+            correlation: str,
+        ) -> MintedRealtimeCredential:
+            del profile, request, correlation
+            failure = RealtimeError(RealtimeErrorCode.UNAVAILABLE, "private body")
+            failure.diagnostic_kind = "mint.http.500"  # type: ignore[attr-defined]
+            raise failure
+
+    diagnostics = RealtimeDiagnostics()
+    client = RealtimeClient(
+        _profile(),
+        FailingMinter(),
+        FakeTransport(FakeConnection()),
+        QwenOmniAdapter(),
+        diagnostics=diagnostics,
+    )
+
+    with pytest.raises(RealtimeError, match="private body"):
+        await client.open(RealtimeOpenRequest("session", "instructions"))
+    failed = next(
+        event
+        for event in diagnostics.snapshot().events
+        if event.stage is RealtimeDiagnosticStage.MINT_FAILED
+    )
+    assert failed.operation_kind == "mint.http.500"
+    assert "private body" not in repr(diagnostics.snapshot())
 
 
 @pytest.mark.asyncio

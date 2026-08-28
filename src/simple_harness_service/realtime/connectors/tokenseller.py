@@ -24,8 +24,9 @@ MAX_CONTROL_RESPONSE_BYTES = 1_048_576
 class TokenSellerConnectorError(RealtimeError):
     """Stable connector failure that never includes remote bodies or secrets."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, *, diagnostic_kind: str | None = None) -> None:
         self.connector_code = code
+        self.diagnostic_kind = diagnostic_kind or f"mint.{code}"
         super().__init__(
             _error_code(code),
             code,
@@ -129,22 +130,37 @@ class TokenSellerHttpsCredentialMinter:
                 timeout=self._timeout_seconds,
             ) as response:
                 if response.status_code < 200 or response.status_code >= 300:
-                    raise TokenSellerConnectorError(_status_code(response.status_code))
+                    raise TokenSellerConnectorError(
+                        _status_code(response.status_code),
+                        diagnostic_kind=f"mint.http.{response.status_code}",
+                    )
                 payload = await _read_bounded_response(response)
         except TokenSellerConnectorError:
             raise
         except Exception as error:
             code = "timeout" if _is_timeout_exception(error) else "unavailable"
-            raise TokenSellerConnectorError(code) from None
+            raise TokenSellerConnectorError(
+                code,
+                diagnostic_kind=f"mint.transport.{code}",
+            ) from None
         try:
             parsed = self._control.parse_mint_response(payload.decode("utf-8"), profile)
             self._control.validate_minted(parsed, profile, request)
         except RealtimeError as exc:
-            raise TokenSellerConnectorError(exc.code.value) from None
+            raise TokenSellerConnectorError(
+                exc.code.value,
+                diagnostic_kind=f"mint.response.{exc.code.value}",
+            ) from None
         except Exception:
-            raise TokenSellerConnectorError("protocol_error") from None
+            raise TokenSellerConnectorError(
+                "protocol_error",
+                diagnostic_kind="mint.response.protocol_error",
+            ) from None
         if parsed.websocket_path != NATIVE_RELAY_PATH:
-            raise TokenSellerConnectorError("protocol_error")
+            raise TokenSellerConnectorError(
+                "protocol_error",
+                diagnostic_kind="mint.response.protocol_error",
+            )
         return MintedRelayCredential(
             secret=parsed.secret,
             expires_at_ms=parsed.expires_at_ms,

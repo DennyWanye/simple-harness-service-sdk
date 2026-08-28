@@ -31,6 +31,13 @@ def new_correlation() -> str:
     return "corr_" + "".join(secrets.choice(_CROCKFORD) for _ in range(26))
 
 
+def _failure_operation_kind(error: Exception, fallback: str) -> str:
+    value = getattr(error, "diagnostic_kind", None)
+    if isinstance(value, str) and re.fullmatch(r"[a-z][a-z0-9_.-]{0,127}", value):
+        return value
+    return fallback
+
+
 class RealtimeClient:
     def __init__(
         self,
@@ -157,6 +164,7 @@ class RealtimeClient:
                 correlation=correlation,
                 stage=RealtimeDiagnosticStage.MINT_FAILED,
                 stable_code=_stable_code(error),
+                operation_kind=_failure_operation_kind(error, "mint.failure"),
                 duration_ms=_duration_ms(mint_started_ns),
             )
             raise

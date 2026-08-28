@@ -10,14 +10,14 @@ uv run --frozen ruff check src tests scripts
 uv run --frozen mypy src/simple_harness_service scripts/build_candidate.py scripts/sync_realtime_authority.py
 python3 scripts/check_architecture.py
 python3 scripts/sync_realtime_authority.py --check
-python3 scripts/build_candidate.py --output /tmp/svc-candidate --planned-tag v0.3.6
+python3 scripts/build_candidate.py --output /tmp/svc-candidate --planned-tag v0.3.7
 uv run --frozen twine check /tmp/svc-candidate/*.whl \
   /tmp/svc-candidate/simple_harness_service_sdk-*.tar.gz
 ```
 
 The candidate builder requires a committed clean tree. It performs two distribution builds, two
 authority-bundle builds, and two dependency-lock compilations and rejects any byte drift. The
-manifest must bind the exact service 0.3.6, Harness 0.6.2, and Memory 0.5.2 release-unit wheels,
+manifest must bind the exact service 0.3.7, Harness 0.6.2, and Memory 0.5.2 release-unit wheels,
 the four-pack authority root, and all three consumer target locks. Before writing the candidate
 manifest, the builder validates the complete document against the packaged offline schema and
 enforces one `service`, `harness`, and `memory` member plus the exact three unique target IDs.

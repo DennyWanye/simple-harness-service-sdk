@@ -184,6 +184,7 @@ async def test_minter_rejects_cross_origin_path_and_hides_remote_body() -> None:
     with pytest.raises(TokenSellerConnectorError, match="unauthenticated") as raised:
         await minter.mint(_profile(), _request(), "corr_0123456789ABCDEFGHJKMNPQRS")
     assert "provider-body-secret" not in str(raised.value)
+    assert raised.value.diagnostic_kind == "mint.http.401"
 
 
 @pytest.mark.asyncio
@@ -310,5 +311,6 @@ async def test_minter_timeout_is_retryable_stable_and_redacted(
         await minter.mint(_profile(), _request(), "corr_0123456789ABCDEFGHJKMNPQRS")
     assert caught.value.code.value == "timeout"
     assert caught.value.retryable
+    assert caught.value.diagnostic_kind == "mint.transport.timeout"
     assert "provider-body-secret" not in str(caught.value)
     assert "tsk_do_not_log" not in str(caught.value)
