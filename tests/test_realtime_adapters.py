@@ -124,6 +124,43 @@ def test_qwen_empty_transcription_delta_is_an_ordered_noop() -> None:
     assert decoded.events == ()
 
 
+def test_qwen_empty_transcription_completed_is_an_ordered_noop() -> None:
+    decoded = QwenOmniAdapter().decode_server_event(
+        json.dumps(
+            {
+                "content_index": 0,
+                "event_id": "event_empty_transcript_completed",
+                "item_id": "item_fixture",
+                "transcript": "",
+                "type": "conversation.item.input_audio_transcription.completed",
+            }
+        )
+    )
+
+    assert decoded.event_id == "event_empty_transcript_completed"
+    assert decoded.events == ()
+
+
+@pytest.mark.parametrize("transcript", [None, 1, {}, []])
+def test_qwen_non_string_transcription_completed_remains_protocol_error(
+    transcript: object,
+) -> None:
+    with pytest.raises(RealtimeError) as caught:
+        QwenOmniAdapter().decode_server_event(
+            json.dumps(
+                {
+                    "content_index": 0,
+                    "event_id": "event_invalid_transcript_completed",
+                    "item_id": "item_fixture",
+                    "transcript": transcript,
+                    "type": "conversation.item.input_audio_transcription.completed",
+                }
+            )
+        )
+
+    assert caught.value.code is RealtimeErrorCode.PROTOCOL_ERROR
+
+
 def test_qwen_native_cancelled_terminals_project_optional_exact_usage() -> None:
     matrix = json.loads(_fixture("qwen", "server-response-terminal-matrix.json"))
     cases = {case["name"]: case for case in matrix["cases"]}

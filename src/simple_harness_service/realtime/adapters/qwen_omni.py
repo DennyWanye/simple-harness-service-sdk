@@ -151,9 +151,16 @@ class QwenOmniAdapter:
             )
         if event_type == "conversation.item.input_audio_transcription.completed":
             turn_id = _string(value.get("item_id"), "item_id")
+            transcript = value.get("transcript")
+            # DashScope can close a very short VAD noise turn with an empty
+            # transcript while continuing to generate the associated response.
+            # Empty is still a valid JSON string in the provider contract; it
+            # must not tear down an otherwise healthy audio session.
+            if transcript == "":
+                return DecodedProviderEvent(event_id)
             return DecodedProviderEvent(
                 event_id,
-                (TranscriptCompleted(turn_id, _string(value.get("transcript"), "transcript")),),
+                (TranscriptCompleted(turn_id, _string(transcript, "transcript")),),
             )
         if event_type == "conversation.item.input_audio_transcription.failed":
             return DecodedProviderEvent(

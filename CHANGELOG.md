@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.11
+
+- Treat Qwen's observed empty completed input transcript as an ordered no-op so a transient
+  micro-VAD noise turn cannot terminate an otherwise healthy audio response.
+- Keep missing and non-string completed transcripts fail-closed as protocol errors.
+
 ## 0.3.10
 
 - Allow provider compositions to disable client-initiated WebSocket keepalive while retaining

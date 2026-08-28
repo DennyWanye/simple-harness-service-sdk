@@ -2,7 +2,7 @@
   "schema": "simple-harness-service-bom-v1",
   "service": {
     "distribution": "simple-harness-service-sdk",
-    "version": "0.3.10",
+    "version": "0.3.11",
     "python": ">=3.11"
   },
   "harness": {
