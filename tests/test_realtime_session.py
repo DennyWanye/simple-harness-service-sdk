@@ -311,6 +311,49 @@ async def test_client_session_observability_wires_lifecycle_audio_and_terminal()
     assert {event.correlation for event in snapshot.events} == {session.correlation}
     assert "instructions" not in repr(snapshot)
 
+    input_summary = next(
+        event
+        for event in snapshot.events
+        if event.stage is RealtimeDiagnosticStage.INPUT_AUDIO_SUMMARY
+    )
+    output_summary = next(
+        event
+        for event in snapshot.events
+        if event.stage is RealtimeDiagnosticStage.OUTPUT_AUDIO_SUMMARY
+    )
+    assert (input_summary.frame_count, input_summary.byte_count) == (1, 640)
+    assert output_summary.frame_count >= 1
+    assert output_summary.byte_count >= 2
+
+
+@pytest.mark.asyncio
+async def test_audio_diagnostics_are_sampled_and_terminal_totals_are_retained() -> None:
+    diagnostics = RealtimeDiagnostics(max_events=64, max_pending_events=64)
+    connection = FakeConnection()
+    session = await _open(connection, diagnostics=diagnostics)
+    stream = session.events()
+    await _ready(connection, session, stream)
+
+    for _ in range(1_000):
+        await session.send_audio(b"\x00\x00" * 320)
+    await session.close()
+    assert isinstance(await asyncio.wait_for(anext(stream), 1), SessionClosed)
+
+    snapshot = diagnostics.snapshot()
+    sampled = [
+        event
+        for event in snapshot.events
+        if event.stage is RealtimeDiagnosticStage.INPUT_AUDIO
+    ]
+    assert [event.frame_count for event in sampled] == [1, 250, 500, 750, 1_000]
+    summary = next(
+        event
+        for event in snapshot.events
+        if event.stage is RealtimeDiagnosticStage.INPUT_AUDIO_SUMMARY
+    )
+    assert (summary.frame_count, summary.byte_count) == (1_000, 640_000)
+    assert snapshot.sink_drop_count == 0
+
 
 @pytest.mark.asyncio
 async def test_observability_sink_failure_does_not_change_session_lifecycle() -> None:
@@ -332,6 +375,39 @@ async def test_observability_sink_failure_does_not_change_session_lifecycle() ->
     assert snapshot.emitted_count > 0
     assert "secret exception body" not in repr(snapshot)
     assert diagnostics.close(0.5)
+
+
+@pytest.mark.asyncio
+async def test_provider_decode_failure_records_only_event_kind_and_shape() -> None:
+    diagnostics = RealtimeDiagnostics()
+    connection = FakeConnection()
+    session = await _open(connection, diagnostics=diagnostics)
+    stream = session.events()
+    await _ready(connection, session, stream)
+    payload = json.dumps(
+        {
+            "event_id": "event_empty_transcript_delta",
+            "type": "conversation.item.input_audio_transcription.delta",
+            "item_id": "item_fixture",
+            "text": "",
+            "stash": "private-fixture-content",
+        }
+    )
+    await connection.incoming.put(payload)
+
+    terminal = await asyncio.wait_for(anext(stream), 1)
+    assert terminal == SessionFailed(RealtimeErrorCode.PROTOCOL_ERROR, False)
+    failed = next(
+        event
+        for event in diagnostics.snapshot().events
+        if event.stage is RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED
+    )
+    assert failed.operation_kind == "conversation.item.input_audio_transcription.delta"
+    assert failed.stable_code is RealtimeErrorCode.PROTOCOL_ERROR
+    assert failed.fingerprint is not None and len(failed.fingerprint) == 64
+    rendered = repr(diagnostics.snapshot())
+    assert "private-fixture-content" not in rendered
+    assert '"text"' not in rendered
 
 
 @pytest.mark.asyncio

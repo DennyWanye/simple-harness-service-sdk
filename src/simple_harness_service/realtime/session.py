@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import dataclasses
+import hashlib
 import json
+import re
 import time
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
@@ -38,6 +40,11 @@ from .observability import (
 )
 from .ports import DecodedProviderEvent, RealtimeConnection, RealtimeProviderAdapter
 from .relay_control import RelayControlCodec
+
+_DIAGNOSTIC_EVENT_KIND = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
+_SECRET_MARKER = re.compile(
+    r"(?:sk-|api[_-]?key|authorization|bearer|cookie|password|token)", re.IGNORECASE
+)
 
 
 @dataclass(slots=True)
@@ -125,6 +132,8 @@ class ManagedRealtimeSession:
         self.duplicate_event_count = 0
         self.close_ack_timeout_count = 0
         self.close_ack_mismatch_count = 0
+        self._diagnostic_event_kinds: set[str] = set()
+        self._terminal_error_code: RealtimeErrorCode | None = None
 
     async def start(self) -> None:
         update = self._adapter.session_update(self._request)
@@ -164,14 +173,15 @@ class ManagedRealtimeSession:
             await self._send_runtime_event(event)
             self._input_frame_count += 1
             self._input_byte_count += len(pcm)
-            self._diagnostics.emit(
-                correlation=self.correlation,
-                stage=RealtimeDiagnosticStage.INPUT_AUDIO,
-                generation=self.generation,
-                frame_count=self._input_frame_count,
-                byte_count=self._input_byte_count,
-                duration_ms=_duration_ms(self._created_ns),
-            )
+            if _sample_audio_diagnostic(self._input_frame_count):
+                self._diagnostics.emit(
+                    correlation=self.correlation,
+                    stage=RealtimeDiagnosticStage.INPUT_AUDIO,
+                    generation=self.generation,
+                    frame_count=self._input_frame_count,
+                    byte_count=self._input_byte_count,
+                    duration_ms=_duration_ms(self._created_ns),
+                )
         finally:
             async with self._input_lock:
                 self._input_pending_frames -= 1
@@ -408,13 +418,38 @@ class ManagedRealtimeSession:
     async def _receive_loop(self) -> None:
         try:
             while not self._terminal_published.is_set():
+                operation_kind = "unknown_provider_event"
+                fingerprint: str | None = None
                 try:
-                    payload = await self._connection.receive_text()
+                    try:
+                        payload = await self._connection.receive_text()
+                    except RealtimeError as error:
+                        self._record_provider_diagnostic(
+                            RealtimeDiagnosticStage.PROVIDER_RECEIVE_FAILED,
+                            operation_kind=operation_kind,
+                            stable_code=error.code,
+                        )
+                        raise
+                    except Exception:
+                        self._record_provider_diagnostic(
+                            RealtimeDiagnosticStage.PROVIDER_RECEIVE_FAILED,
+                            operation_kind=operation_kind,
+                            stable_code=RealtimeErrorCode.INTERNAL,
+                        )
+                        raise
                     if payload is None:
                         if self._closing:
                             return
                         await self._fail(RealtimeErrorCode.UNAVAILABLE, retryable=True)
                         return
+                    operation_kind, fingerprint = _provider_event_metadata(payload)
+                    if operation_kind not in self._diagnostic_event_kinds:
+                        self._diagnostic_event_kinds.add(operation_kind)
+                        self._record_provider_diagnostic(
+                            RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,
+                            operation_kind=operation_kind,
+                            fingerprint=fingerprint,
+                        )
                     control_event = self._control.decode_runtime_event(payload)
                     if control_event is not None:
                         if self._closing:
@@ -456,12 +491,36 @@ class ManagedRealtimeSession:
                     if self._closing:
                         self.late_event_count += 1
                         continue
-                    decoded = self._adapter.decode_server_event(payload)
+                    try:
+                        decoded = self._adapter.decode_server_event(payload)
+                    except RealtimeError as error:
+                        self._record_provider_diagnostic(
+                            RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED,
+                            operation_kind=operation_kind,
+                            fingerprint=fingerprint,
+                            stable_code=error.code,
+                        )
+                        raise
+                    except Exception:
+                        self._record_provider_diagnostic(
+                            RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED,
+                            operation_kind=operation_kind,
+                            fingerprint=fingerprint,
+                            stable_code=RealtimeErrorCode.INTERNAL,
+                        )
+                        raise
                     if decoded.event_id in self._seen_event_ids:
                         self.duplicate_event_count += 1
                         continue
                     self._seen_event_ids.add(decoded.event_id)
                     if not await self._apply(decoded):
+                        if self._terminal_error_code is not None:
+                            self._record_provider_diagnostic(
+                                RealtimeDiagnosticStage.PROVIDER_EVENT_APPLY_FAILED,
+                                operation_kind=operation_kind,
+                                fingerprint=fingerprint,
+                                stable_code=self._terminal_error_code,
+                            )
                         if self._closing and not self._terminal_published.is_set():
                             continue
                         return
@@ -655,14 +714,15 @@ class ManagedRealtimeSession:
             if isinstance(event, OutputAudio):
                 self._output_frame_count += 1
                 self._output_byte_count += len(event.data)
-                self._diagnostics.emit(
-                    correlation=self.correlation,
-                    stage=RealtimeDiagnosticStage.OUTPUT_AUDIO,
-                    generation=self.generation,
-                    frame_count=self._output_frame_count,
-                    byte_count=self._output_byte_count,
-                    duration_ms=_duration_ms(self._created_ns),
-                )
+                if _sample_audio_diagnostic(self._output_frame_count):
+                    self._diagnostics.emit(
+                        correlation=self.correlation,
+                        stage=RealtimeDiagnosticStage.OUTPUT_AUDIO,
+                        generation=self.generation,
+                        frame_count=self._output_frame_count,
+                        byte_count=self._output_byte_count,
+                        duration_ms=_duration_ms(self._created_ns),
+                    )
         if decoded.completed_content is not None:
             self._completed_contents.add(decoded.completed_content)
         if decoded.completed_item is not None:
@@ -708,6 +768,7 @@ class ManagedRealtimeSession:
     ) -> None:
         if not await self._claim_terminal(initiator, disposition):
             return
+        self._terminal_error_code = event.code if isinstance(event, SessionFailed) else None
         await self._emit_terminal_safe(event)
         self._record_terminal_diagnostic(
             disposition,
@@ -769,12 +830,47 @@ class ManagedRealtimeSession:
         disposition: CloseDisposition,
         code: RealtimeErrorCode | None = None,
     ) -> None:
+        duration_ms = _duration_ms(self._created_ns)
+        self._diagnostics.emit(
+            correlation=self.correlation,
+            stage=RealtimeDiagnosticStage.INPUT_AUDIO_SUMMARY,
+            generation=self.generation,
+            frame_count=self._input_frame_count,
+            byte_count=self._input_byte_count,
+            duration_ms=duration_ms,
+        )
+        self._diagnostics.emit(
+            correlation=self.correlation,
+            stage=RealtimeDiagnosticStage.OUTPUT_AUDIO_SUMMARY,
+            generation=self.generation,
+            frame_count=self._output_frame_count,
+            byte_count=self._output_byte_count,
+            duration_ms=duration_ms,
+        )
         self._diagnostics.emit(
             correlation=self.correlation,
             stage=RealtimeDiagnosticStage.SESSION_TERMINAL,
             stable_code=code,
             close_class=disposition,
             generation=self.generation,
+            duration_ms=duration_ms,
+        )
+
+    def _record_provider_diagnostic(
+        self,
+        stage: RealtimeDiagnosticStage,
+        *,
+        operation_kind: str,
+        fingerprint: str | None = None,
+        stable_code: RealtimeErrorCode | None = None,
+    ) -> None:
+        self._diagnostics.emit(
+            correlation=self.correlation,
+            stage=stage,
+            stable_code=stable_code,
+            generation=self.generation,
+            operation_kind=operation_kind,
+            fingerprint=fingerprint,
             duration_ms=_duration_ms(self._created_ns),
         )
 
@@ -797,3 +893,50 @@ class ManagedRealtimeSession:
 
 def _duration_ms(started_ns: int) -> int:
     return max(0, (time.monotonic_ns() - started_ns) // 1_000_000)
+
+
+def _sample_audio_diagnostic(frame_count: int) -> bool:
+    return frame_count == 1 or frame_count % 250 == 0
+
+
+def _provider_event_metadata(payload: str) -> tuple[str, str]:
+    """Return content-free event identity and JSON shape fingerprint."""
+
+    try:
+        value = json.loads(payload)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return "invalid_provider_event", hashlib.sha256(b"invalid-json").hexdigest()
+    event_type = value.get("type") if isinstance(value, dict) else None
+    if isinstance(event_type, str) and event_type.startswith("tokenseller."):
+        event_type = event_type.replace("tokenseller.", "relay.", 1)
+    operation_kind = (
+        event_type
+        if isinstance(event_type, str)
+        and _DIAGNOSTIC_EVENT_KIND.fullmatch(event_type) is not None
+        and _SECRET_MARKER.search(event_type) is None
+        else "unknown_provider_event"
+    )
+    try:
+        shape = _json_shape(value)
+        encoded = json.dumps(shape, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    except (RecursionError, TypeError, ValueError):
+        encoded = b"shape-unavailable"
+    return operation_kind, hashlib.sha256(encoded).hexdigest()
+
+
+def _json_shape(value: object) -> object:
+    if isinstance(value, dict):
+        return {key: _json_shape(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [len(value), *(_json_shape(item) for item in value[:4])]
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, str):
+        return "string-empty" if not value else "string"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    return "unknown"

@@ -14,6 +14,8 @@ from typing import Protocol
 from .contracts import CloseDisposition, RealtimeErrorCode
 
 _CORRELATION = re.compile(r"^corr_[0-9A-HJKMNP-TV-Z]{26}$")
+_OPERATION_KIND = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
+_FINGERPRINT = re.compile(r"^[0-9a-f]{64}$")
 _STOP_DRAIN = object()
 
 
@@ -31,7 +33,13 @@ class RealtimeDiagnosticStage(StrEnum):
     OPEN_FAILED = "open_failed"
     SESSION_READY = "session_ready"
     INPUT_AUDIO = "input_audio"
+    INPUT_AUDIO_SUMMARY = "input_audio_summary"
     OUTPUT_AUDIO = "output_audio"
+    OUTPUT_AUDIO_SUMMARY = "output_audio_summary"
+    PROVIDER_EVENT_RECEIVED = "provider_event_received"
+    PROVIDER_EVENT_DECODE_FAILED = "provider_event_decode_failed"
+    PROVIDER_EVENT_APPLY_FAILED = "provider_event_apply_failed"
+    PROVIDER_RECEIVE_FAILED = "provider_receive_failed"
     SESSION_TERMINAL = "session_terminal"
     CONTROLLED_CLOSE_STARTED = "controlled_close_started"
     CONTROLLED_CLOSE_COMPLETED = "controlled_close_completed"
@@ -53,6 +61,8 @@ class RealtimeDiagnosticEvent:
     stable_code: RealtimeErrorCode | None = None
     close_class: CloseDisposition | None = None
     generation: int | None = None
+    operation_kind: str | None = None
+    fingerprint: str | None = None
     frame_count: int = 0
     byte_count: int = 0
     duration_ms: int = 0
@@ -69,6 +79,12 @@ class RealtimeDiagnosticEvent:
             object.__setattr__(self, "close_class", CloseDisposition(self.close_class))
         if self.generation is not None:
             _positive_integer(self.generation, "generation")
+        if self.operation_kind is not None and _OPERATION_KIND.fullmatch(
+            self.operation_kind
+        ) is None:
+            raise ValueError("operation_kind must be a bounded stable identifier")
+        if self.fingerprint is not None and _FINGERPRINT.fullmatch(self.fingerprint) is None:
+            raise ValueError("fingerprint must be a sha256 digest")
         _non_negative_integer(self.frame_count, "frame_count")
         _non_negative_integer(self.byte_count, "byte_count")
         _non_negative_integer(self.duration_ms, "duration_ms")
@@ -145,6 +161,8 @@ class RealtimeDiagnostics:
         stable_code: RealtimeErrorCode | None = None,
         close_class: CloseDisposition | None = None,
         generation: int | None = None,
+        operation_kind: str | None = None,
+        fingerprint: str | None = None,
         frame_count: int = 0,
         byte_count: int = 0,
         duration_ms: int = 0,
@@ -155,6 +173,8 @@ class RealtimeDiagnostics:
             stable_code=stable_code,
             close_class=close_class,
             generation=generation,
+            operation_kind=operation_kind,
+            fingerprint=fingerprint,
             frame_count=frame_count,
             byte_count=byte_count,
             duration_ms=duration_ms,

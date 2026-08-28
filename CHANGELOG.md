@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.5
+
+- Add content-free Provider event kind and JSON-shape fingerprints at receive, decode-failure,
+  apply-failure, and transport-failure boundaries so live Realtime failures identify the exact
+  SDK stage without retaining audio, text, instructions, credentials, or exception bodies.
+- Sample high-rate audio diagnostics and always emit terminal input/output totals so diagnostic
+  backpressure cannot hide the final failure event during a long call.
+
 ## 0.3.4
 
 - Export the provider-neutral local Realtime protocol constants, PCM frame types, and codecs from
