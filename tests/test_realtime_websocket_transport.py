@@ -51,11 +51,49 @@ async def test_relay_transport_binds_returned_path_and_redacts_bearer() -> None:
     assert uri == "wss://relay.example/v1/realtime/qwen"
     assert kwargs["additional_headers"] == {"Authorization": "Bearer eph_secret"}
     assert kwargs["max_size"] == 128
+    assert kwargs["ping_interval"] == 20.0
+    assert kwargs["ping_timeout"] == 20.0
     assert "eph_secret" not in repr(transport)
 
     await connection.close()
     await connection.close()
     assert socket.closes == [(1000, "")]
+
+
+@pytest.mark.asyncio
+async def test_relay_transport_can_delegate_keepalive_to_relay() -> None:
+    calls: list[dict[str, object]] = []
+
+    async def connect(uri: str, **kwargs: object) -> FakeSocket:
+        del uri
+        calls.append(kwargs)
+        return FakeSocket()
+
+    await RelayWebSocketTransport(
+        "https://relay.example",
+        connect_factory=connect,
+        ping_interval_seconds=None,
+        ping_timeout_seconds=None,
+    ).connect("/v1/realtime/qwen", "eph_secret")
+
+    assert calls[0]["ping_interval"] is None
+    assert calls[0]["ping_timeout"] is None
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("ping_interval_seconds", 0.0),
+        ("ping_interval_seconds", -1.0),
+        ("ping_timeout_seconds", 0.0),
+        ("ping_timeout_seconds", -1.0),
+    ],
+)
+def test_relay_transport_rejects_non_positive_keepalive_values(
+    name: str, value: float
+) -> None:
+    with pytest.raises(ValueError, match="positive or None"):
+        RelayWebSocketTransport("https://relay.example", **{name: value})
 
 
 @pytest.mark.asyncio

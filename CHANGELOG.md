@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.10
+
+- Allow provider compositions to disable client-initiated WebSocket keepalive while retaining
+  automatic replies to server Ping frames.
+- Keep positive validation for configured Ping intervals and timeouts and preserve the existing
+  generic transport defaults for providers that own client-side keepalive.
+
 ## 0.3.9
 
 - Preserve the provider transport's exact send-timeout classification by keeping the local

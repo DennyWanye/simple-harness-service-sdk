@@ -140,8 +140,8 @@ class RelayWebSocketTransport:
         open_timeout_seconds: float = 10.0,
         write_timeout_seconds: float = 2.0,
         close_timeout_seconds: float = 5.0,
-        ping_interval_seconds: float = 20.0,
-        ping_timeout_seconds: float = 20.0,
+        ping_interval_seconds: float | None = 20.0,
+        ping_timeout_seconds: float | None = 20.0,
     ) -> None:
         if max_frame_bytes <= 0 or max_queue_frames <= 0:
             raise ValueError("frame and queue bounds must be positive")
@@ -151,11 +151,13 @@ class RelayWebSocketTransport:
                 open_timeout_seconds,
                 write_timeout_seconds,
                 close_timeout_seconds,
-                ping_interval_seconds,
-                ping_timeout_seconds,
             )
         ):
             raise ValueError("WebSocket timeouts must be positive")
+        if ping_interval_seconds is not None and ping_interval_seconds <= 0:
+            raise ValueError("WebSocket ping interval must be positive or None")
+        if ping_timeout_seconds is not None and ping_timeout_seconds <= 0:
+            raise ValueError("WebSocket ping timeout must be positive or None")
         self._origin = _https_origin(base_url)
         self._connect_factory = connect_factory
         self._max_frame_bytes = max_frame_bytes
