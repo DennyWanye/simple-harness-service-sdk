@@ -925,6 +925,12 @@ def _provider_event_metadata(payload: str) -> tuple[str, str]:
 
 
 def _transport_failure_kind(error: Exception) -> str:
+    diagnostic_kind = getattr(error, "diagnostic_kind", None)
+    if (
+        isinstance(diagnostic_kind, str)
+        and _DIAGNOSTIC_EVENT_KIND.fullmatch(diagnostic_kind) is not None
+    ):
+        return diagnostic_kind
     close_code = getattr(error, "close_code", None)
     if (
         isinstance(close_code, int)

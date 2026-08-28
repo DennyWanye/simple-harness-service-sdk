@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import importlib
+import socket
+import ssl
 from collections.abc import Awaitable, Callable
 from typing import Protocol, cast
 from urllib.parse import urlsplit
@@ -17,8 +19,9 @@ TOKENSELLER_REALTIME_PATH = "/v1/realtime/qwen"
 class RelayTransportError(RealtimeError):
     """Stable relay transport failure without secret-bearing exception text."""
 
-    def __init__(self, code: str) -> None:
+    def __init__(self, code: str, *, diagnostic_kind: str | None = None) -> None:
         self.transport_code = code
+        self.diagnostic_kind = diagnostic_kind or f"transport.{code}"
         mapping = {
             "unauthenticated": RealtimeErrorCode.UNAUTHENTICATED,
             "forbidden": RealtimeErrorCode.FORBIDDEN,
@@ -74,9 +77,13 @@ class RelayWebSocketConnection:
                 self._socket.send(payload), timeout=self._write_timeout_seconds
             )
         except TimeoutError:
-            raise RelayTransportError("timeout") from None
+            raise RelayTransportError(
+                "timeout", diagnostic_kind="transport.send.timeout"
+            ) from None
         except Exception:
-            raise RelayTransportError("unavailable") from None
+            raise RelayTransportError(
+                "unavailable", diagnostic_kind="transport.send.unavailable"
+            ) from None
 
     async def receive_text(self) -> str | None:
         if self._closed:
@@ -84,7 +91,9 @@ class RelayWebSocketConnection:
         try:
             message = await self._socket.recv()
         except TimeoutError:
-            raise RelayTransportError("timeout") from None
+            raise RelayTransportError(
+                "timeout", diagnostic_kind="transport.receive.timeout"
+            ) from None
         except Exception as error:
             classification = _closed_classification(error)
             if classification is None:
@@ -92,12 +101,18 @@ class RelayWebSocketConnection:
             raise classification from None
         if isinstance(message, bytes):
             await self.close(code=1003)
-            raise RelayTransportError("protocol_error")
+            raise RelayTransportError(
+                "protocol_error", diagnostic_kind="transport.receive.binary"
+            )
         if not isinstance(message, str):
-            raise RelayTransportError("protocol_error")
+            raise RelayTransportError(
+                "protocol_error", diagnostic_kind="transport.receive.invalid_type"
+            )
         if _message_bytes(message) > self._max_frame_bytes:
             await self.close(code=1009)
-            raise RelayTransportError("frame_too_large")
+            raise RelayTransportError(
+                "frame_too_large", diagnostic_kind="transport.receive.frame_too_large"
+            )
         return message
 
     async def close(self, code: int = 1000, reason: str = "") -> None:
@@ -180,7 +195,9 @@ class RelayWebSocketTransport:
                 max_queue=self._max_queue_frames,
             )
         except TimeoutError:
-            raise RelayTransportError("timeout") from None
+            raise RelayTransportError(
+                "timeout", diagnostic_kind="transport.connect.timeout"
+            ) from None
         except Exception as error:
             raise _connect_error(error) from None
         return RelayWebSocketConnection(
@@ -243,16 +260,44 @@ def _https_origin(base_url: str) -> str:
 def _connect_error(error: Exception) -> RelayTransportError:
     status = _status_code(error)
     if status == 401:
-        return RelayTransportError("unauthenticated")
+        return RelayTransportError(
+            "unauthenticated", diagnostic_kind="transport.connect.http.401"
+        )
     if status == 403:
-        return RelayTransportError("forbidden")
+        return RelayTransportError(
+            "forbidden", diagnostic_kind="transport.connect.http.403"
+        )
     if status == 429:
-        return RelayTransportError("rate_limited")
+        return RelayTransportError(
+            "rate_limited", diagnostic_kind="transport.connect.http.429"
+        )
     if status is not None and 500 <= status <= 599:
-        return RelayTransportError("unavailable")
+        return RelayTransportError(
+            "unavailable", diagnostic_kind=f"transport.connect.http.{status}"
+        )
     if status is not None:
-        return RelayTransportError("protocol_error")
-    return RelayTransportError("unavailable")
+        return RelayTransportError(
+            "protocol_error", diagnostic_kind=f"transport.connect.http.{status}"
+        )
+    if isinstance(error, socket.gaierror):
+        return RelayTransportError(
+            "unavailable", diagnostic_kind="transport.connect.dns"
+        )
+    if isinstance(error, ssl.SSLError):
+        return RelayTransportError(
+            "unavailable", diagnostic_kind="transport.connect.tls"
+        )
+    if isinstance(error, ConnectionRefusedError):
+        return RelayTransportError(
+            "unavailable", diagnostic_kind="transport.connect.refused"
+        )
+    if isinstance(error, OSError):
+        return RelayTransportError(
+            "unavailable", diagnostic_kind="transport.connect.network"
+        )
+    return RelayTransportError(
+        "unavailable", diagnostic_kind="transport.connect.unavailable"
+    )
 
 
 def _status_code(error: Exception) -> int | None:
@@ -269,14 +314,51 @@ def _closed_classification(error: Exception) -> RelayTransportError | None:
         code = value if isinstance(value, int) else None
     if code in {1000, 1001} or type(error).__name__ == "ConnectionClosedOK":
         return None
-    if code == 1008:
-        failure = RelayTransportError("forbidden")
+    direction = _close_direction(error)
+    if _is_ping_timeout(error):
+        failure = RelayTransportError(
+            "timeout", diagnostic_kind=f"transport.receive.ping_timeout.{direction}"
+        )
+    elif code == 1008:
+        failure = RelayTransportError(
+            "forbidden", diagnostic_kind=f"transport.receive.close.{direction}.1008"
+        )
     elif code in {1006, 1011, 1012, 1013, 1014}:
-        failure = RelayTransportError("unavailable")
+        failure = RelayTransportError(
+            "unavailable",
+            diagnostic_kind=f"transport.receive.close.{direction}.{code}",
+        )
     else:
-        failure = RelayTransportError("protocol_error")
+        rendered_code = code if code is not None else "unknown"
+        failure = RelayTransportError(
+            "protocol_error",
+            diagnostic_kind=f"transport.receive.close.{direction}.{rendered_code}",
+        )
     failure.close_code = code
     return failure
+
+
+def _close_direction(error: Exception) -> str:
+    order = getattr(error, "rcvd_then_sent", None)
+    if order is True:
+        return "received"
+    if order is False:
+        return "sent"
+    received = getattr(error, "rcvd", None)
+    sent = getattr(error, "sent", None)
+    if received is not None and sent is None:
+        return "received"
+    if sent is not None and received is None:
+        return "sent"
+    return "unknown"
+
+
+def _is_ping_timeout(error: Exception) -> bool:
+    sent = getattr(error, "sent", None)
+    return (
+        getattr(sent, "code", None) == 1011
+        and getattr(sent, "reason", None) == "keepalive ping timeout"
+    )
 
 
 def _message_bytes(message: str | bytes) -> int:

@@ -129,6 +129,7 @@ class RealtimeClient:
                 correlation=correlation,
                 stage=RealtimeDiagnosticStage.OPEN_FAILED,
                 stable_code=_stable_code(error),
+                operation_kind=_failure_operation_kind(error, "open.failure"),
                 duration_ms=_duration_ms(started_ns),
             )
             raise
@@ -192,6 +193,7 @@ class RealtimeClient:
                 correlation=correlation,
                 stage=RealtimeDiagnosticStage.CONNECT_FAILED,
                 stable_code=RealtimeErrorCode.TIMEOUT,
+                operation_kind="transport.connect.timeout",
                 duration_ms=_duration_ms(connect_started_ns),
             )
             raise RealtimeError(RealtimeErrorCode.TIMEOUT, retryable=True) from error
@@ -200,6 +202,9 @@ class RealtimeClient:
                 correlation=correlation,
                 stage=RealtimeDiagnosticStage.CONNECT_FAILED,
                 stable_code=_stable_code(error),
+                operation_kind=_failure_operation_kind(
+                    error, "transport.connect.failure"
+                ),
                 duration_ms=_duration_ms(connect_started_ns),
             )
             raise
@@ -247,7 +252,9 @@ class RealtimeClient:
                     connection.close(1000, "open timeout"),
                     timeout=self._close_timeout,
                 )
-            raise RealtimeError(RealtimeErrorCode.TIMEOUT, retryable=True) from error
+            failure = RealtimeError(RealtimeErrorCode.TIMEOUT, retryable=True)
+            failure.diagnostic_kind = "transport.open.timeout"  # type: ignore[attr-defined]
+            raise failure from error
         except Exception:
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(

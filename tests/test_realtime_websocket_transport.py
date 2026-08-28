@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import socket
+import ssl
 from collections import deque
 
 import pytest
@@ -241,6 +243,9 @@ async def test_relay_receive_close_matrix(
             await connection.receive_text()
         assert caught.value.retryable is retryable
         assert caught.value.close_code == code
+        assert caught.value.diagnostic_kind == (
+            f"transport.receive.close.received.{code}"
+        )
 
 
 @pytest.mark.asyncio
@@ -273,6 +278,62 @@ async def test_relay_connect_status_is_stable_and_redacted(
         await transport.connect("/v1/realtime/qwen", "eph_secret")
     assert caught.value.retryable is retryable
     assert "secret" not in str(caught.value)
+    assert caught.value.diagnostic_kind == f"transport.connect.http.{status}"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [
+        (socket.gaierror(), "transport.connect.dns"),
+        (ssl.SSLError(), "transport.connect.tls"),
+        (ConnectionRefusedError(), "transport.connect.refused"),
+        (OSError(), "transport.connect.network"),
+        (RuntimeError("private detail"), "transport.connect.unavailable"),
+    ],
+)
+async def test_relay_connect_classifies_safe_network_phase(
+    raised: Exception, expected: str
+) -> None:
+    async def connect(uri: str, **kwargs: object) -> FakeSocket:
+        del uri, kwargs
+        raise raised
+
+    with pytest.raises(RelayTransportError) as caught:
+        await RelayWebSocketTransport(
+            "https://relay.example", connect_factory=connect
+        ).connect("/v1/realtime/qwen", "eph_secret")
+    assert caught.value.diagnostic_kind == expected
+    assert "private detail" not in str(caught.value)
+
+
+@pytest.mark.asyncio
+async def test_relay_receive_classifies_library_ping_timeout_without_reason_text() -> None:
+    class Sent:
+        code = 1011
+        reason = "keepalive ping timeout"
+
+    class Closed(Exception):
+        rcvd = None
+        sent = Sent()
+        rcvd_then_sent = False
+
+    class ClosedSocket(FakeSocket):
+        async def recv(self) -> str | bytes:
+            raise Closed("private close details")
+
+    async def connect(uri: str, **kwargs: object) -> FakeSocket:
+        del uri, kwargs
+        return ClosedSocket()
+
+    connection = await RelayWebSocketTransport(
+        "https://relay.example", connect_factory=connect
+    ).connect("/v1/realtime/qwen", "eph_secret")
+    with pytest.raises(RelayTransportError) as caught:
+        await connection.receive_text()
+    assert caught.value.code.value == "timeout"
+    assert caught.value.diagnostic_kind == "transport.receive.ping_timeout.sent"
+    assert "private close details" not in str(caught.value)
 
 
 @pytest.mark.asyncio

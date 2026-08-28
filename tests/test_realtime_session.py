@@ -736,6 +736,32 @@ async def test_mint_failure_retains_only_safe_diagnostic_kind() -> None:
 
 
 @pytest.mark.asyncio
+async def test_connect_failure_retains_safe_transport_phase() -> None:
+    class FailingTransport:
+        async def connect(self, websocket_path: str, bearer_token: str) -> FakeConnection:
+            del websocket_path, bearer_token
+            failure = RealtimeError(RealtimeErrorCode.UNAVAILABLE, "private network detail")
+            failure.diagnostic_kind = "transport.connect.dns"  # type: ignore[attr-defined]
+            raise failure
+
+    diagnostics = RealtimeDiagnostics()
+    client = RealtimeClient(
+        _profile(), FakeMinter(_credential()), FailingTransport(), QwenOmniAdapter(),
+        diagnostics=diagnostics,
+    )
+
+    with pytest.raises(RealtimeError):
+        await client.open(RealtimeOpenRequest("session", "instructions"))
+    failed = next(
+        event
+        for event in diagnostics.snapshot().events
+        if event.stage is RealtimeDiagnosticStage.CONNECT_FAILED
+    )
+    assert failed.operation_kind == "transport.connect.dns"
+    assert "private network detail" not in repr(diagnostics.snapshot())
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "correlation",
     [

@@ -25,7 +25,7 @@ def test_public_api_snapshot() -> None:
 
 def test_compatibility_bom_and_installed_harness_provenance() -> None:
     bom = load_bom()
-    assert bom["service"]["version"] == "0.3.7"
+    assert bom["service"]["version"] == "0.3.8"
     assert bom["harness"]["version"] == "0.6.2"
     assert bom["memory"]["version"] == "0.5.2"
     assert bom["harness"]["execution_schema"] == 6

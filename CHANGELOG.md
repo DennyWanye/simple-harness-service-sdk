@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.8
+
+- Preserve one opaque Realtime correlation across product, SDK, and relay logs.
+- Classify WebSocket connect, send, receive, close direction, and ping timeout failures without retaining payloads or exception text.
+
 ## 0.3.7
 
 - Record content-free mint HTTP/transport/response categories and WebSocket close codes so
