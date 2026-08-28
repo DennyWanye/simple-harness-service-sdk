@@ -103,6 +103,27 @@ def test_qwen_session_update_is_nested_native_shape_and_cancel_has_no_response_i
     assert caught.value.code is RealtimeErrorCode.UNSUPPORTED
 
 
+def test_qwen_empty_transcription_delta_is_an_ordered_noop() -> None:
+    decoded = QwenOmniAdapter().decode_server_event(
+        json.dumps(
+            {
+                "content_index": 0,
+                "emotion": "neutral",
+                "event_id": "event_empty_transcript_delta",
+                "item_id": "item_fixture",
+                "language": "zh",
+                "obfuscation": "",
+                "stash": "",
+                "text": "",
+                "type": "conversation.item.input_audio_transcription.delta",
+            }
+        )
+    )
+
+    assert decoded.event_id == "event_empty_transcript_delta"
+    assert decoded.events == ()
+
+
 def test_qwen_native_cancelled_terminals_project_optional_exact_usage() -> None:
     matrix = json.loads(_fixture("qwen", "server-response-terminal-matrix.json"))
     cases = {case["name"]: case for case in matrix["cases"]}

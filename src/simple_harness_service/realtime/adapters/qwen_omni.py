@@ -142,9 +142,12 @@ class QwenOmniAdapter:
             return DecodedProviderEvent(event_id, (SpeechStopped(turn_id),))
         if event_type == "conversation.item.input_audio_transcription.delta":
             turn_id = _string(value.get("item_id"), "item_id")
+            text = value.get("text")
+            if text == "":
+                return DecodedProviderEvent(event_id)
             return DecodedProviderEvent(
                 event_id,
-                (TranscriptDelta(turn_id, _string(value.get("text"), "text")),),
+                (TranscriptDelta(turn_id, _string(text, "text")),),
             )
         if event_type == "conversation.item.input_audio_transcription.completed":
             turn_id = _string(value.get("item_id"), "item_id")

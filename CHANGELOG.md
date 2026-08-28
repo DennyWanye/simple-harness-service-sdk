@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.6
+
+- Accept Qwen's observed empty `conversation.item.input_audio_transcription.delta` as an ordered
+  no-op while retaining its event ID for duplicate suppression; non-empty and malformed deltas
+  keep their existing semantics.
+
 ## 0.3.5
 
 - Add content-free Provider event kind and JSON-shape fingerprints at receive, decode-failure,

@@ -31,6 +31,7 @@ from simple_harness_service.realtime.contracts import (
     SessionFailed,
     SessionReady,
     ToolCallRequested,
+    TranscriptDelta,
 )
 from simple_harness_service.realtime.observability import (
     RealtimeDiagnostics,
@@ -378,7 +379,7 @@ async def test_observability_sink_failure_does_not_change_session_lifecycle() ->
 
 
 @pytest.mark.asyncio
-async def test_provider_decode_failure_records_only_event_kind_and_shape() -> None:
+async def test_empty_transcript_delta_is_noop_and_diagnostics_remain_content_free() -> None:
     diagnostics = RealtimeDiagnostics()
     connection = FakeConnection()
     session = await _open(connection, diagnostics=diagnostics)
@@ -389,22 +390,41 @@ async def test_provider_decode_failure_records_only_event_kind_and_shape() -> No
             "event_id": "event_empty_transcript_delta",
             "type": "conversation.item.input_audio_transcription.delta",
             "item_id": "item_fixture",
+            "content_index": 0,
+            "emotion": "neutral",
+            "language": "zh",
+            "obfuscation": "",
             "text": "",
             "stash": "private-fixture-content",
         }
     )
     await connection.incoming.put(payload)
-
-    terminal = await asyncio.wait_for(anext(stream), 1)
-    assert terminal == SessionFailed(RealtimeErrorCode.PROTOCOL_ERROR, False)
-    failed = next(
-        event
-        for event in diagnostics.snapshot().events
-        if event.stage is RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED
+    await connection.incoming.put(
+        json.dumps(
+            {
+                "event_id": "event_nonempty_transcript_delta",
+                "type": "conversation.item.input_audio_transcription.delta",
+                "item_id": "item_fixture",
+                "content_index": 0,
+                "text": "fixture",
+            }
+        )
     )
-    assert failed.operation_kind == "conversation.item.input_audio_transcription.delta"
-    assert failed.stable_code is RealtimeErrorCode.PROTOCOL_ERROR
-    assert failed.fingerprint is not None and len(failed.fingerprint) == 64
+
+    transcript = await asyncio.wait_for(anext(stream), 1)
+    assert transcript == TranscriptDelta("item_fixture", "fixture")
+    snapshot = diagnostics.snapshot()
+    received = next(
+        event
+        for event in snapshot.events
+        if event.stage is RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED
+        and event.operation_kind == "conversation.item.input_audio_transcription.delta"
+    )
+    assert received.fingerprint is not None and len(received.fingerprint) == 64
+    assert not any(
+        event.stage is RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED
+        for event in snapshot.events
+    )
     rendered = repr(diagnostics.snapshot())
     assert "private-fixture-content" not in rendered
     assert '"text"' not in rendered
