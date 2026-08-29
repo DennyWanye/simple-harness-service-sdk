@@ -115,12 +115,14 @@ class LocalRealtimeChannelController:
         diagnostics: RealtimeDiagnostics | None = None,
         ack_every_frames: int = _ACK_EVERY_FRAMES,
         ack_max_delay_seconds: float = _ACK_MAX_DELAY_SECONDS,
+        input_batch_frames: int = 1,
         producer_block_timeout_seconds: float = _PRODUCER_BLOCK_TIMEOUT_SECONDS,
         close_timeout_seconds: float = 5.0,
     ) -> None:
         if (
             ack_every_frames <= 0
             or ack_max_delay_seconds <= 0
+            or input_batch_frames <= 0
             or producer_block_timeout_seconds <= 0
             or close_timeout_seconds <= 0
         ):
@@ -130,6 +132,7 @@ class LocalRealtimeChannelController:
         self._created_ns = time.monotonic_ns()
         self._ack_every_frames = ack_every_frames
         self._ack_max_delay_seconds = ack_max_delay_seconds
+        self._input_batch_frames = input_batch_frames
         self._producer_block_timeout_seconds = producer_block_timeout_seconds
         self._close_timeout_seconds = close_timeout_seconds
         self._channel: LocalChannel | None = None
@@ -142,6 +145,7 @@ class LocalRealtimeChannelController:
         self._terminal_lock = asyncio.Lock()
         self._terminal = False
         self._input_window: _InputWindow | None = None
+        self._input_batch: list[bytes] = []
         self._input_since_ack = 0
         self._ack_timer: asyncio.Task[None] | None = None
         self._event_task: asyncio.Task[None] | None = None
@@ -227,6 +231,9 @@ class LocalRealtimeChannelController:
         elif message_type == "call.barge_in":
             if not self._ready or self._session is None:
                 raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "call is not active")
+            await self._flush_input_batch()
+            if self._terminal:
+                return
             await self._session.cancel_response()
         elif message_type == "call.audio_ack":
             await self._handle_output_ack(value)
@@ -280,6 +287,9 @@ class LocalRealtimeChannelController:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "invalid stop reason")
         assert isinstance(reason, str)
         self._requested_stop_reason = reason
+        await self._flush_input_batch()
+        if self._terminal:
+            return
         await self._send_json(
             {"type": "call.state", "generation": self._generation, "state": "closing"}
         )
@@ -308,21 +318,35 @@ class LocalRealtimeChannelController:
             self.duplicate_frame_count += 1
             return
         for pcm in ready:
-            try:
-                await asyncio.wait_for(
-                    self._session.send_audio(pcm),
-                    timeout=self._producer_block_timeout_seconds,
-                )
-            except TimeoutError:
-                self._record_local_timeout(RealtimeErrorCode.BUSY)
-                await self._cancel_active_response()
-                await self._fail(RealtimeErrorCode.BUSY, False)
-                return
-            self._input_since_ack += 1
+            self._input_batch.append(pcm)
+            if len(self._input_batch) >= self._input_batch_frames:
+                await self._flush_input_batch()
+                if self._terminal:
+                    return
         if self._input_since_ack >= self._ack_every_frames:
             await self._send_input_ack()
-        elif ready and self._ack_timer is None:
+        elif self._input_since_ack and self._ack_timer is None:
             self._ack_timer = asyncio.create_task(self._delayed_input_ack())
+
+    async def _flush_input_batch(self) -> None:
+        if not self._input_batch:
+            return
+        if self._session is None:
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "call is not active")
+        batch = self._input_batch
+        pcm = b"".join(batch)
+        try:
+            await asyncio.wait_for(
+                self._session.send_audio(pcm),
+                timeout=self._producer_block_timeout_seconds,
+            )
+        except TimeoutError:
+            self._record_local_timeout(RealtimeErrorCode.BUSY)
+            await self._cancel_active_response()
+            await self._fail(RealtimeErrorCode.BUSY, False)
+            return
+        self._input_batch = []
+        self._input_since_ack += len(batch)
 
     async def _delayed_input_ack(self) -> None:
         try:

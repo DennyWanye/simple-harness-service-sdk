@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.12
+
+- Allow product compositions to batch consecutive local PCM frames into one upstream audio write
+  while preserving local sequence acknowledgement semantics.
+- Flush a partial input batch before barge-in or controlled shutdown so tail audio is not dropped.
+
 ## 0.3.11
 
 - Treat Qwen's observed empty completed input transcript as an ordered no-op so a transient

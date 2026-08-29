@@ -17,7 +17,7 @@ def assert_pure_wheel(wheel: Path) -> None:
         names = archive.namelist()
         assert not any(name.endswith((".so", ".dylib", ".pyd")) for name in names)
         wheel_metadata = archive.read(
-            "simple_harness_service_sdk-0.3.11.dist-info/WHEEL"
+            "simple_harness_service_sdk-0.3.12.dist-info/WHEEL"
         ).decode()
         assert "Root-Is-Purelib: true" in wheel_metadata
         assert "Tag: py3-none-any" in wheel_metadata

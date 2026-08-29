@@ -36,7 +36,13 @@ from simple_harness_service.realtime.contracts import (
     TranscriptCompleted,
     TranscriptDelta,
 )
-from simple_harness_service.realtime.local import decode_pcm_frame, encode_domain_event
+from simple_harness_service.realtime.local import (
+    AudioDirection,
+    LocalPcmFrame,
+    decode_pcm_frame,
+    encode_domain_event,
+    encode_pcm_frame,
+)
 from simple_harness_service.realtime.local_channel import LocalRealtimeChannelController
 from simple_harness_service.realtime.observability import (
     RealtimeDiagnostics,
@@ -272,6 +278,100 @@ async def test_authority_lifecycle_correlation_ack_chunking_and_session_first_st
         "generation": 1,
         "reason": "client_hangup",
     }
+
+
+@pytest.mark.asyncio
+async def test_input_batch_waits_for_full_batch_then_acks_all_local_frames() -> None:
+    session = FakeSession()
+    opener = FakeOpener(session)
+    channel = FakeChannel()
+    controller = LocalRealtimeChannelController(
+        opener,
+        ack_every_frames=5,
+        input_batch_frames=5,
+    )
+    task = asyncio.create_task(controller.run(channel))
+    await channel.incoming.put(_fixture("client-hello.json"))
+    await channel.incoming.put(_fixture("client-call-start.json"))
+    await asyncio.wait_for(opener.called.wait(), timeout=0.5)
+    await session.incoming.put(_ready())
+    await _wait_for(
+        lambda: any(
+            isinstance(item, str) and json.loads(item).get("type") == "call.ready"
+            for item in channel.sent
+        )
+    )
+
+    frames = [
+        encode_pcm_frame(
+            LocalPcmFrame(AudioDirection.INPUT, 1, sequence, bytes([sequence, 0]) * 320)
+        )
+        for sequence in range(1, 6)
+    ]
+    for frame in frames[:4]:
+        await channel.incoming.put(frame)
+    await asyncio.sleep(0)
+    assert session.audio == []
+    assert not any(
+        isinstance(item, str)
+        and json.loads(item).get("type") == "call.audio_ack"
+        and json.loads(item).get("direction") == "input"
+        for item in channel.sent
+    )
+
+    await channel.incoming.put(frames[4])
+    expected = b"".join(bytes([sequence, 0]) * 320 for sequence in range(1, 6))
+    await _wait_for(lambda: session.audio == [expected])
+    await _wait_for(
+        lambda: any(
+            isinstance(item, str)
+            and json.loads(item).get("type") == "call.audio_ack"
+            and json.loads(item).get("highest_contiguous_sequence") == 5
+            for item in channel.sent
+        )
+    )
+
+    await channel.incoming.put(_fixture("client-call-stop.json"))
+    await asyncio.wait_for(task, timeout=0.5)
+
+
+@pytest.mark.asyncio
+async def test_stop_flushes_partial_input_batch_before_closing_session() -> None:
+    actions: list[str] = []
+    session = FakeSession(actions)
+    opener = FakeOpener(session)
+    channel = FakeChannel(actions)
+    controller = LocalRealtimeChannelController(opener, input_batch_frames=5)
+    task = asyncio.create_task(controller.run(channel))
+    await channel.incoming.put(_fixture("client-hello.json"))
+    await channel.incoming.put(_fixture("client-call-start.json"))
+    await asyncio.wait_for(opener.called.wait(), timeout=0.5)
+    await session.incoming.put(_ready())
+    await _wait_for(
+        lambda: any(
+            isinstance(item, str) and json.loads(item).get("type") == "call.ready"
+            for item in channel.sent
+        )
+    )
+
+    first = b"\x01\x00" * 320
+    second = b"\x02\x00" * 320
+    await channel.incoming.put(
+        encode_pcm_frame(LocalPcmFrame(AudioDirection.INPUT, 1, 1, first))
+    )
+    await channel.incoming.put(
+        encode_pcm_frame(LocalPcmFrame(AudioDirection.INPUT, 1, 2, second))
+    )
+    await channel.incoming.put(_fixture("client-call-stop.json"))
+    await asyncio.wait_for(task, timeout=0.5)
+
+    assert session.audio == [first + second]
+    assert actions[:2] == ["session", "channel"]
+
+
+def test_input_batch_frames_must_be_positive() -> None:
+    with pytest.raises(ValueError):
+        LocalRealtimeChannelController(FakeOpener(FakeSession()), input_batch_frames=0)
 
 
 @pytest.mark.asyncio
