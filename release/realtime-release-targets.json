@@ -21,7 +21,7 @@
       "id": "aiphone-py313-linux-aarch64",
       "consumer": "aiphone",
       "python_version": "3.13",
-      "python_platform": "aarch64-manylinux2014",
+      "python_platform": "aarch64-manylinux_2_28",
       "artifact_role": "droidian-agent-runtime"
     }
   ]

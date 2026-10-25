@@ -249,7 +249,7 @@ def test_release_schema_targets_and_dynamic_version_contract() -> None:
     } == {
         ("simple-harness", "3.11", "aarch64-apple-darwin"),
         ("simple-harness", "3.11", "x86_64-pc-windows-msvc"),
-        ("aiphone", "3.13", "aarch64-manylinux2014"),
+        ("aiphone", "3.13", "aarch64-manylinux_2_28"),
     }
     assert "VERSION =" not in build_script
     assert 'project.get("version")' in build_script

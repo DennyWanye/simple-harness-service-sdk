@@ -67,6 +67,6 @@ TMPDIR="$PWD/build/tmp" .venv/bin/python scripts/build_candidate.py \
   dist/candidate-0.3.13/simple_harness_service_sdk-*.tar.gz
 ```
 
-构建器保留两次发行包字节比较、两次 authority bundle 比较、三个目标锁文件的两次比较，以及完整清单 schema 校验。运行锁使用 `--find-links` 解析私有 Harness，移除机器专用路径并保留精确版本与 SHA。截止时间更新为 `2026-10-25T00:00:00Z`，因为旧截止日期早于 opt.216 必需的 deepseek-recipe 0.1.1 发布时间。
+构建器保留两次发行包字节比较、两次 authority bundle 比较、三个目标锁文件的两次比较，以及完整清单 schema 校验。运行锁使用 `--find-links` 解析私有 Harness，移除机器专用路径并保留精确版本与 SHA。Linux ARM64 的平台基线为 `aarch64-manylinux_2_28`（glibc ≥ 2.28），因为必需的 deepseek-recipe 0.1.1 无 manylinux2014 轮子；未声明旧 glibc 支持，也未执行 Linux 真机运行验收。截止时间更新为 `2026-10-25T00:00:00Z`，因为旧截止日期早于 opt.216 必需的 deepseek-recipe 0.1.1 发布时间。
 
 候选清单绑定 Service 0.3.13、Harness opt.216、Memory 0.5.2、四个 authority pack、三份消费端锁与源码提交。源码 wheel 和 sdist 均需两次字节一致；Memory 旧元数据约束不因打包而改变。候选只供私有分发，任何未来地址均为晋级定位，不代表本次已上传。发布端只能分发冻结字节，不能重建、覆盖资产或移动标签。
