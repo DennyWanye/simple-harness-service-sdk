@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from ..contracts import RealtimeError, RealtimeErrorCode
-from ._shared import decode_base64_pcm, strict_json_object
+from ._shared import decode_base64_pcm, require_identifier, strict_json_object
 
 QWEN_CLIENT_EVENTS = frozenset(
     {
@@ -54,8 +54,8 @@ _QWEN_EVENT_ID = re.compile(r"^event_[A-Za-z0-9_-]{1,120}$")
 
 def _event_identity(value: Mapping[str, object]) -> tuple[str, str]:
     event_type = value.get("type")
-    event_id = value.get("event_id")
-    if not isinstance(event_type, str) or not isinstance(event_id, str) or not event_id:
+    event_id = require_identifier(value.get("event_id"), "event_id")
+    if not isinstance(event_type, str):
         raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "event type/id is required")
     if not _QWEN_EVENT_ID.fullmatch(event_id):
         raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "invalid Qwen event_id")

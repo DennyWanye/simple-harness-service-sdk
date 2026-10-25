@@ -1,4 +1,4 @@
-# Realtime 0.3.13～0.3.17 接口与交接
+# Realtime 0.3.13～0.3.18 接口与交接
 
 本版源码补充工具目录、可选自动工具循环、上下文注入与播放统计。Qwen 真线路能力仍待中继恢复后确认。OpenAI 适配器只用于离线编码与 fixture 校验，未开放真实连接。
 
@@ -46,13 +46,15 @@ Qwen 的 `update_instructions` 编码为第二次 `session.update(instructions)`
 
 ## 用户侧 response 事件
 
-0.3.17 起，Qwen 在各内容分支之前统一识别缺少 `response_id` 的 item 级 `response.*` 事件，包括 audio、audio_transcript、content_part、output_item、text 与 function_call_arguments。只有 `item_id` 是当前连接中通过内容及顺序确认的 user 消息实际服务端 ID，或来自 `input_audio_buffer.speech_started/committed`，才走用户侧路径。server 改写 ID 时不以未确认的客户端原 ID 替代；未确认、确认不符、system、未知或助手 item 仍为 protocol_error。
+0.3.17 起，Qwen 在各内容分支之前统一识别无 `response_id` 的 item 级 `response.*` 事件，包括 audio、audio_transcript、content_part、output_item、text 与 function_call_arguments。只有 `item_id` 是当前连接中通过内容及顺序确认的 user 消息实际服务端 ID，或来自 `input_audio_buffer.speech_started/committed`，才走用户侧路径。server 改写 ID 时不以未确认的客户端原 ID 替代；未确认、确认不符、system、未知或助手 item 仍为 protocol_error。
 
 其中 audio_transcript.delta/done 的非空字符串分别发 `TranscriptDelta/TranscriptCompleted`，保留 item ID 为 turn_id；空字符串及其余用户侧事件不产生助手音频、文本、工具调用、内容完成或消息 ACK，也不请求新回复。忽略事件统一记录 `operation_kind=user_side_response_event_ignored`，附 `provider_event_type`（例如 response.audio.done）。该诊断字段只允许最长 128 字符的稳定事件标识，不保存正文、音频或 item ID；重复事件由会话去重。
 
-output_item 常规使用嵌套 `item.id`，兼容附带事件的顶层 `item_id`；两者同时出现且不一致时拒绝。已知用户的其余内容事件不要求助手侧 payload 或索引齐全，因此审计所见仅 content_index/event_id/item_id/output_index/type 五键的 audio.done 能按用户来源忽略。语义适配器先验证受限帧大小、JSON、事件类型和 event ID，再分辨来源；助手音频数据在来源判定后继续执行既有 base64/PCM 与大小校验，直接使用 QwenWireCodec 时默认仍严格验证音频。
+output_item 常规使用嵌套 `item.id`，兼容附带事件的顶层 `item_id`；两者均有真实标识且不一致时拒绝，一方无标识时可使用另一方的真实 ID，两方均无则拒绝。已知用户的其余内容事件不要求助手侧 payload 或索引齐全，因此审计所见仅 content_index/event_id/item_id/output_index/type 五键的 audio.done 能按用户来源忽略。语义适配器先验证受限帧大小、JSON、事件类型和 event ID，再分辨来源；助手音频数据在来源判定后继续执行既有 base64/PCM 与大小校验，直接使用 QwenWireCodec 时默认仍严格验证音频。
 
-转写缺字段或非字符串、显式 response_id 为 null/空字符串仍为 protocol_error。有 response_id 的助手内容继续走原有分支和会话作用域校验；response.created/done 的生命周期作用域仍来自其嵌套 response.id，不能借用户 item 绕过。初始 session.update 重置用户集合，adapter 深复制、generation 隔离和旧事件去重继续有效。
+0.3.18 起，response_id、item_id、call_id 及会话/事件标识统一通过 optional_identifier/require_identifier 判定：缺失、null、任何非字符串、空串或纯空白均视为无标识，不按字段存在性分流。不将数字转字符串，也不裁剪含非空白字符的真实 ID，避免合并不同身份；该规则不用于正文，纯空白转写仍为正文。Qwen 已知用户 item 的无 response_id 事件按上述用户侧合同处理，未知/助手/旧连接身份不借当前 response 填补。
+
+转写缺字段或非字符串、必需的 item_id/call_id 等无标识仍为 protocol_error。Qwen 与 OpenAI 的 _content_identity、生命周期、工具回执、ASR 和会话 ID 校验共用此判定，OpenAI 仍仅用于离线 fixture。有真实 response_id 的助手内容继续走原有分支和会话作用域校验；response.created/done 的生命周期作用域仍来自其嵌套 response.id，不能借用户 item 绕过。初始 session.update 重置用户集合，adapter 深复制、generation 隔离和旧事件去重继续有效。
 
 0.3.16 的单项 user_side_transcript_ignored 诊断由以上统一诊断接替；内部旧标志保留用于适配器兼容。本合同继续按任务要求接纳已知用户非空转写，Host 应依据公开 context_ack_id 隔离自己注入的资料来源。此处不判断其是否为真实语音输入或授予工具权限。本仓库只运行适配器/会话离线回放，Host 桥联合、A09～A11 真线路及独立复核仍须重验。
 

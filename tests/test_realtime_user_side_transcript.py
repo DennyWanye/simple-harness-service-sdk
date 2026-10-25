@@ -139,13 +139,15 @@ def test_known_user_transcript_must_be_a_string(text: Any, delta: bool) -> None:
 
 
 @pytest.mark.parametrize("response_id", [None, ""])
-def test_present_but_invalid_response_id_is_not_user_side(response_id: Any) -> None:
+def test_present_but_absent_response_id_uses_user_side(response_id: Any) -> None:
     adapter = QwenOmniAdapter()
     identity = _confirmed_context(adapter)
     value = _sideband(identity)
     value["response_id"] = response_id
-    with pytest.raises(RealtimeError, match="response_id is required"):
-        _decode(adapter, value)
+    decoded = _decode(adapter, value)
+    assert not decoded.events
+    assert decoded.user_side_response_event_ignored == value["type"]
+    assert decoded.context_ack_id is None and decoded.introduced_response_id is None
 
 
 @pytest.mark.parametrize("delta", [False, True])

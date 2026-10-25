@@ -18,6 +18,19 @@ def require_string(value: object, name: str) -> str:
     return value
 
 
+def optional_identifier(value: object) -> str | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return value
+
+
+def require_identifier(value: object, name: str) -> str:
+    identity = optional_identifier(value)
+    if identity is None:
+        raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, f"{name} is required")
+    return identity
+
+
 def require_nonnegative_integer(value: object, name: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, f"{name} must be an integer")
@@ -79,9 +92,7 @@ def parse_terminal_usage(
     input_tokens = require_nonnegative_integer(usage.get("input_tokens"), "input_tokens")
     output_tokens = require_nonnegative_integer(usage.get("output_tokens"), "output_tokens")
     total_tokens = require_nonnegative_integer(usage.get("total_tokens"), "total_tokens")
-    input_text = require_nonnegative_integer(
-        input_details.get("text_tokens"), "input text tokens"
-    )
+    input_text = require_nonnegative_integer(input_details.get("text_tokens"), "input text tokens")
     input_audio = require_nonnegative_integer(
         input_details.get("audio_tokens"), "input audio tokens"
     )

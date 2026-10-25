@@ -106,12 +106,13 @@ def test_unscoped_nonuser_events_are_still_protocol_errors(kind: str, source: st
 
 @pytest.mark.parametrize("kind", ITEM_EVENTS)
 @pytest.mark.parametrize("response_id", [None, ""])
-def test_explicit_invalid_response_scope_is_not_user_side(kind: str, response_id: Any) -> None:
+def test_explicit_absent_response_scope_uses_user_side(kind: str, response_id: Any) -> None:
     adapter = QwenOmniAdapter()
     _trust(adapter, "context")
-    with pytest.raises(RealtimeError) as error:
-        _decode(adapter, _event(kind, response_id=response_id, delta="AAA=", transcript=""))
-    assert error.value.code is RealtimeErrorCode.PROTOCOL_ERROR
+    decoded = _decode(adapter, _event(kind, response_id=response_id, delta="", transcript=""))
+    assert not decoded.events
+    assert decoded.user_side_response_event_ignored == kind
+    assert decoded.context_ack_id is None and decoded.introduced_response_id is None
 
 
 @pytest.mark.parametrize(

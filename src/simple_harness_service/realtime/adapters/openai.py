@@ -32,6 +32,8 @@ from ..ports import DecodedProviderEvent
 from ..tool_schema import validate_tools
 from ._shared import decode_base64_pcm, parse_terminal_usage
 from ._shared import new_event_id as _event_id
+from ._shared import optional_identifier as _optional_id
+from ._shared import require_identifier as _id
 from ._shared import require_nonnegative_integer as _integer
 from ._shared import require_object as _object
 from ._shared import require_string as _string
@@ -206,7 +208,7 @@ class OpenAIRealtimeAdapter:
     def decode_server_event(self, payload: str) -> DecodedProviderEvent:
         value = self._wire.decode_server_event(payload)
         event_type = _string(value.get("type"), "type")
-        event_id = _string(value.get("event_id"), "event_id")
+        event_id = _id(value.get("event_id"), "event_id")
         if event_type in {"session.created", "session.updated"}:
             if event_type == "session.updated" and self._instruction_update is not None:
                 context_identity, expected_instructions = self._instruction_update
@@ -229,20 +231,20 @@ class OpenAIRealtimeAdapter:
         if event_type == "input_audio_buffer.committed":
             return DecodedProviderEvent(event_id)
         if event_type == "input_audio_buffer.speech_started":
-            turn_id = _string(value.get("item_id"), "item_id")
+            turn_id = _id(value.get("item_id"), "item_id")
             return DecodedProviderEvent(event_id, (SpeechStarted(turn_id),))
         if event_type == "input_audio_buffer.speech_stopped":
-            turn_id = _string(value.get("item_id"), "item_id")
+            turn_id = _id(value.get("item_id"), "item_id")
             return DecodedProviderEvent(event_id, (SpeechStopped(turn_id),))
         if event_type == "conversation.item.input_audio_transcription.completed":
-            turn_id = _string(value.get("item_id"), "item_id")
+            turn_id = _id(value.get("item_id"), "item_id")
             return DecodedProviderEvent(
                 event_id,
                 (TranscriptCompleted(turn_id, _string(value.get("transcript"), "transcript")),),
             )
         if event_type == "response.created":
             response = _object(value.get("response"), "response")
-            response_id = _string(response.get("id"), "response.id")
+            response_id = _id(response.get("id"), "response.id")
             context_id = self._pending_response
             if context_id is not None:
                 self._context_events.pop(context_id, None)
@@ -254,9 +256,9 @@ class OpenAIRealtimeAdapter:
                 context_ack_id=context_id,
             )
         if event_type in {"response.output_item.added", "response.output_item.done"}:
-            response_id = _string(value.get("response_id"), "response_id")
+            response_id = _id(value.get("response_id"), "response_id")
             item = _object(value.get("item"), "item")
-            item_id = _string(item.get("id"), "item.id")
+            item_id = _id(item.get("id"), "item.id")
             item_type = _string(item.get("type"), "item.type")
             output_index = _integer(value.get("output_index"), "output_index")
             if event_type.endswith("added"):
@@ -304,10 +306,10 @@ class OpenAIRealtimeAdapter:
             identity = self._content_identity(value)
             return DecodedProviderEvent(event_id, (OutputAudioCompleted(*identity),))
         if event_type == "response.function_call_arguments.done":
-            response_id = _string(value.get("response_id"), "response_id")
-            item_id = _string(value.get("item_id"), "item_id")
+            response_id = _id(value.get("response_id"), "response_id")
+            item_id = _id(value.get("item_id"), "item_id")
             output_index = _integer(value.get("output_index"), "output_index")
-            call_id = _string(value.get("call_id"), "call_id")
+            call_id = _id(value.get("call_id"), "call_id")
             arguments = value.get("arguments")
             if not isinstance(arguments, str):
                 raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "arguments must be a string")
@@ -325,8 +327,8 @@ class OpenAIRealtimeAdapter:
             )
         if event_type == "conversation.item.created":
             item = _object(value.get("item"), "item")
-            context_id = item.get("id")
-            if isinstance(context_id, str) and context_id in self._context_events:
+            context_id = _optional_id(item.get("id"))
+            if context_id is not None and context_id in self._context_events:
                 expected = self._context_events[context_id]
                 if (
                     expected is None
@@ -341,10 +343,10 @@ class OpenAIRealtimeAdapter:
             raw_call_id = item.get("call_id")
             if item.get("type") == "function_call_output":
                 ack_identity = (
-                    _string(item.get("id"), "item.id"),
+                    _id(item.get("id"), "item.id"),
                     _string(item.get("type"), "item.type"),
                     _string(item.get("status"), "item.status"),
-                    _string(raw_call_id, "item.call_id"),
+                    _id(raw_call_id, "item.call_id"),
                     _string(item.get("output"), "item.output"),
                 )
             else:
@@ -356,7 +358,7 @@ class OpenAIRealtimeAdapter:
             )
         if event_type == "response.done":
             response = _object(value.get("response"), "response")
-            response_id = _string(response.get("id"), "response.id")
+            response_id = _id(response.get("id"), "response.id")
             try:
                 status = ResponseStatus(_string(response.get("status"), "response.status"))
             except ValueError as error:
@@ -376,8 +378,8 @@ class OpenAIRealtimeAdapter:
             return DecodedProviderEvent(event_id, tuple(terminal_events))
         if event_type == "error":
             error_payload = _object(value.get("error"), "error")
-            rejected = error_payload.get("event_id")
-            if isinstance(rejected, str) and rejected in self._context_events:
+            rejected = _optional_id(error_payload.get("event_id"))
+            if rejected is not None and rejected in self._context_events:
                 self._context_events.pop(rejected)
                 if self._pending_response == rejected:
                     self._pending_response = None
@@ -396,8 +398,8 @@ class OpenAIRealtimeAdapter:
     @staticmethod
     def _content_identity(value: Mapping[str, object]) -> tuple[str, str, int, int]:
         return (
-            _string(value.get("response_id"), "response_id"),
-            _string(value.get("item_id"), "item_id"),
+            _id(value.get("response_id"), "response_id"),
+            _id(value.get("item_id"), "item_id"),
             _integer(value.get("output_index"), "output_index"),
             _integer(value.get("content_index"), "content_index"),
         )
@@ -423,7 +425,7 @@ class OpenAIRealtimeAdapter:
             raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "tool catalog not acknowledged")
         if "tools" in session and session["tools"] != self._tools:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "tool catalog mismatch")
-        _string(session.get("id"), "session.id")
+        _id(session.get("id"), "session.id")
         if (
             session.get("type") != "realtime"
             or session.get("model") != "gpt-realtime-2.1"

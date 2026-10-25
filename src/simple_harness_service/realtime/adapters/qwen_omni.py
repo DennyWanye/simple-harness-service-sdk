@@ -34,6 +34,8 @@ from ..ports import DecodedProviderEvent
 from ..tool_schema import validate_tools
 from ._shared import decode_base64_pcm, parse_terminal_usage
 from ._shared import new_event_id as _event_id
+from ._shared import optional_identifier as _optional_id
+from ._shared import require_identifier as _id
 from ._shared import require_nonnegative_integer as _integer
 from ._shared import require_object as _object
 from ._shared import require_string as _string
@@ -164,7 +166,7 @@ class QwenOmniAdapter:
     def decode_server_event(self, payload: str) -> DecodedProviderEvent:
         value = self._wire.decode_server_event(payload, validate_audio=False)
         event_type = _string(value.get("type"), "type")
-        event_id = _string(value.get("event_id"), "event_id")
+        event_id = _id(value.get("event_id"), "event_id")
         if event_id in self._context_seen_event_ids:
             return DecodedProviderEvent(
                 event_id, session_acknowledged=event_type == "session.updated"
@@ -175,9 +177,9 @@ class QwenOmniAdapter:
             "response.created",
             "response.done",
         }:
-            if "response_id" not in value:
+            if _optional_id(value.get("response_id")) is None:
                 return self._user_side_response_event(event_id, event_type, value)
-            _string(value.get("response_id"), "response_id")
+            _id(value.get("response_id"), "response_id")
         if event_type == "session.updated":
             if self._instruction_update is not None:
                 context_identity, expected_instructions = self._instruction_update
@@ -205,17 +207,17 @@ class QwenOmniAdapter:
                 tool_catalog_normalized=normalized_tools,
             )
         if event_type == "input_audio_buffer.committed":
-            self._user_item_ids.add(_string(value.get("item_id"), "item_id"))
+            self._user_item_ids.add(_id(value.get("item_id"), "item_id"))
             return DecodedProviderEvent(event_id)
         if event_type == "input_audio_buffer.speech_started":
-            turn_id = _string(value.get("item_id"), "item_id")
+            turn_id = _id(value.get("item_id"), "item_id")
             self._user_item_ids.add(turn_id)
             return DecodedProviderEvent(event_id, (SpeechStarted(turn_id),))
         if event_type == "input_audio_buffer.speech_stopped":
-            turn_id = _string(value.get("item_id"), "item_id")
+            turn_id = _id(value.get("item_id"), "item_id")
             return DecodedProviderEvent(event_id, (SpeechStopped(turn_id),))
         if event_type == "conversation.item.input_audio_transcription.delta":
-            turn_id = _string(value.get("item_id"), "item_id")
+            turn_id = _id(value.get("item_id"), "item_id")
             text = value.get("text")
             if text == "":
                 return DecodedProviderEvent(event_id)
@@ -224,7 +226,7 @@ class QwenOmniAdapter:
                 (TranscriptDelta(turn_id, _string(text, "text")),),
             )
         if event_type == "conversation.item.input_audio_transcription.completed":
-            turn_id = _string(value.get("item_id"), "item_id")
+            turn_id = _id(value.get("item_id"), "item_id")
             transcript = value.get("transcript")
             # DashScope can close a very short VAD noise turn with an empty
             # transcript while continuing to generate the associated response.
@@ -243,16 +245,16 @@ class QwenOmniAdapter:
             )
         if event_type == "response.created":
             response = _object(value.get("response"), "response")
-            response_id = _string(response.get("id"), "response.id")
+            response_id = _id(response.get("id"), "response.id")
             return DecodedProviderEvent(
                 event_id,
                 (ResponseStarted(f"turn_{response_id}", response_id),),
                 introduced_response_id=response_id,
             )
         if event_type in {"response.output_item.added", "response.output_item.done"}:
-            response_id = _string(value.get("response_id"), "response_id")
+            response_id = _id(value.get("response_id"), "response_id")
             item = _object(value.get("item"), "item")
-            item_id = _string(item.get("id"), "item.id")
+            item_id = _id(item.get("id"), "item.id")
             item_type = _string(item.get("type"), "item.type")
             output_index = _integer(value.get("output_index"), "output_index")
             if event_type.endswith("added"):
@@ -308,10 +310,10 @@ class QwenOmniAdapter:
                 ),
             )
         if event_type == "response.function_call_arguments.done":
-            response_id = _string(value.get("response_id"), "response_id")
-            item_id = _string(value.get("item_id"), "item_id")
+            response_id = _id(value.get("response_id"), "response_id")
+            item_id = _id(value.get("item_id"), "item_id")
             output_index = _integer(value.get("output_index"), "output_index")
-            call_id = _string(value.get("call_id"), "call_id")
+            call_id = _id(value.get("call_id"), "call_id")
             arguments = value.get("arguments")
             if not isinstance(arguments, str):
                 raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "arguments must be a string")
@@ -329,18 +331,18 @@ class QwenOmniAdapter:
             )
         if event_type == "conversation.item.created":
             item = _object(value.get("item"), "item")
-            context_id = item.get("id")
+            context_id = _optional_id(item.get("id"))
             if item.get("type") == "message" or (
-                isinstance(context_id, str) and context_id in self._context_events
+                context_id is not None and context_id in self._context_events
             ):
                 return self._context_message_created(event_id, item)
             raw_call_id = item.get("call_id")
             if item.get("type") == "function_call_output":
                 ack_identity = (
-                    _string(item.get("id"), "item.id"),
+                    _id(item.get("id"), "item.id"),
                     _string(item.get("type"), "item.type"),
                     _string(item.get("status"), "item.status"),
-                    _string(raw_call_id, "item.call_id"),
+                    _id(raw_call_id, "item.call_id"),
                     _string(item.get("output"), "item.output"),
                 )
             else:
@@ -356,7 +358,7 @@ class QwenOmniAdapter:
         if event_type == "error":
             error = _object(value.get("error"), "error")
             code, retryable = self._map_error(error)
-            rejected = error.get("event_id")
+            rejected = _optional_id(error.get("event_id"))
             if (
                 rejected is None
                 and len(self._context_events) == 1
@@ -366,7 +368,7 @@ class QwenOmniAdapter:
                 )
             ):
                 rejected = next(iter(self._context_events))
-            if isinstance(rejected, str) and rejected in self._context_events:
+            if rejected is not None and rejected in self._context_events:
                 self._context_events.pop(rejected)
                 self._context_seen_item_ids.add(rejected)
                 if self._instruction_update is not None and self._instruction_update[0] == rejected:
@@ -382,16 +384,14 @@ class QwenOmniAdapter:
     def _user_side_response_event(
         self, event_id: str, event_type: str, value: Mapping[str, object]
     ) -> DecodedProviderEvent:
-        item_id = value.get("item_id")
+        item_id = _optional_id(value.get("item_id"))
         if event_type.startswith("response.output_item."):
             item = value.get("item")
-            if isinstance(item, Mapping) and "id" in item:
-                if "item_id" in value and item_id != item["id"]:
-                    raise RealtimeError(
-                        RealtimeErrorCode.PROTOCOL_ERROR, "conflicting item identity"
-                    )
-                item_id = item["id"]
-        if not isinstance(item_id, str) or item_id not in self._user_item_ids:
+            nested_id = _optional_id(item.get("id")) if isinstance(item, Mapping) else None
+            if item_id is not None and nested_id is not None and item_id != nested_id:
+                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "conflicting item identity")
+            item_id = item_id if item_id is not None else nested_id
+        if item_id is None or item_id not in self._user_item_ids:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "response_id is required")
         is_transcript = event_type in {
             "response.audio_transcript.delta",
@@ -416,7 +416,7 @@ class QwenOmniAdapter:
     def _context_message_created(
         self, event_id: str, item: Mapping[str, object]
     ) -> DecodedProviderEvent:
-        server_id = _string(item.get("id"), "item.id")
+        server_id = _id(item.get("id"), "item.id")
         if server_id in self._context_seen_item_ids:
             self._context_seen_event_ids.add(event_id)
             return DecodedProviderEvent(event_id)
@@ -479,8 +479,8 @@ class QwenOmniAdapter:
     @staticmethod
     def _content_identity(value: Mapping[str, object]) -> tuple[str, str, int, int]:
         return (
-            _string(value.get("response_id"), "response_id"),
-            _string(value.get("item_id"), "item_id"),
+            _id(value.get("response_id"), "response_id"),
+            _id(value.get("item_id"), "item_id"),
             _integer(value.get("output_index"), "output_index"),
             _integer(value.get("content_index"), "content_index"),
         )
@@ -520,7 +520,7 @@ class QwenOmniAdapter:
                     RealtimeErrorCode.UNSUPPORTED, "Qwen tool catalog not acknowledged"
                 )
             normalized_tools = json.dumps(session["tools"]) != json.dumps(self._tools)
-        _string(session.get("id"), "session.id")
+        _id(session.get("id"), "session.id")
         _string(session.get("instructions"), "session.instructions")
         expected = {
             "modalities": ["text", "audio"],
@@ -591,7 +591,7 @@ class QwenOmniAdapter:
     @staticmethod
     def _response_done(event_id: str, value: Mapping[str, object]) -> DecodedProviderEvent:
         response = _object(value.get("response"), "response")
-        response_id = _string(response.get("id"), "response.id")
+        response_id = _id(response.get("id"), "response.id")
         provider_status = _string(response.get("status"), "response.status")
         if provider_status == "completed":
             status = ResponseStatus.COMPLETED
