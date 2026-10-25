@@ -37,6 +37,7 @@ class DecodedProviderEvent:
     rejected_event_id: str | None = None
     context_request_id: str | None = None
     user_side_transcript_ignored: bool = False
+    user_side_response_event_ignored: str | None = None
 
 
 class ToolDispatcher(Protocol):

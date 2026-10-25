@@ -74,14 +74,14 @@ class QwenWireCodec:
             decode_base64_pcm(value.get("audio"), limit=self.input_audio_limit)
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
-    def decode_server_event(self, payload: str) -> dict[str, Any]:
+    def decode_server_event(self, payload: str, *, validate_audio: bool = True) -> dict[str, Any]:
         if len(payload.encode("utf-8")) > 1_048_576:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "Qwen frame is too large")
         value = strict_json_object(payload)
         event_type, _ = _event_identity(value)
         if event_type not in QWEN_SERVER_EVENTS:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "unknown Qwen server event")
-        if event_type == "response.audio.delta":
+        if validate_audio and event_type == "response.audio.delta":
             decode_base64_pcm(value.get("delta"), limit=self.output_audio_limit)
         return value
 

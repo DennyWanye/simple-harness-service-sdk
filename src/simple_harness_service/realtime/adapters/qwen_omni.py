@@ -162,13 +162,22 @@ class QwenOmniAdapter:
         return self._wire.encode_client_event(event)
 
     def decode_server_event(self, payload: str) -> DecodedProviderEvent:
-        value = self._wire.decode_server_event(payload)
+        value = self._wire.decode_server_event(payload, validate_audio=False)
         event_type = _string(value.get("type"), "type")
         event_id = _string(value.get("event_id"), "event_id")
         if event_id in self._context_seen_event_ids:
             return DecodedProviderEvent(
                 event_id, session_acknowledged=event_type == "session.updated"
             )
+        # Lifecycle events carry their scope in response.id. Item events must
+        # be classified before any assistant content or audio is decoded.
+        if event_type.startswith("response.") and event_type not in {
+            "response.created",
+            "response.done",
+        }:
+            if "response_id" not in value:
+                return self._user_side_response_event(event_id, event_type, value)
+            _string(value.get("response_id"), "response_id")
         if event_type == "session.updated":
             if self._instruction_update is not None:
                 context_identity, expected_instructions = self._instruction_update
@@ -196,6 +205,7 @@ class QwenOmniAdapter:
                 tool_catalog_normalized=normalized_tools,
             )
         if event_type == "input_audio_buffer.committed":
+            self._user_item_ids.add(_string(value.get("item_id"), "item_id"))
             return DecodedProviderEvent(event_id)
         if event_type == "input_audio_buffer.speech_started":
             turn_id = _string(value.get("item_id"), "item_id")
@@ -286,21 +296,6 @@ class QwenOmniAdapter:
             return DecodedProviderEvent(event_id, (OutputAudioCompleted(*identity),))
         if event_type in {"response.audio_transcript.delta", "response.audio_transcript.done"}:
             key = "delta" if event_type.endswith("delta") else "transcript"
-            user_item_id = value.get("item_id")
-            if (
-                "response_id" not in value
-                and isinstance(user_item_id, str)
-                and user_item_id in self._user_item_ids
-            ):
-                text = value.get(key)
-                if text == "":
-                    return DecodedProviderEvent(event_id, user_side_transcript_ignored=True)
-                transcript_type = (
-                    TranscriptDelta if event_type.endswith("delta") else TranscriptCompleted
-                )
-                return DecodedProviderEvent(
-                    event_id, (transcript_type(user_item_id, _string(text, key)),)
-                )
             identity = self._content_identity(value)
             return DecodedProviderEvent(
                 event_id,
@@ -383,6 +378,40 @@ class QwenOmniAdapter:
                 )
             return DecodedProviderEvent(event_id, (SessionFailed(code, retryable),))
         return DecodedProviderEvent(event_id)
+
+    def _user_side_response_event(
+        self, event_id: str, event_type: str, value: Mapping[str, object]
+    ) -> DecodedProviderEvent:
+        item_id = value.get("item_id")
+        if event_type.startswith("response.output_item."):
+            item = value.get("item")
+            if isinstance(item, Mapping) and "id" in item:
+                if "item_id" in value and item_id != item["id"]:
+                    raise RealtimeError(
+                        RealtimeErrorCode.PROTOCOL_ERROR, "conflicting item identity"
+                    )
+                item_id = item["id"]
+        if not isinstance(item_id, str) or item_id not in self._user_item_ids:
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "response_id is required")
+        is_transcript = event_type in {
+            "response.audio_transcript.delta",
+            "response.audio_transcript.done",
+        }
+        if is_transcript:
+            key = "delta" if event_type.endswith("delta") else "transcript"
+            text = value.get(key)
+            if text != "":
+                transcript_type = (
+                    TranscriptDelta if event_type.endswith("delta") else TranscriptCompleted
+                )
+                return DecodedProviderEvent(
+                    event_id, (transcript_type(item_id, _string(text, key)),)
+                )
+        return DecodedProviderEvent(
+            event_id,
+            user_side_transcript_ignored=is_transcript,
+            user_side_response_event_ignored=event_type,
+        )
 
     def _context_message_created(
         self, event_id: str, item: Mapping[str, object]

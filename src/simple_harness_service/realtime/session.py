@@ -703,7 +703,13 @@ class ManagedRealtimeSession:
         if not self._is_current_generation():
             self.late_event_count += 1
             return True
-        if decoded.user_side_transcript_ignored:
+        if decoded.user_side_response_event_ignored is not None:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,
+                operation_kind="user_side_response_event_ignored",
+                provider_event_type=decoded.user_side_response_event_ignored,
+            )
+        elif decoded.user_side_transcript_ignored:
             self._record_provider_diagnostic(
                 RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,
                 operation_kind="user_side_transcript_ignored",
@@ -1077,6 +1083,7 @@ class ManagedRealtimeSession:
         operation_kind: str,
         fingerprint: str | None = None,
         stable_code: RealtimeErrorCode | None = None,
+        provider_event_type: str | None = None,
     ) -> None:
         self._diagnostics.emit(
             correlation=self.correlation,
@@ -1086,6 +1093,7 @@ class ManagedRealtimeSession:
             operation_kind=operation_kind,
             fingerprint=fingerprint,
             duration_ms=_duration_ms(self._created_ns),
+            provider_event_type=provider_event_type,
         )
 
     @staticmethod

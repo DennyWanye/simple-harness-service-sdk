@@ -237,8 +237,11 @@ async def test_context_sideband_keeps_session_alive_for_next_user_turn() -> None
         assert not _responses(connection)
         assert session.duplicate_event_count == 1
         snapshot = diagnostics.snapshot()
-        ignored = [e for e in snapshot.events if e.operation_kind == "user_side_transcript_ignored"]
+        ignored = [
+            e for e in snapshot.events if e.operation_kind == "user_side_response_event_ignored"
+        ]
         assert len(ignored) == 1
+        assert ignored[0].provider_event_type == "response.audio_transcript.done"
         assert ignored[0].stage is RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED
         assert not any(
             e.stage is RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED for e in snapshot.events

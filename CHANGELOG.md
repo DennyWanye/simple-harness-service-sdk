@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.17
+
+- Qwen 在统一入口识别无 response_id 的用户侧 item 事件，覆盖 audio、audio_transcript、content_part、output_item、text 与工具参数事件，避免逐分支遗漏。
+- 已确认 user 消息与 speech_started/committed 的 item 可产生用户转写；其余附带事件忽略并记录 user_side_response_event_ignored 及 provider_event_type，不污染助手输出或完成状态。
+- 保留未知身份、无效作用域和助手输出校验，补充真实五键 audio.done 序列、同类完成变体、助手交错及 generation 隔离测试。
+
 ## 0.3.16
 
 - Qwen 缺少 response_id 的 audio_transcript 仅在已确认用户消息或 speech_started 的 item 上按用户转写解码；非空发用户事件，空内容忽略并记 user_side_transcript_ignored 诊断。

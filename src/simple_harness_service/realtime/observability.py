@@ -67,11 +67,13 @@ class RealtimeDiagnosticEvent:
     frame_count: int = 0
     byte_count: int = 0
     duration_ms: int = 0
+    provider_event_type: str | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.correlation, str) or _CORRELATION.fullmatch(
-            self.correlation
-        ) is None:
+        if (
+            not isinstance(self.correlation, str)
+            or _CORRELATION.fullmatch(self.correlation) is None
+        ):
             raise ValueError("invalid opaque correlation")
         object.__setattr__(self, "stage", RealtimeDiagnosticStage(self.stage))
         if self.stable_code is not None:
@@ -80,12 +82,18 @@ class RealtimeDiagnosticEvent:
             object.__setattr__(self, "close_class", CloseDisposition(self.close_class))
         if self.generation is not None:
             _positive_integer(self.generation, "generation")
-        if self.operation_kind is not None and _OPERATION_KIND.fullmatch(
-            self.operation_kind
-        ) is None:
+        if (
+            self.operation_kind is not None
+            and _OPERATION_KIND.fullmatch(self.operation_kind) is None
+        ):
             raise ValueError("operation_kind must be a bounded stable identifier")
         if self.fingerprint is not None and _FINGERPRINT.fullmatch(self.fingerprint) is None:
             raise ValueError("fingerprint must be a sha256 digest")
+        if self.provider_event_type is not None and (
+            not isinstance(self.provider_event_type, str)
+            or _OPERATION_KIND.fullmatch(self.provider_event_type) is None
+        ):
+            raise ValueError("provider_event_type must be a bounded stable identifier")
         _non_negative_integer(self.frame_count, "frame_count")
         _non_negative_integer(self.byte_count, "byte_count")
         _non_negative_integer(self.duration_ms, "duration_ms")
@@ -167,6 +175,7 @@ class RealtimeDiagnostics:
         frame_count: int = 0,
         byte_count: int = 0,
         duration_ms: int = 0,
+        provider_event_type: str | None = None,
     ) -> RealtimeDiagnosticEvent:
         event = RealtimeDiagnosticEvent(
             correlation=correlation,
@@ -179,6 +188,7 @@ class RealtimeDiagnostics:
             frame_count=frame_count,
             byte_count=byte_count,
             duration_ms=duration_ms,
+            provider_event_type=provider_event_type,
         )
         with self._state_changed:
             self._events.append(event)
@@ -240,11 +250,7 @@ class RealtimeDiagnostics:
             if timeout_seconds > 0:
                 self.flush(max(0.0, deadline - time.monotonic()))
             sink_queue.put_nowait(_STOP_DRAIN)
-        if (
-            worker is not None
-            and worker is not threading.current_thread()
-            and timeout_seconds > 0
-        ):
+        if worker is not None and worker is not threading.current_thread() and timeout_seconds > 0:
             worker.join(max(0.0, deadline - time.monotonic()))
         return worker is None or not worker.is_alive()
 

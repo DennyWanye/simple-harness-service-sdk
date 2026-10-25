@@ -92,8 +92,8 @@ def _valid_candidate_manifest() -> dict[str, Any]:
         "schema": "simple-harness-service-candidate-manifest-v2",
         "package": {
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.16",
-            "planned_tag": "v0.3.16",
+            "version": "0.3.17",
+            "planned_tag": "v0.3.17",
             "requires_python": ">=3.11",
         },
         "source": {"commit": "0" * 40, "source_date_epoch": 0},
@@ -340,16 +340,16 @@ def test_release_scripts_pass_strict_mypy() -> None:
 
 def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None:
     candidate = _load_build_module()
-    wheel = tmp_path / "simple_harness_service_sdk-0.3.16-py3-none-any.whl"
+    wheel = tmp_path / "simple_harness_service_sdk-0.3.17-py3-none-any.whl"
     wheel.write_bytes(b"candidate-wheel-bytes")
 
     unit = candidate._sdk_release_unit(
         metadata={
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.16",
+            "version": "0.3.17",
             "requires_python": ">=3.11",
         },
-        planned_tag="v0.3.16",
+        planned_tag="v0.3.17",
         wheel=wheel,
     )
 
@@ -360,7 +360,7 @@ def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None
         "memory",
     ]
     assert [member["version"] for member in unit["members"]] == [
-        "0.3.16",
+        "0.3.17",
         json.loads((ROOT / "src/simple_harness_service/compatibility-bom.json").read_text())[
             "harness"
         ]["candidate"]["version"],
@@ -368,7 +368,7 @@ def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None
     ]
     assert unit["members"][0]["download_url"] == (
         "https://github.com/DennyWanye/simple-harness-service-sdk/releases/download/"
-        "v0.3.16/simple_harness_service_sdk-0.3.16-py3-none-any.whl"
+        "v0.3.17/simple_harness_service_sdk-0.3.17-py3-none-any.whl"
     )
     assert all(
         member["download_url"].startswith(("https://github.com/", "wheelhouse:"))

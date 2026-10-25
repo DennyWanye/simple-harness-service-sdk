@@ -1,3 +1,13 @@
+# Service SDK 0.3.17 状态
+
+0.3.17 将用户侧 item 的 response.* 统一放到助手内容解码之前识别：已确认 user 消息及 speech_started/committed 提供身份，非空音频转写发用户事件，其余附带内容/完成事件忽略。统一诊断 user_side_response_event_ignored 附 provider_event_type，未知身份和无效助手作用域仍严格拒绝；生命周期 response.id 校验保持。
+
+已移植 Host audio.done 反例和审计五键集合，补 content_part/output_item 完成变体、全部 12 类助手正例、交错输出和 generation 隔离。相关测试 383 条、全套 629 条均通过；严格 mypy 43 源文件、ruff、格式、公开接口、架构与 authority 检查通过。候选制品结果见[阶段记录 0.3.17 节](plans/2026-10-25-stage2/阶段2-记录.md)。
+
+本次只验证本仓库真实适配器与会话的离线合同，Host 来源隔离、联合回环、A09～A11 真线路及最终组合独立评审由 Claude 继续执行；不变更 Host opt，不发版、不推送。
+
+以下为旧版本历史记录，不代表 0.3.17 的验收结论。
+
 # Service SDK 0.3.16 状态
 
 0.3.16 修复用户侧附带转写导致连接终止的问题：Qwen 缺少 response_id 的 audio_transcript 只有来自已确认 user 消息或 speech_started item 时才按用户事件解码，空内容只记 user_side_transcript_ignored 的无正文诊断。未知、未确认、错误角色和助手 item 继续严格校验；带 response_id 的助手事件路径保持。

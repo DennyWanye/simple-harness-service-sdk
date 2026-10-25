@@ -45,6 +45,7 @@ def test_diagnostic_event_is_immutable_and_has_exact_allowlist() -> None:
         "frame_count",
         "byte_count",
         "duration_ms",
+        "provider_event_type",
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         event.byte_count = 5  # type: ignore[misc]
@@ -59,14 +60,14 @@ def test_diagnostic_event_is_immutable_and_has_exact_allowlist() -> None:
         ("generation", True),
         ("operation_kind", "Bearer-secret"),
         ("fingerprint", "not-a-digest"),
+        ("provider_event_type", "not an event type"),
+        ("provider_event_type", "x" * 129),
         ("frame_count", -1),
         ("byte_count", True),
         ("duration_ms", -1),
     ],
 )
-def test_diagnostic_event_rejects_invalid_integer_metadata(
-    field: str, value: object
-) -> None:
+def test_diagnostic_event_rejects_invalid_integer_metadata(field: str, value: object) -> None:
     values: dict[str, object] = {
         "correlation": CORRELATION,
         "stage": RealtimeDiagnosticStage.SESSION_READY,
@@ -262,3 +263,15 @@ def test_diagnostic_api_cannot_accept_content_or_secret_fields() -> None:
             correlation="corr_secret_bearer",
             stage=RealtimeDiagnosticStage.OPEN_FAILED,
         )
+
+
+def test_ignored_response_diagnostic_carries_only_event_type() -> None:
+    diagnostics = RealtimeDiagnostics()
+    event = diagnostics.emit(
+        correlation=CORRELATION,
+        stage=RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,
+        operation_kind="user_side_response_event_ignored",
+        provider_event_type="response.audio.done",
+    )
+    assert event.provider_event_type == "response.audio.done"
+    assert diagnostics.snapshot().events == (event,)
