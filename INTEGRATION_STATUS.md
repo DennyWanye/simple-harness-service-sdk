@@ -2,7 +2,7 @@
 
 0.3.17 将用户侧 item 的 response.* 统一放到助手内容解码之前识别：已确认 user 消息及 speech_started/committed 提供身份，非空音频转写发用户事件，其余附带内容/完成事件忽略。统一诊断 user_side_response_event_ignored 附 provider_event_type，未知身份和无效助手作用域仍严格拒绝；生命周期 response.id 校验保持。
 
-已移植 Host audio.done 反例和审计五键集合，补 content_part/output_item 完成变体、全部 12 类助手正例、交错输出和 generation 隔离。相关测试 383 条、全套 629 条均通过；严格 mypy 43 源文件、ruff、格式、公开接口、架构与 authority 检查通过。候选制品结果见[阶段记录 0.3.17 节](plans/2026-10-25-stage2/阶段2-记录.md)。
+已移植 Host audio.done 反例和审计五键集合，补 content_part/output_item 完成变体、全部 12 类助手正例、交错输出和 generation 隔离。相关测试 383 条、全套 629 条均通过；严格 mypy 43 源文件、ruff、格式、公开接口、架构与 authority 检查通过。正式候选源码 `8ec8df55e9dd79e54a7b42746fc975a508acf418`，目录 `dist/candidate-0.3.17/`，wheel SHA-256 `a28110863e7861663b4064dd4a2fc0cf2b7c6b2f070cd5af17a6c75737f7067f`。两次构建字节一致、twine 4 项及新环境四包导入/完整 BOM 通过，安装后的事件/转写/ACK/诊断合同 221 条通过。详细结果见[阶段记录 0.3.17 节](plans/2026-10-25-stage2/阶段2-记录.md)。
 
 本次只验证本仓库真实适配器与会话的离线合同，Host 来源隔离、联合回环、A09～A11 真线路及最终组合独立评审由 Claude 继续执行；不变更 Host opt，不发版、不推送。
 
