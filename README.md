@@ -3,7 +3,7 @@
 Thin authenticated service and transport framework for Simple Harness SDK. Harness remains the
 only durable command and execution authority; this package owns no database or execution worker.
 
-0.3.15 支持服务端另分配消息 ID 的内容与顺序确认，并兼容 instructions 首尾空白规范化；工具循环、上下文注入和播放位置接口见
+0.3.16 支持已确认用户消息与 speech_started 项目的无 response_id 转写：非空转为用户事件，空内容忽略并记诊断；保留消息确认及助手输出作用域校验。工具循环、上下文注入和播放位置接口见
 [接口与交接说明](docs/realtime-0.3.13.md)。`RealtimeClient` 负责会话顺序、有界队列、
 打断状态、工具回执和稳定事件；产品提供麦克风、播放和界面策略，选择组合配置，
 无需解析 Qwen 或 OpenAI 的原生 JSON。
@@ -23,7 +23,7 @@ fields; sink failures never change session behavior.
 
 Four frozen authority packs are shipped as package data and as a deterministic cross-language
 bundle. A release manifest binds their root digest, three Python consumer locks, and the exact
-three-SDK release unit: service `0.3.15`, Harness `>=0.13.0.dev20260925`, and Memory `0.5.2`. Harness remains the
+three-SDK release unit: service `0.3.16`, Harness `>=0.13.0.dev20260925`, and Memory `0.5.2`. Harness remains the
 only durable command authority; Realtime adds no database or execution worker.
 
 The 0.2.x terminal behavior remains compatible. Interactive TTYs receive command completion,

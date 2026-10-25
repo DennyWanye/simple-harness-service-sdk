@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.16
+
+- Qwen 缺少 response_id 的 audio_transcript 仅在已确认用户消息或 speech_started 的 item 上按用户转写解码；非空发用户事件，空内容忽略并记 user_side_transcript_ignored 诊断。
+- 保留未知、未确认、错误角色及助手 item 的严格作用域校验，不补造 response_id；附带事件不重复确认、不触发新回答，连接继续接收下一轮。
+- 补充适配器与真实会话离线反例，覆盖重复、迟到、generation 隔离和交错助手输出。
+
 ## 0.3.15
 
 - Qwen 消息确认按最早待确认请求的角色、input_text 类型与正文匹配，支持服务端分配或保留原 item ID，并保留原请求的确认关联。

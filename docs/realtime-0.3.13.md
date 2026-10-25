@@ -1,4 +1,4 @@
-# Realtime 0.3.13～0.3.15 接口与交接
+# Realtime 0.3.13～0.3.16 接口与交接
 
 本版源码补充工具目录、可选自动工具循环、上下文注入与播放统计。Qwen 真线路能力仍待中继恢复后确认。OpenAI 适配器只用于离线编码与 fixture 校验，未开放真实连接。
 
@@ -43,6 +43,14 @@ Qwen 的 `update_instructions` 编码为第二次 `session.update(instructions)`
 同一会话的注入串行进行，等待回执期间接收循环继续运行。与注入请求关联的上游拒绝映射为 `unsupported`，写入无内容诊断，并使当前方法抛出同一错误。Qwen 只有一个待确认注入时，无关联 ID 的请求类型拒绝也映射为 `unsupported`；认证、限流等其他错误保留原分类。回执超时为 `timeout` 并终结会话，避免在结果不明时自动重发。
 
 `out_of_band_response(text)` 在 Qwen 直接抛 `unsupported`；OpenAI 离线编码为 `response.create({instructions, conversation: "none"})`。Qwen 文本 message 与指令更新能否在真线路使用仍待试验，离线编码成功不代表上游支持。关闭或过期会话抛 `cancelled`，未 ready 抛 `busy`，非法或超限文本抛 `invalid_request`。
+
+## 用户侧附带转写
+
+0.3.16 起，Qwen 的 `response.audio_transcript.delta/done` 缺少 `response_id` 时，只有 `item_id` 是当前连接中已确认的 user 消息服务端 ID，或来自 `input_audio_buffer.speech_started`，才按用户侧转写处理。非空字符串分别发出 `TranscriptDelta/TranscriptCompleted`，保留 item ID 为 turn_id；空字符串不产生输出或确认，只记录 `operation_kind=user_side_transcript_ignored` 的无正文诊断，会话继续接收下一轮。
+
+未确认、确认不符、system、未知或助手 item 不获此资格；缺少/非字符串转写、显式空值或空字符串 response_id 仍为 protocol_error。带 response_id 的事件继续走助手输出作用域校验，不借当前活跃回复补造 ID。服务端改写 ID 时只有实际确认的 ID 可用，客户端原 ID 不作为替代身份。每次初始 session.update 重置用户 item 集合；会话既有事件去重与 generation 隔离继续生效，不自动续答或重复消息 ACK。
+
+本合同的非空用户侧正文处理以 0.3.16 任务为准，取代 Host post-review5 旧反例中“已知 item 非空仍拒绝”的期望。本仓库仅运行真实适配器与会话的离线回放，Host 语音桥及真线路仍须重验。
 
 ## 播放回执与统计
 

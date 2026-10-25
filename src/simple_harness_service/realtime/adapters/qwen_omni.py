@@ -73,9 +73,11 @@ class QwenOmniAdapter:
         self._instruction_update: tuple[str, str] | None = None
         self._context_seen_item_ids: set[str] = set()
         self._context_seen_event_ids: set[str] = set()
+        self._user_item_ids: set[str] = set()
 
     def session_update(self, request: RealtimeOpenRequest) -> Mapping[str, object]:
         validate_tools(request.tools, limit=self.capability.limits.tool_payload_bytes)
+        self._user_item_ids.clear()
         self._tools = deepcopy(request.tools)
         return {
             "event_id": _event_id(),
@@ -197,6 +199,7 @@ class QwenOmniAdapter:
             return DecodedProviderEvent(event_id)
         if event_type == "input_audio_buffer.speech_started":
             turn_id = _string(value.get("item_id"), "item_id")
+            self._user_item_ids.add(turn_id)
             return DecodedProviderEvent(event_id, (SpeechStarted(turn_id),))
         if event_type == "input_audio_buffer.speech_stopped":
             turn_id = _string(value.get("item_id"), "item_id")
@@ -282,8 +285,23 @@ class QwenOmniAdapter:
             identity = self._content_identity(value)
             return DecodedProviderEvent(event_id, (OutputAudioCompleted(*identity),))
         if event_type in {"response.audio_transcript.delta", "response.audio_transcript.done"}:
-            identity = self._content_identity(value)
             key = "delta" if event_type.endswith("delta") else "transcript"
+            user_item_id = value.get("item_id")
+            if (
+                "response_id" not in value
+                and isinstance(user_item_id, str)
+                and user_item_id in self._user_item_ids
+            ):
+                text = value.get(key)
+                if text == "":
+                    return DecodedProviderEvent(event_id, user_side_transcript_ignored=True)
+                transcript_type = (
+                    TranscriptDelta if event_type.endswith("delta") else TranscriptCompleted
+                )
+                return DecodedProviderEvent(
+                    event_id, (transcript_type(user_item_id, _string(text, key)),)
+                )
+            identity = self._content_identity(value)
             return DecodedProviderEvent(
                 event_id,
                 (
@@ -408,6 +426,8 @@ class QwenOmniAdapter:
         self._context_events.pop(request_id)
         self._context_seen_item_ids.update((request_id, server_id))
         self._context_seen_event_ids.add(event_id)
+        if expected["role"] == "user":
+            self._user_item_ids.add(server_id)
         return DecodedProviderEvent(
             event_id, context_ack_id=server_id, context_request_id=request_id
         )

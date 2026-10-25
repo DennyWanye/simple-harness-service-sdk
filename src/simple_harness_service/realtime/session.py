@@ -703,6 +703,11 @@ class ManagedRealtimeSession:
         if not self._is_current_generation():
             self.late_event_count += 1
             return True
+        if decoded.user_side_transcript_ignored:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,
+                operation_kind="user_side_transcript_ignored",
+            )
         if decoded.tool_catalog_normalized:
             self._record_provider_diagnostic(
                 RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,

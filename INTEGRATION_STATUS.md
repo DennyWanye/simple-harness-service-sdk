@@ -1,3 +1,13 @@
+# Service SDK 0.3.16 状态
+
+0.3.16 修复用户侧附带转写导致连接终止的问题：Qwen 缺少 response_id 的 audio_transcript 只有来自已确认 user 消息或 speech_started item 时才按用户事件解码，空内容只记 user_side_transcript_ignored 的无正文诊断。未知、未确认、错误角色和助手 item 继续严格校验；带 response_id 的助手事件路径保持。
+
+新增 43 项合同覆盖重复、迟到、错误字段、旧 generation 和交错助手输出。真实适配器与会话离线联测确认历史回灌后连接继续，下一轮用户转写可达，附带事件不重复 ACK、不新建回复。相关测试 221 条、全套 482 条均通过，严格 mypy 43 源文件、ruff、格式、公开接口、架构与 authority 门禁通过。正式候选构建结果见[阶段记录 0.3.16 节](plans/2026-10-25-stage2/阶段2-记录.md)。
+
+本次按任务新合同将已知 user item 的非空无作用域事件转为用户转写，取代 Host post-review5 原先拒绝非空正文的期望。Host 桥联合回环、A09～A11 真线路、其他未完成验收及独立复核留给 Claude；不将本仓库离线通过视为 Host 发布放行，不发版、不推送。
+
+以下为旧版本历史记录，不代表 0.3.16 的验收结论。
+
 # Service SDK 0.3.15 状态
 
 0.3.15 修复阶段 3a 的真实消息 ACK 合同：Qwen 按完整消息内容与最早发送顺序确认，兼容服务端新 item ID 和原 ID；原请求与服务端 ID 分别关联，确认后才允许按开关续答。instructions 确认忽略首尾空白。保留工具结果确认、重复/迟到处理与 generation 隔离。
