@@ -47,4 +47,4 @@ are indexed in [`ARCHITECTURE/index.md`](ARCHITECTURE/index.md).
 
 ## 私有安装组合
 
-Harness 使用精确版本 `==0.13.0.dev20260925+opt.216`，通过 `--find-links` 指向宿主的 `simple_harness/backend/vendor/` 或其在当前仓库内的副本。Memory extra 仍为 0.5.2。当前缺少私有轮子，完整 BOM、锁文件与安装组合尚未验收；请按[构建说明](docs/build-and-release.md)补齐离线材料后检查。
+Harness 使用精确版本 `==0.13.0.dev20260925+opt.216`，通过 `--find-links` 指向宿主的 `simple_harness/backend/vendor/` 或其在当前仓库内的副本。Memory extra 仍为 0.5.2。opt.216 同时提供 `agent_orchestrator`。BOM、同环境导入与 410 条测试已验收；Memory 元数据仍钉旧 Harness，需按[构建说明](docs/build-and-release.md)使用分步 `--no-deps` 安装，不使用历史 `uv.lock` 同步该组合。

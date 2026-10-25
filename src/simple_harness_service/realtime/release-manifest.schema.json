@@ -108,7 +108,7 @@
               "version": {"type": "string", "minLength": 1},
               "wheel": {"type": "string", "pattern": "\\.whl$"},
               "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-              "download_url": {"type": "string", "pattern": "^https://github\\.com/"}
+              "download_url": {"type": "string", "pattern": "^(https://github\\.com/|wheelhouse:[A-Za-z0-9_.+%-]+\\.whl$)"}
             }
           }
         }

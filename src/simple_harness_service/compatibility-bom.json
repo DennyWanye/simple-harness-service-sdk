@@ -8,10 +8,11 @@
   "harness": {
     "distribution": "simple-harness-sdk",
     "version": "0.13.0.dev20260925+opt.216",
-    "execution_schema": null,
+    "execution_schema": 5,
     "wheel": "simple_harness_sdk-0.13.0.dev20260925+opt.216-py3-none-any.whl",
-    "provenance": "private-find-links",
-    "verification_status": "pending-offline-wheel"
+    "provenance": "private-wheel",
+    "url": "wheelhouse:simple_harness_sdk-0.13.0.dev20260925+opt.216-py3-none-any.whl",
+    "sha256": "e57c03fc912e5c9a2fc3fa91c1e16c44f235a9a2d09af8665495968b225b2d34"
   },
   "memory": {
     "distribution": "simple-harness-memory-sdk",
@@ -19,6 +20,7 @@
     "url": "https://github.com/DennyWanye/simple-harness-memory-sdk/releases/download/v0.5.2/simple_harness_memory_sdk-0.5.2-py3-none-any.whl",
     "sha256": "deff2fa85a269a3978f2c6efcd99fda77abcb74444170361365fd00ec0164e9e",
     "memory_schema": 4,
-    "extra": "memory"
+    "extra": "memory",
+    "wheel": "simple_harness_memory_sdk-0.5.2-py3-none-any.whl"
   }
 }

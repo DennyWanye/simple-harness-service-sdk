@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
+from simple_harness import CommandReceipt as HarnessCommandReceipt
+from simple_harness_memory.backends.sqlite import SCHEMA_VERSION
 
 import simple_harness_service
 from simple_harness_service import (
@@ -28,10 +31,37 @@ def test_compatibility_bom_and_installed_harness_provenance() -> None:
     assert bom["service"]["version"] == "0.3.13"
     assert bom["harness"]["version"] == "0.13.0.dev20260925+opt.216"
     assert bom["memory"]["version"] == "0.5.2"
-    assert isinstance(bom["harness"]["execution_schema"], int)
-    assert bom["harness"]["verification_status"] == "verified-offline-wheel"
+    assert bom["harness"]["execution_schema"] == 5
+    assert "verification_status" not in bom["harness"]
     assert bom["memory"]["memory_schema"] == 4
-    assert validate_installed_bom()["harness"] == bom["harness"]["version"]
+    assert (
+        next(
+            field.default
+            for field in fields(HarnessCommandReceipt)
+            if field.name == "execution_schema_version"
+        )
+        == bom["harness"]["execution_schema"]
+    )
+    assert bom["memory"]["memory_schema"] == SCHEMA_VERSION
+    assert validate_installed_bom(include_memory=True) == {
+        "service": "0.3.13",
+        "harness": "0.13.0.dev20260925+opt.216",
+        "memory": "0.5.2",
+    }
+
+
+def test_local_wheel_provenance_requires_exact_filename_and_digest() -> None:
+    item = {"url": "wheelhouse:private.whl", "wheel": "private.whl", "sha256": "d" * 64}
+    valid = json.dumps(
+        {
+            "url": "file:///trusted/wheels/private.whl",
+            "archive_info": {"hashes": {"sha256": "d" * 64}},
+        }
+    )
+    _validate_direct_url("harness", item, valid)
+    for invalid in [valid.replace("private.whl", "other.whl"), valid.replace("d" * 64, "e" * 64)]:
+        with pytest.raises(ServiceError):
+            _validate_direct_url("harness", item, invalid)
 
 
 def test_private_harness_requirement_is_exact() -> None:

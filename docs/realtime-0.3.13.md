@@ -46,19 +46,19 @@ Qwen 的 `update_instructions` 编码为第二次 `session.update(instructions)`
 
 `LocalRealtimeChannelController.playback_snapshot()` 返回不可变 `RealtimePlaybackStats(sent_audio_bytes, sent_audio_ms, played_audio_ms)`。发送统计按成功写入本地通道的 PCM 字节数、协商采样率与声道数计算，在 `ResponseFinished` 前后均可查询，不把已发送时长等同于已播放时长。捕获的旧 generation 流及等待背压期间过期的输出块停止下发。`ManagedRealtimeSession.is_current_generation` 提供只读的当前代有效性，本地通道也会据此丢弃过期输出。
 
-## 同环境安装与当前阻塞
+## 同环境安装与元数据限制
 
 Harness 精确钉版为 `simple-harness-sdk==0.13.0.dev20260925+opt.216`；PEP 440 的本地版本号不能用于 `>=`。`memory` extra 维持原来的 Memory 0.5.2 URL 与 SHA-256。宿主私有轮子目录为 `simple_harness/backend/vendor/`。在宿主侧或把轮子复制到本仓库 `vendor/` 后，示意安装如下：
 
 ```bash
-python3.11 -m venv .venv-integration
-.venv-integration/bin/python -m pip install --no-index --find-links vendor \
-  'simple-harness-sdk==0.13.0.dev20260925+opt.216' \
-  vendor/simple_harness_service_sdk-0.3.13-py3-none-any.whl \
-  vendor/PRIVATE_ORCHESTRATOR_WHEEL.whl
-.venv-integration/bin/python -c 'import simple_harness, agent_orchestrator, simple_harness_service'
+SDK_WHEELS="$PWD/build/vendor"
+uv pip install --python .venv/bin/python --no-deps \
+  "$SDK_WHEELS/simple_harness_sdk-0.13.0.dev20260925+opt.216-py3-none-any.whl" \
+  "$SDK_WHEELS/simple_harness_memory_sdk-0.5.2-py3-none-any.whl"
+uv pip install --python .venv/bin/python --no-deps -e .
+.venv/bin/python -c 'import simple_harness, agent_orchestrator, simple_harness_service, simple_harness_service.realtime'
 ```
 
-上述 `PRIVATE_ORCHESTRATOR_WHEEL.whl` 必须替换为实际的编排轮子；其准确版本不由本仓库改钉。所有传递依赖也需存在私有目录中。需要 Memory extra 时，应先提供原 BOM 对应的原始轮子，并依原来的 URL/SHA 来源验证流程安装，不能将缺少来源证明当成验证通过。
+opt.216 轮子本身已包含 `agent_orchestrator`，无需另装编排轮子。上方示意安装请使用[构建说明](build-and-release.md)中的实际分步命令；Memory 0.5.2 的 `simple-harness-sdk<0.7` 元数据约束仍存在，需要显式 `--no-deps`。
 
-当前沙箱没有 opt.216、Memory 0.5.2、编排轮子及 mypy。`uv.lock` 无法离线重算；BOM 的 opt.216 `execution_schema` 标记为 `null`，状态为 `pending-offline-wheel`，没有冒用旧 Harness 的 schema 或 SHA。正式候选构建与完整同环境验收必须等待这些材料，不能仅凭版本字符串认定兼容。补齐后应读取 opt.216 实际 schema、补全私有制品来源与散列，更新锁文件，并执行构建发布文档中的全部离线门禁。
+2026-10-25 已实测确认四个包同环境导入，Harness execution schema 为 5，Memory schema 为 4。BOM 已写入实际轮子 SHA-256，移除待核验状态。安装后的来源验证支持与 BOM 文件名及 SHA 同时相符的本地轮子，Memory 的原始 URL 与 SHA 继续保留。完整测试、严格类型和候选复现检查结果见[阶段记录](../plans/2026-10-25-stage2/阶段2-记录.md)。

@@ -1,8 +1,12 @@
 # Service SDK 0.3.13 阶段 2 状态
 
-本次完成 Realtime 工具目录、工具循环、上下文原语及播放统计的源码与离线测试。当前环境缺少 opt.216、Memory 0.5.2、编排 SDK 轮子和 mypy，不能标记为已验收或已发布。BOM 的实际 `execution_schema` 与私有来源仍待轮子核验，`uv.lock` 尚未重算。
+2026-10-25：阶段 2 源码与完整离线门禁已通过。Python 3.13 同环境可导入 `simple_harness`、`agent_orchestrator`、`simple_harness_service`、`simple_harness_service.realtime`；编排包随 opt.216 轮子提供。实测 Harness execution schema 5、Memory schema 4；两个依赖轮子的 SHA-256 与安装来源已核验。
 
-接口说明见 [Realtime 0.3.13](docs/realtime-0.3.13.md)，测试、阻塞与制品状态见[阶段 2 记录](simple_harness/plans/2026-10-24-unified-session-realtime/阶段2-记录.md)。真线路 A06/A07、完整 A14、发版与推送由 Claude 在补齐依赖及中继恢复后执行。OpenAI 仍仅离线使用，现有 conformance fixture 未修改。
+本仓库全套 410 条测试通过，严格 mypy 的 43 个源文件通过，ruff、公开接口、架构门禁和四包 authority 同步检查通过。正式候选绑定源码提交，并携带两个依赖轮子和三个消费端锁；具体制品散列与复现结果见[阶段 2 记录](plans/2026-10-25-stage2/阶段2-记录.md)。
+
+Memory 0.5.2 的元数据仍声明 Harness `<0.7`，因此全 extra 的 `uv lock` 不可解析；保留原 extra，按[构建说明](docs/build-and-release.md)先安装私有 Harness，再以 `--no-deps` 安装 Memory 和本包。原 `uv.lock` 是历史快照，不能直接用于同步当前组合。正式候选的三个 Realtime 运行锁独立解析并验证。
+
+接口说明见 [Realtime 0.3.13](docs/realtime-0.3.13.md)。A06/A07 和 Qwen 上下文真线路项等 Claude 用探针跑；本次未发版、未推送。OpenAI 保持仅离线支持，既有 conformance fixture 未修改。
 
 以下保留既有版本的历史记录，不代表 0.3.13 的验收结论。
 

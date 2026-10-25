@@ -1,6 +1,6 @@
 {
   "schema": "simple-harness-service-realtime-targets-v1",
-  "dependency_cutoff": "2026-08-27T23:59:59Z",
+  "dependency_cutoff": "2026-10-25T00:00:00Z",
   "rollback_service_sdk_version": "0.2.3",
   "targets": [
     {

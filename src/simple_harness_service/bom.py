@@ -7,7 +7,9 @@ import importlib.resources as resources
 import json
 import re
 from collections.abc import Mapping
+from pathlib import PurePosixPath
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from .contracts import ServiceError, ServiceErrorCode
 
@@ -66,15 +68,6 @@ def validate_installed_bom(*, include_memory: bool = False) -> dict[str, str]:
         distribution = metadata.distribution(str(item["distribution"]))
         if distribution.version != item["version"]:
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} version drift")
-        if component == "harness":
-            if item.get("verification_status") != "verified-offline-wheel" or not isinstance(
-                item.get("execution_schema"), int
-            ):
-                raise ServiceError(
-                    ServiceErrorCode.INTERNAL, "private Harness BOM verification pending"
-                )
-            result[component] = distribution.version
-            continue
         direct_url = distribution.read_text("direct_url.json")
         if direct_url is None:
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} source provenance missing")
@@ -90,7 +83,18 @@ def _validate_direct_url(component: str, item: Mapping[str, object], direct_url:
         raise ServiceError(
             ServiceErrorCode.INTERNAL, f"{component} provenance malformed"
         ) from error
-    if not isinstance(provenance, dict) or provenance.get("url") != item["url"]:
+    if not isinstance(provenance, dict):
+        raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
+    source_url = provenance.get("url")
+    local_wheel = False
+    if isinstance(source_url, str) and isinstance(item.get("wheel"), str):
+        parsed = urlparse(source_url)
+        local_wheel = (
+            parsed.scheme == "file"
+            and parsed.netloc in {"", "localhost"}
+            and PurePosixPath(unquote(parsed.path)).name == item["wheel"]
+        )
+    if source_url != item["url"] and not local_wheel:
         raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} URL/SHA drift")
     archive = provenance.get("archive_info")
     if not isinstance(archive, dict):

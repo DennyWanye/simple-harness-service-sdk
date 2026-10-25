@@ -1,11 +1,13 @@
 # Changelog
 
-## 0.3.13（待完整离线验收）
+## 0.3.13
 
 - 增加工具目录下发与回显校验、可选宿主自动工具循环、参数 schema 校验与 generation 去重。
 - 增加消息追加、指令更新、带外回复接口和不支持能力的明确错误。
 - 输出回执支持实际播放位置，提供已发送 PCM 字节、时长与实际播放位置快照。
-- Harness 精确钉版为私有 opt.216，Memory extra 保持 0.5.2；私有轮子、实际 schema、锁文件与完整门禁仍待补齐。
+- Harness 精确钉版为私有 opt.216（execution schema 5），Memory extra 保持 0.5.2（memory schema 4），两包同环境导入与 410 条测试通过。
+- 正式候选携带两个经 SHA-256 校验的依赖轮子，支持私有 wheelhouse 定位、三平台带散列运行锁及两次构建字节复现。
+- Memory 旧 Harness 元数据约束仍需采用文档中的分步 `--no-deps` 安装组合；真线路由 Claude 后续验收。
 
 ## 0.3.12
 

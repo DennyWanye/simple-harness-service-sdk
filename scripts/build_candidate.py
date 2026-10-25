@@ -29,9 +29,7 @@ from sync_realtime_authority import (
 ROOT = Path(__file__).resolve().parents[1]
 PROJECT_FILE = ROOT / "pyproject.toml"
 COMPATIBILITY_BOM = ROOT / "src/simple_harness_service/compatibility-bom.json"
-RELEASE_SCHEMA = (
-    ROOT / "src/simple_harness_service/realtime/release-manifest.schema.json"
-)
+RELEASE_SCHEMA = ROOT / "src/simple_harness_service/realtime/release-manifest.schema.json"
 RELEASE_TARGETS = ROOT / "release/realtime-release-targets.json"
 AUTHORITY_BUNDLE_NAME = "realtime-authority-bundle.tar.gz"
 RELEASE_REPOSITORY_URL = (
@@ -118,8 +116,7 @@ def _check_supported_schema(schema: Mapping[str, Any], *, path: str) -> None:
     unsupported = set(schema) - _SUPPORTED_SCHEMA_KEYS
     if unsupported:
         raise RuntimeError(
-            f"candidate manifest schema uses unsupported keywords at {path}: "
-            f"{sorted(unsupported)}"
+            f"candidate manifest schema uses unsupported keywords at {path}: {sorted(unsupported)}"
         )
     properties = schema.get("properties")
     if properties is not None:
@@ -196,9 +193,7 @@ def _validate_schema_value(value: object, schema: Mapping[str, Any], *, path: st
         ):
             _schema_violation(path, "not enough properties")
         required = schema.get("required", [])
-        if not isinstance(required, list) or not all(
-            isinstance(name, str) for name in required
-        ):
+        if not isinstance(required, list) or not all(isinstance(name, str) for name in required):
             raise RuntimeError(f"candidate manifest schema invalid at {path}.required")
         missing = [name for name in required if name not in value]
         if missing:
@@ -278,11 +273,7 @@ def _validate_candidate_manifest(
         raise RuntimeError("candidate manifest SDK roles invalid")
     locks = manifest.get("python_target_locks")
     target_ids = [item.get("id") for item in locks] if isinstance(locks, list) else []
-    if (
-        len(target_ids) != 3
-        or len(set(target_ids)) != 3
-        or set(target_ids) != expected_target_ids
-    ):
+    if len(target_ids) != 3 or len(set(target_ids)) != 3 or set(target_ids) != expected_target_ids:
         raise RuntimeError("candidate manifest target locks invalid")
 
 
@@ -323,9 +314,7 @@ def project_metadata() -> dict[str, str]:
 
 
 def release_targets() -> tuple[dict[str, Any], list[dict[str, str]]]:
-    policy = _read_json(
-        RELEASE_TARGETS, schema="simple-harness-service-realtime-targets-v1"
-    )
+    policy = _read_json(RELEASE_TARGETS, schema="simple-harness-service-realtime-targets-v1")
     cutoff = policy.get("dependency_cutoff")
     rollback = policy.get("rollback_service_sdk_version")
     targets = policy.get("targets")
@@ -381,6 +370,7 @@ def compile_target_locks(
     policy: dict[str, Any],
     targets: list[dict[str, str]],
     env: dict[str, str],
+    wheelhouse: Path = ROOT / "build/vendor",
 ) -> list[dict[str, str]]:
     output.mkdir(parents=True)
     result: list[dict[str, str]] = []
@@ -392,6 +382,9 @@ def compile_target_locks(
             "pip",
             "compile",
             str(PROJECT_FILE),
+            "--find-links",
+            str(wheelhouse),
+            "--no-emit-find-links",
             "--extra",
             "realtime",
             "--python-version",
@@ -419,6 +412,28 @@ def compile_target_locks(
                 "sha256": sha256_file(destination),
             }
         )
+    return result
+
+
+def dependency_wheels(bom: Mapping[str, Any], wheelhouse: Path) -> dict[str, Path]:
+    result: dict[str, Path] = {}
+    for role in ("harness", "memory"):
+        item = bom.get(role)
+        if not isinstance(item, dict):
+            raise RuntimeError("dependency wheel BOM invalid")
+        filename, digest = item.get("wheel"), item.get("sha256")
+        if (
+            not isinstance(filename, str)
+            or Path(filename).name != filename
+            or not filename.endswith(".whl")
+            or not isinstance(digest, str)
+            or re.fullmatch(r"[0-9a-f]{64}", digest) is None
+        ):
+            raise RuntimeError("dependency wheel BOM invalid")
+        wheel = wheelhouse / filename
+        if not wheel.is_file() or sha256_file(wheel) != digest:
+            raise RuntimeError(f"dependency wheel SHA mismatch: {role}")
+        result[role] = wheel
     return result
 
 
@@ -482,7 +497,7 @@ def _sdk_release_unit(
             not isinstance(distribution, str)
             or not isinstance(version, str)
             or not isinstance(url, str)
-            or not url.startswith("https://github.com/")
+            or not (url.startswith("https://github.com/") or url == f"wheelhouse:{wheel_name}")
             or not isinstance(digest, str)
             or len(digest) != 64
             or not wheel_name.endswith(".whl")
@@ -509,9 +524,7 @@ def _dist_metadata(wheel: Path, expected_version: str) -> tuple[bytes, bytes]:
         metadata_names = [
             name for name in archive.namelist() if name.endswith(".dist-info/METADATA")
         ]
-        wheel_names = [
-            name for name in archive.namelist() if name.endswith(".dist-info/WHEEL")
-        ]
+        wheel_names = [name for name in archive.namelist() if name.endswith(".dist-info/WHEEL")]
         if len(metadata_names) != 1 or len(wheel_names) != 1:
             raise RuntimeError("wheel metadata closure invalid")
         metadata_bytes = archive.read(metadata_names[0])
@@ -531,16 +544,15 @@ def _copy_release_input(source: Path, output: Path) -> None:
     shutil.copyfile(source, output / source.name)
 
 
-def build(output: Path, *, planned_tag: str) -> dict[str, object]:
+def build(
+    output: Path, *, planned_tag: str, wheelhouse: Path = ROOT / "build/vendor"
+) -> dict[str, object]:
     metadata = project_metadata()
     bom = _read_json(COMPATIBILITY_BOM, schema="simple-harness-service-bom-v1")
     harness = bom.get("harness")
-    if (
-        not isinstance(harness, dict)
-        or harness.get("verification_status") != "verified-offline-wheel"
-        or not isinstance(harness.get("execution_schema"), int)
-    ):
-        raise RuntimeError("private Harness BOM verification pending")
+    if not isinstance(harness, dict) or not isinstance(harness.get("execution_schema"), int):
+        raise RuntimeError("private Harness execution schema missing")
+    dependencies = dependency_wheels(bom, wheelhouse)
     version = metadata["version"]
     if planned_tag != f"v{version}":
         raise RuntimeError("planned tag differs from package version")
@@ -563,15 +575,11 @@ def build(output: Path, *, planned_tag: str) -> dict[str, object]:
             directory.mkdir()
             run("uv", "build", "--out-dir", str(directory), env=env)
             distributions = sorted(
-                path
-                for path in directory.iterdir()
-                if path.name.endswith((".whl", ".tar.gz"))
+                path for path in directory.iterdir() if path.name.endswith((".whl", ".tar.gz"))
             )
             if len(distributions) != 2:
                 raise RuntimeError("build must produce exactly one wheel and one sdist")
-            distribution_hashes.append(
-                {path.name: sha256_file(path) for path in distributions}
-            )
+            distribution_hashes.append({path.name: sha256_file(path) for path in distributions})
         if distribution_hashes[0] != distribution_hashes[1]:
             raise RuntimeError("candidate distributions are not byte-for-byte reproducible")
 
@@ -585,7 +593,9 @@ def build(output: Path, *, planned_tag: str) -> dict[str, object]:
 
         lock_roots = [temporary / "locks-first", temporary / "locks-second"]
         lock_records = [
-            compile_target_locks(root, policy=policy, targets=targets, env=env)
+            compile_target_locks(
+                root, policy=policy, targets=targets, env=env, wheelhouse=wheelhouse
+            )
             for root in lock_roots
         ]
         if lock_records[0] != lock_records[1]:
@@ -597,17 +607,17 @@ def build(output: Path, *, planned_tag: str) -> dict[str, object]:
         shutil.copyfile(bundle_paths[0], output / AUTHORITY_BUNDLE_NAME)
         for lock in lock_records[0]:
             shutil.copyfile(lock_roots[0] / lock["filename"], output / lock["filename"])
+        for dependency in dependencies.values():
+            shutil.copyfile(dependency, output / dependency.name)
 
-    wheel = next(output.glob("*.whl"))
+    wheel = next(output.glob("simple_harness_service_sdk-*.whl"))
     metadata_bytes, wheel_bytes = _dist_metadata(wheel, version)
     (output / "METADATA").write_bytes(metadata_bytes)
     (output / "WHEEL").write_bytes(wheel_bytes)
     for source in (COMPATIBILITY_BOM, INDEX_PATH, RELEASE_SCHEMA, RELEASE_TARGETS):
         _copy_release_input(source, output)
 
-    sdk_release_unit = _sdk_release_unit(
-        metadata=metadata, planned_tag=planned_tag, wheel=wheel
-    )
+    sdk_release_unit = _sdk_release_unit(metadata=metadata, planned_tag=planned_tag, wheel=wheel)
     initial_artifacts = {
         path.name: _artifact_record(path, planned_tag)
         for path in sorted(output.iterdir())
@@ -625,11 +635,7 @@ def build(output: Path, *, planned_tag: str) -> dict[str, object]:
     (output / "BUILD_INFO.json").write_text(
         json.dumps(build_info, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    sums = {
-        path.name: sha256_file(path)
-        for path in sorted(output.iterdir())
-        if path.is_file()
-    }
+    sums = {path.name: sha256_file(path) for path in sorted(output.iterdir()) if path.is_file()}
     (output / "SHA256SUMS").write_text(
         "".join(f"{digest}  {name}\n" for name, digest in sorted(sums.items())),
         encoding="utf-8",
@@ -692,8 +698,14 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--planned-tag", default=f"v{metadata['version']}")
+    parser.add_argument("--wheelhouse", type=Path, default=ROOT / "build/vendor")
     args = parser.parse_args()
-    print(json.dumps(build(args.output, planned_tag=args.planned_tag), sort_keys=True))
+    print(
+        json.dumps(
+            build(args.output, planned_tag=args.planned_tag, wheelhouse=args.wheelhouse.resolve()),
+            sort_keys=True,
+        )
+    )
 
 
 if __name__ == "__main__":

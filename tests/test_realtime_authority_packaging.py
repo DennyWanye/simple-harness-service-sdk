@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import gzip
+import hashlib
 import importlib.util
 import json
 import subprocess
@@ -111,9 +112,7 @@ def _valid_candidate_manifest() -> dict[str, Any]:
             "bundle": "realtime-authority-bundle.tar.gz",
             "bundle_sha256": SHA256,
             "index_sha256": SHA256,
-            "packs": [
-                {**pack, "directory": f"pack-{index}"} for index in range(4)
-            ],
+            "packs": [{**pack, "directory": f"pack-{index}"} for index in range(4)],
         },
         "python_target_locks": [
             {
@@ -151,20 +150,17 @@ def test_packaged_authority_is_byte_identical_and_indexed() -> None:
     index = authority.check_synced()
 
     assert {
-        name: path.read_bytes()
-        for name, path in authority._active_files(SOURCE_ROOT).items()
+        name: path.read_bytes() for name, path in authority._active_files(SOURCE_ROOT).items()
     } == _files(PACKAGED_ROOT)
     assert (SOURCE_ROOT / "qwen-native-2026-08-27.1").is_dir()
     assert (SOURCE_ROOT / "tokenseller-realtime-control-2026-08-27.1").is_dir()
     assert index["schema"] == "simple-harness-realtime-authority-index-v1"
     assert index["root_digest"] == {
         "algorithm": authority.ROOT_DIGEST_ALGORITHM,
-            "sha256": "b9675a5c64136bb9ba7064cc78b3cc39662f7f374629bcd4731a833bbff2873d",
+        "sha256": "b9675a5c64136bb9ba7064cc78b3cc39662f7f374629bcd4731a833bbff2873d",
     }
     assert len(index["packs"]) == 4
-    assert (PACKAGE_ROOT / "authority-index.json").read_bytes() == authority.canonical_json(
-        index
-    )
+    assert (PACKAGE_ROOT / "authority-index.json").read_bytes() == authority.canonical_json(index)
 
 
 def test_authority_bundle_is_reproducible_and_normalized(tmp_path: Path) -> None:
@@ -178,13 +174,12 @@ def test_authority_bundle_is_reproducible_and_normalized(tmp_path: Path) -> None
     assert first.read_bytes() == second.read_bytes()
     assert first_record["sha256"] == second_record["sha256"]
     assert first.read_bytes()[4:8] == b"\0\0\0\0"
-    with gzip.open(first, "rb") as compressed, tarfile.open(
-        fileobj=compressed, mode="r:"
-    ) as archive:
+    with (
+        gzip.open(first, "rb") as compressed,
+        tarfile.open(fileobj=compressed, mode="r:") as archive,
+    ):
         members = archive.getmembers()
-        assert [member.name for member in members] == sorted(
-            member.name for member in members
-        )
+        assert [member.name for member in members] == sorted(member.name for member in members)
         assert len(members) == 69
         assert all(member.isfile() for member in members)
         assert all(member.mtime == 0 for member in members)
@@ -217,22 +212,19 @@ def test_wheel_contains_exact_authority_bytes_and_release_schema(tmp_path: Path)
     assert len(wheels) == 1
     with zipfile.ZipFile(wheels[0]) as archive:
         for relative, expected in _files(PACKAGED_ROOT).items():
-            assert (
-                archive.read(f"simple_harness_service/realtime/protocols/{relative}")
-                == expected
-            )
-        assert archive.read("simple_harness_service/realtime/authority-index.json") == (
-            PACKAGE_ROOT / "authority-index.json"
-        ).read_bytes()
-        assert archive.read(
-            "simple_harness_service/realtime/release-manifest.schema.json"
-        ) == (PACKAGE_ROOT / "release-manifest.schema.json").read_bytes()
+            assert archive.read(f"simple_harness_service/realtime/protocols/{relative}") == expected
+        assert (
+            archive.read("simple_harness_service/realtime/authority-index.json")
+            == (PACKAGE_ROOT / "authority-index.json").read_bytes()
+        )
+        assert (
+            archive.read("simple_harness_service/realtime/release-manifest.schema.json")
+            == (PACKAGE_ROOT / "release-manifest.schema.json").read_bytes()
+        )
 
 
 def test_release_schema_targets_and_dynamic_version_contract() -> None:
-    schema = json.loads(
-        (PACKAGE_ROOT / "release-manifest.schema.json").read_text(encoding="utf-8")
-    )
+    schema = json.loads((PACKAGE_ROOT / "release-manifest.schema.json").read_text(encoding="utf-8"))
     targets = json.loads(
         (ROOT / "release/realtime-release-targets.json").read_text(encoding="utf-8")
     )
@@ -250,6 +242,7 @@ def test_release_schema_targets_and_dynamic_version_contract() -> None:
         "download_url",
     ]
     assert targets["rollback_service_sdk_version"] == "0.2.3"
+    assert targets["dependency_cutoff"] == "2026-10-25T00:00:00Z"
     assert {
         (item["consumer"], item["python_version"], item["python_platform"])
         for item in targets["targets"]
@@ -345,20 +338,8 @@ def test_release_scripts_pass_strict_mypy() -> None:
     )
 
 
-def test_three_sdk_release_unit_and_future_download_urls(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None:
     candidate = _load_build_module()
-    read_json = candidate._read_json
-    bom = json.loads((ROOT / "src/simple_harness_service/compatibility-bom.json").read_text())
-    bom["harness"].update({
-        "url": "https://github.com/example/private/releases/download/opt/harness.whl",
-        "sha256": "d" * 64, "execution_schema": 42,
-        "verification_status": "verified-offline-wheel",
-    })
-    monkeypatch.setattr(candidate, "_read_json", lambda path, **kwargs: (
-        bom if path == candidate.COMPATIBILITY_BOM else read_json(path, **kwargs)
-    ))
     wheel = tmp_path / "simple_harness_service_sdk-0.3.13-py3-none-any.whl"
     wheel.write_bytes(b"candidate-wheel-bytes")
 
@@ -388,21 +369,30 @@ def test_three_sdk_release_unit_and_future_download_urls(
         "v0.3.13/simple_harness_service_sdk-0.3.13-py3-none-any.whl"
     )
     assert all(
-        member["download_url"].startswith("https://github.com/")
+        member["download_url"].startswith(("https://github.com/", "wheelhouse:"))
         for member in unit["members"]
     )
     assert all(len(member["sha256"]) == 64 for member in unit["members"])
 
 
-def test_candidate_rejects_unverified_private_harness(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_candidate_dependency_wheels_require_exact_bytes(tmp_path: Path) -> None:
     candidate = _load_build_module()
-    read_json = candidate._read_json
-    bom = json.loads((ROOT / "src/simple_harness_service/compatibility-bom.json").read_text())
-    bom["harness"]["verification_status"] = "pending-offline-wheel"
-    monkeypatch.setattr(candidate, "_read_json", lambda path, **kwargs: (
-        bom if path == candidate.COMPATIBILITY_BOM else read_json(path, **kwargs)
-    ))
-    with pytest.raises(RuntimeError, match="private Harness BOM verification pending"):
-        candidate.build(tmp_path / "candidate", planned_tag="v0.3.13")
+    bom = {}
+    for role in ["harness", "memory"]:
+        wheel = tmp_path / f"{role}.whl"
+        wheel.write_bytes(role.encode())
+        bom[role] = {"wheel": wheel.name, "sha256": hashlib.sha256(wheel.read_bytes()).hexdigest()}
+    wheels = candidate.dependency_wheels(bom, tmp_path)
+    assert set(wheels) == {"harness", "memory"}
+    wheels["harness"].write_bytes(b"changed")
+    with pytest.raises(RuntimeError, match="dependency wheel SHA mismatch"):
+        candidate.dependency_wheels(bom, tmp_path)
+
+
+def test_candidate_manifest_accepts_bundled_private_wheel(tmp_path: Path) -> None:
+    candidate = _load_build_module()
+    manifest = _valid_candidate_manifest()
+    manifest["sdk_release_unit"]["members"][1]["download_url"] = "wheelhouse:harness.whl"
+    candidate._write_candidate_manifest(
+        tmp_path / "manifest.json", manifest, expected_target_ids=candidate.EXPECTED_TARGET_IDS
+    )

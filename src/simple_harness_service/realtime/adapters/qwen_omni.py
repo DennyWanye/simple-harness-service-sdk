@@ -162,12 +162,15 @@ class QwenOmniAdapter:
         event_id = _string(value.get("event_id"), "event_id")
         if event_type == "session.updated":
             if self._instruction_update is not None:
-                identity, text = self._instruction_update
-                if _object(value.get("session"), "session").get("instructions") == text:
+                context_identity, expected_instructions = self._instruction_update
+                if (
+                    _object(value.get("session"), "session").get("instructions")
+                    == expected_instructions
+                ):
                     self._instruction_update = None
-                    self._context_events.pop(identity, None)
+                    self._context_events.pop(context_identity, None)
                     return DecodedProviderEvent(
-                        event_id, session_acknowledged=True, context_ack_id=identity
+                        event_id, session_acknowledged=True, context_ack_id=context_identity
                     )
             self._validate_session_ack(value)
             return DecodedProviderEvent(
