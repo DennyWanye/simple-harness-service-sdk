@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "simple-harness-service-sdk"
-version = "0.3.12"
+version = "0.3.13"
 description = "Thin authenticated service framework for Simple Harness SDK"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,7 +19,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-  "simple-harness-sdk @ https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.6.2/simple_harness_sdk-0.6.2-py3-none-any.whl#sha256=ffb7c0619851f3c936fcc1d0cf527d07f49e87770291b85e57fe87032ac02c2e",
+  "simple-harness-sdk==0.13.0.dev20260925+opt.216",
   "prompt-toolkit>=3.0.52,<4",
 ]
 

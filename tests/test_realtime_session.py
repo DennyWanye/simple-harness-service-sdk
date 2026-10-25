@@ -68,19 +68,12 @@ class FakeConnection:
         if blocker is not None:
             await blocker.wait()
         if value.get("type") == "tokenseller.session.close" and self.auto_close_ack:
-            acknowledgement = json.loads(
-                (CONTROL / "server-session-closed.json").read_text()
-            )
+            acknowledgement = json.loads((CONTROL / "server-session-closed.json").read_text())
             acknowledgement["related_event_id"] = (
-                "ctl_close_mismatch"
-                if self.mismatched_close_ack
-                else value["event_id"]
+                "ctl_close_mismatch" if self.mismatched_close_ack else value["event_id"]
             )
             await self.incoming.put(json.dumps(acknowledgement))
-        if (
-            value.get("type") == "input_audio_buffer.append"
-            and self.block_audio is not None
-        ):
+        if value.get("type") == "input_audio_buffer.append" and self.block_audio is not None:
             await self.block_audio.wait()
 
     async def receive_text(self) -> str | None:
@@ -174,12 +167,31 @@ async def _open(
         tool_ack_timeout=tool_ack_timeout,
         close_timeout=close_timeout,
     )
-    return await client.open(RealtimeOpenRequest("session", "instructions"))
+    return await client.open(
+        RealtimeOpenRequest(
+            "session",
+            "instructions",
+            tools=[
+                {
+                    "type": "function",
+                    "name": "get_weather",
+                    "parameters": {"type": "object", "properties": {"city": {"type": "string"}}},
+                }
+            ],
+        )
+    )
 
 
 async def _ready(connection: FakeConnection, session: Any, stream: Any) -> SessionReady:
     lifecycle = json.loads((QWEN / "server-lifecycle-sequence.json").read_text())
     updated = lifecycle["scenarios"][0]["events"][0]
+    update = next(
+        json.loads(payload)
+        for payload in connection.sent
+        if json.loads(payload).get("type") == "session.update"
+    )
+    if "tools" in update["session"]:
+        updated["session"]["tools"] = update["session"]["tools"]
     await connection.incoming.put(json.dumps(updated))
     event = await asyncio.wait_for(anext(stream), 1)
     assert isinstance(event, SessionReady)
@@ -269,9 +281,7 @@ async def test_client_session_observability_wires_lifecycle_audio_and_terminal()
 
     lifecycle = json.loads((QWEN / "server-lifecycle-sequence.json").read_text())
     scenario = next(
-        item
-        for item in lifecycle["scenarios"]
-        if item["name"] == "audio_response_completed"
+        item for item in lifecycle["scenarios"] if item["name"] == "audio_response_completed"
     )
     for event in scenario["events"]:
         await connection.incoming.put(json.dumps(event))
@@ -297,14 +307,10 @@ async def test_client_session_observability_wires_lifecycle_audio_and_terminal()
     ):
         assert expected in stages
     input_event = next(
-        event
-        for event in snapshot.events
-        if event.stage is RealtimeDiagnosticStage.INPUT_AUDIO
+        event for event in snapshot.events if event.stage is RealtimeDiagnosticStage.INPUT_AUDIO
     )
     output_event = next(
-        event
-        for event in snapshot.events
-        if event.stage is RealtimeDiagnosticStage.OUTPUT_AUDIO
+        event for event in snapshot.events if event.stage is RealtimeDiagnosticStage.OUTPUT_AUDIO
     )
     assert (input_event.frame_count, input_event.byte_count) == (1, 640)
     assert output_event.frame_count >= 1
@@ -342,9 +348,7 @@ async def test_audio_diagnostics_are_sampled_and_terminal_totals_are_retained() 
 
     snapshot = diagnostics.snapshot()
     sampled = [
-        event
-        for event in snapshot.events
-        if event.stage is RealtimeDiagnosticStage.INPUT_AUDIO
+        event for event in snapshot.events if event.stage is RealtimeDiagnosticStage.INPUT_AUDIO
     ]
     assert [event.frame_count for event in sampled] == [1, 250, 500, 750, 1_000]
     summary = next(
@@ -486,9 +490,7 @@ async def test_controlled_close_ack_timeout_remains_clean_and_is_observable() ->
     diagnostics = RealtimeDiagnostics()
     connection = FakeConnection()
     connection.auto_close_ack = False
-    session = await _open(
-        connection, close_timeout=0.01, diagnostics=diagnostics
-    )
+    session = await _open(connection, close_timeout=0.01, diagnostics=diagnostics)
     stream = session.events()
     await _ready(connection, session, stream)
 
@@ -687,9 +689,7 @@ async def test_local_controller_correlation_reaches_mint_open_and_session() -> N
     connection = FakeConnection()
     await connection.incoming.put((CONTROL / "server-session-created.json").read_text())
     minter = FakeMinter(_credential())
-    client = RealtimeClient(
-        _profile(), minter, FakeTransport(connection), QwenOmniAdapter()
-    )
+    client = RealtimeClient(_profile(), minter, FakeTransport(connection), QwenOmniAdapter())
 
     session = await client._open_with_correlation(
         RealtimeOpenRequest("session", "instructions"), correlation
@@ -746,7 +746,10 @@ async def test_connect_failure_retains_safe_transport_phase() -> None:
 
     diagnostics = RealtimeDiagnostics()
     client = RealtimeClient(
-        _profile(), FakeMinter(_credential()), FailingTransport(), QwenOmniAdapter(),
+        _profile(),
+        FakeMinter(_credential()),
+        FailingTransport(),
+        QwenOmniAdapter(),
         diagnostics=diagnostics,
     )
 
@@ -777,9 +780,7 @@ async def test_local_controller_correlation_rejects_invalid_values(
 ) -> None:
     connection = FakeConnection()
     minter = FakeMinter(_credential())
-    client = RealtimeClient(
-        _profile(), minter, FakeTransport(connection), QwenOmniAdapter()
-    )
+    client = RealtimeClient(_profile(), minter, FakeTransport(connection), QwenOmniAdapter())
 
     with pytest.raises(RealtimeError) as raised:
         await client._open_with_correlation(
@@ -796,9 +797,7 @@ async def test_local_controller_correlation_cannot_be_reused() -> None:
     connection = FakeConnection()
     await connection.incoming.put((CONTROL / "server-session-created.json").read_text())
     minter = FakeMinter(_credential())
-    client = RealtimeClient(
-        _profile(), minter, FakeTransport(connection), QwenOmniAdapter()
-    )
+    client = RealtimeClient(_profile(), minter, FakeTransport(connection), QwenOmniAdapter())
     request = RealtimeOpenRequest("session", "instructions")
 
     session = await client._open_with_correlation(request, correlation)
@@ -844,9 +843,7 @@ async def test_response_identity_tombstone_drops_duplicate_terminal_and_late_aud
     await _ready(connection, session, stream)
     lifecycle = json.loads((QWEN / "server-lifecycle-sequence.json").read_text())
     scenario = next(
-        item
-        for item in lifecycle["scenarios"]
-        if item["name"] == "audio_response_completed"
+        item for item in lifecycle["scenarios"] if item["name"] == "audio_response_completed"
     )
     for event in scenario["events"]:
         await connection.incoming.put(json.dumps(event))
@@ -924,9 +921,7 @@ async def test_qwen_incomplete_projects_cancelled_only_with_local_cancel_owner()
     )
     assert isinstance(await asyncio.wait_for(anext(stream), 1), ResponseStarted)
     await session.cancel_response()
-    terminal_matrix = json.loads(
-        (QWEN / "server-response-terminal-matrix.json").read_text()
-    )
+    terminal_matrix = json.loads((QWEN / "server-response-terminal-matrix.json").read_text())
     cancelled = next(
         case
         for case in terminal_matrix["cases"]
@@ -1007,9 +1002,7 @@ async def test_output_queue_overflow_fails_busy_without_unbounded_buffering() ->
         if session._terminal_owner is not None:
             break
         await asyncio.sleep(0)
-    assert await asyncio.wait_for(anext(stream), 1) == SessionFailed(
-        RealtimeErrorCode.BUSY, False
-    )
+    assert await asyncio.wait_for(anext(stream), 1) == SessionFailed(RealtimeErrorCode.BUSY, False)
 
 
 @pytest.mark.asyncio
@@ -1035,9 +1028,7 @@ async def test_transcript_json_counts_toward_output_byte_limit() -> None:
         )
     )
 
-    assert await asyncio.wait_for(anext(stream), 1) == SessionFailed(
-        RealtimeErrorCode.BUSY, False
-    )
+    assert await asyncio.wait_for(anext(stream), 1) == SessionFailed(RealtimeErrorCode.BUSY, False)
 
 
 @pytest.mark.asyncio
@@ -1078,10 +1069,13 @@ async def test_input_queue_backpressure_is_bounded() -> None:
         asyncio.create_task(session.send_audio(b"\x00\x00"))
         for _ in range(QWEN_CAPABILITY.limits.input_queue_frames)
     ]
-    while sum(
-        json.loads(payload).get("type") == "input_audio_buffer.append"
-        for payload in connection.sent
-    ) < QWEN_CAPABILITY.limits.input_queue_frames:
+    while (
+        sum(
+            json.loads(payload).get("type") == "input_audio_buffer.append"
+            for payload in connection.sent
+        )
+        < QWEN_CAPABILITY.limits.input_queue_frames
+    ):
         await asyncio.sleep(0)
     with pytest.raises(RealtimeError) as caught:
         await session.send_audio(b"\x00\x00")
@@ -1106,8 +1100,7 @@ async def test_tool_result_waits_for_ack_then_requests_followup() -> None:
     assert isinstance(requested, ToolCallRequested)
     submission = asyncio.create_task(session.submit_tool_result("call_1", '{"temp":21}'))
     while not any(
-        json.loads(payload).get("type") == "conversation.item.create"
-        for payload in connection.sent
+        json.loads(payload).get("type") == "conversation.item.create" for payload in connection.sent
     ):
         await asyncio.sleep(0)
     await connection.incoming.put(
@@ -1144,13 +1137,15 @@ async def test_concurrent_identical_tool_submissions_share_one_result_and_follow
     )
     assert isinstance(requested, ToolCallRequested)
     submissions = [
-        asyncio.create_task(session.submit_tool_result("call_concurrent", "{}"))
-        for _ in range(2)
+        asyncio.create_task(session.submit_tool_result("call_concurrent", "{}")) for _ in range(2)
     ]
-    while sum(
-        json.loads(payload).get("type") == "conversation.item.create"
-        for payload in connection.sent
-    ) < 1:
+    while (
+        sum(
+            json.loads(payload).get("type") == "conversation.item.create"
+            for payload in connection.sent
+        )
+        < 1
+    ):
         await asyncio.sleep(0)
     await connection.incoming.put(
         json.dumps(
@@ -1374,7 +1369,7 @@ async def test_duplicate_tool_request_with_new_event_id_fails_closed() -> None:
 
 
 @pytest.mark.asyncio
-async def test_oversize_tool_arguments_fail_closed() -> None:
+async def test_oversize_tool_arguments_return_error_without_execution() -> None:
     connection = FakeConnection()
     session = await _open(connection)
     stream = session.events()
@@ -1415,10 +1410,18 @@ async def test_oversize_tool_arguments_fail_closed() -> None:
         )
     )
 
-    assert await asyncio.wait_for(anext(stream), 1) == SessionFailed(
-        RealtimeErrorCode.PROTOCOL_ERROR,
-        False,
-    )
+    async def result_output() -> str:
+        while True:
+            for payload in connection.sent:
+                value = json.loads(payload)
+                if value.get("type") == "conversation.item.create":
+                    return str(value["item"]["output"])
+            await asyncio.sleep(0)
+
+    output = await asyncio.wait_for(result_output(), 1)
+    assert json.loads(output) == {"error": "invalid_arguments"}
+    assert session._events.empty()
+    await session.close()
 
 
 @pytest.mark.asyncio
@@ -1428,12 +1431,9 @@ async def test_tool_ack_must_match_frozen_output_identity() -> None:
     stream = session.events()
     await _ready(connection, session, stream)
     await _request_tool_call(connection, stream, call_id="call_ack_guard", arguments="{}")
-    submission = asyncio.create_task(
-        session.submit_tool_result("call_ack_guard", '{"ok":true}')
-    )
+    submission = asyncio.create_task(session.submit_tool_result("call_ack_guard", '{"ok":true}'))
     while not any(
-        json.loads(payload).get("type") == "conversation.item.create"
-        for payload in connection.sent
+        json.loads(payload).get("type") == "conversation.item.create" for payload in connection.sent
     ):
         await asyncio.sleep(0)
     await connection.incoming.put(
@@ -1475,10 +1475,13 @@ async def test_tool_result_send_retry_reuses_exact_payload_identity() -> None:
     assert first.value.code is RealtimeErrorCode.UNAVAILABLE
 
     retry = asyncio.create_task(session.submit_tool_result("call_retry", "{}"))
-    while sum(
-        json.loads(payload).get("type") == "conversation.item.create"
-        for payload in connection.sent
-    ) < 2:
+    while (
+        sum(
+            json.loads(payload).get("type") == "conversation.item.create"
+            for payload in connection.sent
+        )
+        < 2
+    ):
         await asyncio.sleep(0)
     await connection.incoming.put(
         json.dumps(
@@ -1516,8 +1519,7 @@ async def test_followup_send_retry_reuses_exact_payload_identity() -> None:
     await _request_tool_call(connection, stream, call_id="call_followup", arguments="{}")
     first = asyncio.create_task(session.submit_tool_result("call_followup", "{}"))
     while not any(
-        json.loads(payload).get("type") == "conversation.item.create"
-        for payload in connection.sent
+        json.loads(payload).get("type") == "conversation.item.create" for payload in connection.sent
     ):
         await asyncio.sleep(0)
     await connection.incoming.put(

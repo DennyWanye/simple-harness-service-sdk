@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TypeAlias
 
+from .tool_schema import validate_tools
+
 
 class RealtimeErrorCode(StrEnum):
     INVALID_REQUEST = "invalid_request"
@@ -134,16 +136,19 @@ class RealtimeLimits:
     tool_payload_bytes: int = 65_536
 
     def __post_init__(self) -> None:
-        if any(value <= 0 for value in (
-            self.json_frame_bytes,
-            self.input_audio_event_bytes,
-            self.output_audio_event_bytes,
-            self.input_queue_frames,
-            self.input_queue_bytes,
-            self.output_queue_frames,
-            self.output_queue_bytes,
-            self.tool_payload_bytes,
-        )):
+        if any(
+            value <= 0
+            for value in (
+                self.json_frame_bytes,
+                self.input_audio_event_bytes,
+                self.output_audio_event_bytes,
+                self.input_queue_frames,
+                self.input_queue_bytes,
+                self.output_queue_frames,
+                self.output_queue_bytes,
+                self.tool_payload_bytes,
+            )
+        ):
             raise ValueError("Realtime limits must be positive")
 
 
@@ -196,10 +201,12 @@ class RealtimeOpenRequest:
     output_audio: RealtimeAudioFormat = field(
         default_factory=lambda: RealtimeAudioFormat(sample_rate=24_000)
     )
+    tools: list[dict[str, object]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         _required_text(self.external_session_id, "external_session_id", max_bytes=512)
         _required_text(self.instructions, "instructions")
+        validate_tools(self.tools)
         object.__setattr__(
             self,
             "required_features",
@@ -243,12 +250,15 @@ class ResponseUsage:
     output_audio_tokens: int
 
     def __post_init__(self) -> None:
-        if any(value < 0 for value in (
-            self.input_text_tokens,
-            self.input_audio_tokens,
-            self.output_text_tokens,
-            self.output_audio_tokens,
-        )):
+        if any(
+            value < 0
+            for value in (
+                self.input_text_tokens,
+                self.input_audio_tokens,
+                self.output_text_tokens,
+                self.output_audio_tokens,
+            )
+        ):
             raise ValueError("token counts must be non-negative")
 
 
@@ -258,6 +268,7 @@ class SessionReady:
     correlation: str
     input_audio: RealtimeAudioFormat
     output_audio: RealtimeAudioFormat
+    tools_acknowledged: bool = False
     kind: str = field(default="SessionReady", init=False)
 
 
@@ -339,7 +350,15 @@ class ToolCallRequested:
     call_id: str
     name: str
     arguments_json: str
+    generation: int = 0
     kind: str = field(default="ToolCallRequested", init=False)
+
+
+@dataclass(frozen=True, slots=True)
+class RealtimePlaybackStats:
+    sent_audio_bytes: int
+    sent_audio_ms: float
+    played_audio_ms: int
 
 
 @dataclass(frozen=True, slots=True)

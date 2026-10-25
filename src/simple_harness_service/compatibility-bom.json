@@ -2,15 +2,16 @@
   "schema": "simple-harness-service-bom-v1",
   "service": {
     "distribution": "simple-harness-service-sdk",
-    "version": "0.3.12",
+    "version": "0.3.13",
     "python": ">=3.11"
   },
   "harness": {
     "distribution": "simple-harness-sdk",
-    "version": "0.6.2",
-    "url": "https://github.com/DennyWanye/simple-harness-sdk/releases/download/v0.6.2/simple_harness_sdk-0.6.2-py3-none-any.whl",
-    "sha256": "ffb7c0619851f3c936fcc1d0cf527d07f49e87770291b85e57fe87032ac02c2e",
-    "execution_schema": 6
+    "version": "0.13.0.dev20260925+opt.216",
+    "execution_schema": null,
+    "wheel": "simple_harness_sdk-0.13.0.dev20260925+opt.216-py3-none-any.whl",
+    "provenance": "private-find-links",
+    "verification_status": "pending-offline-wheel"
   },
   "memory": {
     "distribution": "simple-harness-memory-sdk",

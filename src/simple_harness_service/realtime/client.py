@@ -19,9 +19,10 @@ from .observability import (
     RealtimeDiagnosticSnapshot,
     RealtimeDiagnosticStage,
 )
-from .ports import CredentialMinter, RealtimeProviderAdapter, RealtimeTransport
+from .ports import CredentialMinter, RealtimeProviderAdapter, RealtimeTransport, ToolDispatcher
 from .relay_control import RelayControlCodec
 from .session import ManagedRealtimeSession
+from .tool_schema import validate_tools
 
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 _CORRELATION = re.compile(r"^corr_[0-9A-HJKMNP-TV-Z]{26}$")
@@ -52,6 +53,8 @@ class RealtimeClient:
         write_timeout: float = 2.0,
         tool_ack_timeout: float = 5.0,
         close_timeout: float = 5.0,
+        tool_dispatcher: ToolDispatcher | None = None,
+        tool_dispatch_timeout: float = 30.0,
     ) -> None:
         if profile.capability != adapter.capability:
             raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "profile/adapter mismatch")
@@ -70,6 +73,9 @@ class RealtimeClient:
         self._write_timeout = write_timeout
         self._tool_ack_timeout = tool_ack_timeout
         self._close_timeout = close_timeout
+        self._tool_dispatcher = tool_dispatcher
+        self._tool_dispatch_timeout = tool_dispatch_timeout
+        self._seen_tool_calls: dict[str, set[str]] = {}
         self._generation = 0
         self._generation_lock = asyncio.Lock()
         self._correlation_lock = asyncio.Lock()
@@ -147,6 +153,14 @@ class RealtimeClient:
         correlation: str,
     ) -> ManagedRealtimeSession:
         capability = self._adapter.capability
+        try:
+            validate_tools(request.tools, limit=capability.limits.tool_payload_bytes)
+        except (ValueError, TypeError) as error:
+            raise RealtimeError(
+                RealtimeErrorCode.INVALID_REQUEST, "invalid tool catalog"
+            ) from error
+        if request.tools and not capability.features.tool_calling:
+            raise RealtimeError(RealtimeErrorCode.UNSUPPORTED)
         if not capability.features.supports(request.required_features):
             raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "required feature unavailable")
         if request.input_audio != capability.input_audio:
@@ -202,9 +216,7 @@ class RealtimeClient:
                 correlation=correlation,
                 stage=RealtimeDiagnosticStage.CONNECT_FAILED,
                 stable_code=_stable_code(error),
-                operation_kind=_failure_operation_kind(
-                    error, "transport.connect.failure"
-                ),
+                operation_kind=_failure_operation_kind(error, "transport.connect.failure"),
                 duration_ms=_duration_ms(connect_started_ns),
             )
             raise
@@ -243,6 +255,12 @@ class RealtimeClient:
                 write_timeout=self._write_timeout,
                 tool_ack_timeout=self._tool_ack_timeout,
                 close_timeout=self._close_timeout,
+                tool_dispatcher=self._tool_dispatcher,
+                tool_dispatch_timeout=self._tool_dispatch_timeout,
+                seen_tool_calls=self._seen_tool_calls.setdefault(
+                    request.external_session_id, set()
+                ),
+                is_current_generation=lambda: self._generation == generation,
             )
             await asyncio.wait_for(session.start(), timeout=self._open_timeout)
             return session

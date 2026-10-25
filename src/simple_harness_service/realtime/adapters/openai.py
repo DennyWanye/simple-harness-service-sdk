@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
+from typing import Literal
 
 from ..contracts import (
     OutputAudio,
@@ -27,6 +29,7 @@ from ..contracts import (
     TranscriptCompleted,
 )
 from ..ports import DecodedProviderEvent
+from ..tool_schema import validate_tools
 from ._shared import decode_base64_pcm, parse_terminal_usage
 from ._shared import new_event_id as _event_id
 from ._shared import require_nonnegative_integer as _integer
@@ -71,14 +74,22 @@ class OpenAIRealtimeAdapter:
                 "live OpenAI Realtime is outside this release",
             )
         self._wire = wire or OpenAIWireCodec()
+        self._tools: list[dict[str, object]] = []
+        self._context_events: dict[str, Mapping[str, object] | None] = {}
+        self._pending_response: str | None = None
+        self._instruction_update: tuple[str, str] | None = None
+        self._context_instructions: str | None = None
 
     def session_update(self, request: RealtimeOpenRequest) -> Mapping[str, object]:
+        validate_tools(request.tools, limit=self.capability.limits.tool_payload_bytes)
+        self._tools = deepcopy(request.tools)
         return {
             "event_id": _event_id(),
             "type": "session.update",
             "session": {
                 "type": "realtime",
                 "instructions": request.instructions,
+                **({"tools": deepcopy(self._tools)} if self._tools else {}),
                 "output_modalities": ["audio"],
                 "audio": {
                     "input": {
@@ -135,8 +146,59 @@ class OpenAIRealtimeAdapter:
         )
 
     def followup_response(self, call_id: str) -> Mapping[str, object]:
-        del call_id
+        if call_id == "" and self._context_instructions is not None:
+            return {
+                "event_id": _event_id(),
+                "type": "response.create",
+                "response": {
+                    "instructions": self._context_instructions,
+                },
+            }
         return {"event_id": _event_id(), "type": "response.create"}
+
+    def append_message(
+        self, text: str, *, role: Literal["user", "system"] = "user"
+    ) -> Mapping[str, object]:
+        identity = _event_id()
+        item: dict[str, object] = {
+            "id": identity,
+            "type": "message",
+            "role": role,
+            "content": [{"type": "input_text", "text": text}],
+        }
+        self._context_events[identity] = deepcopy(item)
+        return {
+            "event_id": identity,
+            "type": "conversation.item.create",
+            "item": item,
+        }
+
+    def update_instructions(self, text: str) -> Mapping[str, object]:
+        identity = _event_id()
+        self._context_events[identity] = None
+        self._instruction_update = (identity, text)
+        self._context_instructions = text
+        return {
+            "event_id": identity,
+            "type": "session.update",
+            "session": {
+                "type": "realtime",
+                "instructions": text,
+            },
+        }
+
+    def out_of_band_response(self, text: str) -> Mapping[str, object]:
+        identity = _event_id()
+        self._pending_response = identity
+        self._context_events[identity] = None
+        return {
+            "event_id": identity,
+            "type": "response.create",
+            "response": {
+                "instructions": text,
+                "conversation": "none",
+            },
+        }
 
     def encode_client_event(self, event: Mapping[str, object]) -> str:
         return self._wire.encode_client_event(event)
@@ -146,11 +208,20 @@ class OpenAIRealtimeAdapter:
         event_type = _string(value.get("type"), "type")
         event_id = _string(value.get("event_id"), "event_id")
         if event_type in {"session.created", "session.updated"}:
+            if event_type == "session.updated" and self._instruction_update is not None:
+                identity, text = self._instruction_update
+                if _object(value.get("session"), "session").get("instructions") == text:
+                    self._instruction_update = None
+                    self._context_events.pop(identity, None)
+                    return DecodedProviderEvent(
+                        event_id, session_acknowledged=True, context_ack_id=identity
+                    )
             self._validate_session_ack(value, event_type)
             return DecodedProviderEvent(
                 event_id,
                 provider_ready=event_type == "session.updated",
                 session_acknowledged=True,
+                tools_acknowledged=bool(self._tools) and event_type == "session.updated",
             )
         if event_type == "input_audio_buffer.committed":
             return DecodedProviderEvent(event_id)
@@ -169,10 +240,15 @@ class OpenAIRealtimeAdapter:
         if event_type == "response.created":
             response = _object(value.get("response"), "response")
             response_id = _string(response.get("id"), "response.id")
+            context_id = self._pending_response
+            if context_id is not None:
+                self._context_events.pop(context_id, None)
+                self._pending_response = None
             return DecodedProviderEvent(
                 event_id,
                 (ResponseStarted(f"turn_{response_id}", response_id),),
                 introduced_response_id=response_id,
+                context_ack_id=context_id,
             )
         if event_type in {"response.output_item.added", "response.output_item.done"}:
             response_id = _string(value.get("response_id"), "response_id")
@@ -199,9 +275,7 @@ class OpenAIRealtimeAdapter:
                 domain_events = (
                     (OutputAudioStarted(*identity),) if part.get("type") == "audio" else ()
                 )
-                return DecodedProviderEvent(
-                    event_id, domain_events, introduced_content=identity
-                )
+                return DecodedProviderEvent(event_id, domain_events, introduced_content=identity)
             return DecodedProviderEvent(event_id, completed_content=identity)
         if event_type in {
             "response.output_audio_transcript.delta",
@@ -231,6 +305,9 @@ class OpenAIRealtimeAdapter:
             item_id = _string(value.get("item_id"), "item_id")
             output_index = _integer(value.get("output_index"), "output_index")
             call_id = _string(value.get("call_id"), "call_id")
+            arguments = value.get("arguments")
+            if not isinstance(arguments, str):
+                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "arguments must be a string")
             return DecodedProviderEvent(
                 event_id,
                 (
@@ -238,13 +315,26 @@ class OpenAIRealtimeAdapter:
                         response_id,
                         call_id,
                         _string(value.get("name"), "name"),
-                        _string(value.get("arguments"), "arguments"),
+                        arguments,
                     ),
                 ),
                 tool_call_identity=(response_id, item_id, output_index, call_id),
             )
         if event_type == "conversation.item.created":
             item = _object(value.get("item"), "item")
+            context_id = item.get("id")
+            if isinstance(context_id, str) and context_id in self._context_events:
+                expected = self._context_events[context_id]
+                if (
+                    expected is None
+                    or item.get("status") != "completed"
+                    or any(item.get(key) != value for key, value in expected.items())
+                ):
+                    raise RealtimeError(
+                        RealtimeErrorCode.PROTOCOL_ERROR, "context message mismatch"
+                    )
+                self._context_events.pop(context_id)
+                return DecodedProviderEvent(event_id, context_ack_id=context_id)
             raw_call_id = item.get("call_id")
             if item.get("type") == "function_call_output":
                 ack_identity = (
@@ -258,9 +348,7 @@ class OpenAIRealtimeAdapter:
                 ack_identity = None
             return DecodedProviderEvent(
                 event_id,
-                tool_ack_call_id=(
-                    ack_identity[3] if ack_identity is not None else None
-                ),
+                tool_ack_call_id=(ack_identity[3] if ack_identity is not None else None),
                 tool_ack_identity=ack_identity,
             )
         if event_type == "response.done":
@@ -279,14 +367,25 @@ class OpenAIRealtimeAdapter:
             )
             if status is not ResponseStatus.FAILED and usage is None:
                 raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "terminal usage is required")
-            terminal_events: list[RealtimeEvent] = [
-                ResponseFinished(response_id, status, usage)
-            ]
+            terminal_events: list[RealtimeEvent] = [ResponseFinished(response_id, status, usage)]
             if status is ResponseStatus.FAILED:
                 terminal_events.append(SessionFailed(RealtimeErrorCode.UNAVAILABLE, True))
             return DecodedProviderEvent(event_id, tuple(terminal_events))
         if event_type == "error":
             error_payload = _object(value.get("error"), "error")
+            rejected = error_payload.get("event_id")
+            if isinstance(rejected, str) and rejected in self._context_events:
+                self._context_events.pop(rejected)
+                if self._pending_response == rejected:
+                    self._pending_response = None
+                if self._instruction_update is not None and self._instruction_update[0] == rejected:
+                    self._instruction_update = None
+                    self._context_instructions = None
+                return DecodedProviderEvent(
+                    event_id,
+                    (SessionFailed(RealtimeErrorCode.UNSUPPORTED, False),),
+                    rejected_event_id=rejected,
+                )
             code, retryable = self._map_error(error_payload)
             return DecodedProviderEvent(event_id, (SessionFailed(code, retryable),))
         return DecodedProviderEvent(event_id)
@@ -300,8 +399,8 @@ class OpenAIRealtimeAdapter:
             _integer(value.get("content_index"), "content_index"),
         )
 
-    @staticmethod
     def _validate_session_ack(
+        self,
         value: Mapping[str, object],
         event_type: str,
     ) -> None:
@@ -311,11 +410,16 @@ class OpenAIRealtimeAdapter:
                 "OpenAI session acknowledgement fields do not match",
             )
         session = _object(value.get("session"), "session")
-        if set(session) != {"id", "type", "model", "output_modalities", "audio"}:
+        expected_keys = {"id", "type", "model", "output_modalities", "audio"}
+        if not expected_keys.issubset(session) or set(session) - expected_keys - {"tools"}:
             raise RealtimeError(
                 RealtimeErrorCode.PROTOCOL_ERROR,
                 "OpenAI session fields do not match",
             )
+        if event_type == "session.updated" and self._tools and "tools" not in session:
+            raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "tool catalog not acknowledged")
+        if "tools" in session and session["tools"] != self._tools:
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "tool catalog mismatch")
         _string(session.get("id"), "session.id")
         if (
             session.get("type") != "realtime"
@@ -334,9 +438,7 @@ class OpenAIRealtimeAdapter:
             )
         input_audio = _object(audio.get("input"), "session.audio.input")
         output_audio = _object(audio.get("output"), "session.audio.output")
-        expected_input: dict[str, object] = {
-            "format": {"type": "audio/pcm", "rate": 24_000}
-        }
+        expected_input: dict[str, object] = {"format": {"type": "audio/pcm", "rate": 24_000}}
         if event_type == "session.updated":
             expected_input["turn_detection"] = {
                 "type": "semantic_vad",

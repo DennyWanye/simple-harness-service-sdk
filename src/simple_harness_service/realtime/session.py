@@ -9,8 +9,10 @@ import hashlib
 import json
 import re
 import time
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
+from copy import deepcopy
 from dataclasses import dataclass
+from typing import Literal, cast
 
 from .contracts import (
     CloseDisposition,
@@ -38,8 +40,9 @@ from .observability import (
     RealtimeDiagnosticSnapshot,
     RealtimeDiagnosticStage,
 )
-from .ports import DecodedProviderEvent, RealtimeConnection, RealtimeProviderAdapter
+from .ports import DecodedProviderEvent, RealtimeConnection, RealtimeProviderAdapter, ToolDispatcher
 from .relay_control import RelayControlCodec
+from .tool_schema import matches_schema, parse_arguments, validate_tools
 
 _DIAGNOSTIC_EVENT_KIND = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
 _SECRET_MARKER = re.compile(
@@ -75,14 +78,27 @@ class ManagedRealtimeSession:
         write_timeout: float = 2.0,
         tool_ack_timeout: float = 5.0,
         close_timeout: float = 5.0,
+        tool_dispatcher: ToolDispatcher | None = None,
+        seen_tool_calls: set[str] | None = None,
+        is_current_generation: Callable[[], bool] | None = None,
+        tool_dispatch_timeout: float = 30.0,
     ) -> None:
         if write_timeout <= 0 or tool_ack_timeout <= 0 or close_timeout <= 0:
             raise ValueError("Realtime timeouts must be positive")
         self._connection = connection
-        self._adapter = adapter
+        self._adapter = deepcopy(adapter)
         self._control = control
         self._credential = credential
-        self._request = request
+        self._request = deepcopy(request)
+        self._tool_dispatcher = tool_dispatcher
+        self._seen_tool_calls = seen_tool_calls if seen_tool_calls is not None else set()
+        self._is_current_generation = is_current_generation or (lambda: True)
+        if tool_dispatch_timeout <= 0:
+            raise ValueError("tool dispatch timeout must be positive")
+        self._tool_dispatch_timeout = tool_dispatch_timeout
+        self._tool_tasks: set[asyncio.Task[None]] = set()
+        self._context_lock = asyncio.Lock()
+        self._context_pending: dict[str, asyncio.Future[None]] = {}
         self.correlation = correlation
         self.generation = generation
         self._diagnostics = diagnostics or RealtimeDiagnostics()
@@ -136,6 +152,14 @@ class ManagedRealtimeSession:
         self._terminal_error_code: RealtimeErrorCode | None = None
 
     async def start(self) -> None:
+        try:
+            validate_tools(self._request.tools, limit=self.capability.limits.tool_payload_bytes)
+        except (ValueError, TypeError) as error:
+            raise RealtimeError(
+                RealtimeErrorCode.INVALID_REQUEST, "invalid tool catalog"
+            ) from error
+        if self._request.tools and not self.capability.features.tool_calling:
+            raise RealtimeError(RealtimeErrorCode.UNSUPPORTED)
         update = self._adapter.session_update(self._request)
         await asyncio.wait_for(
             self._connection.send_text(self._adapter.encode_client_event(update)),
@@ -151,6 +175,10 @@ class ManagedRealtimeSession:
 
     def diagnostics_snapshot(self) -> RealtimeDiagnosticSnapshot:
         return self._diagnostics.snapshot()
+
+    @property
+    def is_current_generation(self) -> bool:
+        return self._is_current_generation()
 
     async def send_audio(self, pcm: bytes) -> None:
         self._require_active()
@@ -229,6 +257,113 @@ class ManagedRealtimeSession:
                 )
             attempt = record.attempt
         await asyncio.shield(attempt)
+
+    async def append_message(
+        self, text: str, *, role: Literal["user", "system"] = "user", trigger_response: bool
+    ) -> None:
+        self._validate_context(text)
+        if role not in {"user", "system"}:
+            raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "invalid message role")
+        async with self._context_lock:
+            await self._inject_context(
+                self._adapter.append_message(text, role=role), trigger_response=trigger_response
+            )
+
+    async def update_instructions(self, text: str, *, trigger_response: bool) -> None:
+        self._validate_context(text)
+        async with self._context_lock:
+            await self._inject_context(
+                self._adapter.update_instructions(text), trigger_response=trigger_response
+            )
+
+    async def out_of_band_response(self, text: str) -> None:
+        self._validate_context(text)
+        async with self._context_lock:
+            await self._inject_context(
+                self._adapter.out_of_band_response(text), trigger_response=False
+            )
+
+    def _validate_context(self, text: str) -> None:
+        self._require_active()
+        if not self._ready:
+            raise RealtimeError(RealtimeErrorCode.BUSY, "session is not ready")
+        if (
+            not isinstance(text, str)
+            or not text.strip()
+            or "\x00" in text
+            or len(text.encode("utf-8")) > self.capability.limits.tool_payload_bytes
+        ):
+            raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "invalid context text")
+
+    async def _inject_context(self, event: Mapping[str, object], *, trigger_response: bool) -> None:
+        self._require_active()
+        identity = cast(str, event["event_id"])
+        acknowledgement: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self._context_pending[identity] = acknowledgement
+        try:
+            await self._send_runtime_event(event)
+            await asyncio.wait_for(acknowledgement, timeout=self._tool_ack_timeout)
+            self._require_active()
+            if trigger_response and event["type"] != "response.create":
+                await self._send_runtime_event(self._adapter.followup_response(""))
+        except TimeoutError as error:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_EVENT_APPLY_FAILED,
+                operation_kind="context.ack_timeout",
+                stable_code=RealtimeErrorCode.TIMEOUT,
+            )
+            await self._fail(RealtimeErrorCode.TIMEOUT, retryable=False)
+            raise RealtimeError(
+                RealtimeErrorCode.TIMEOUT, "context acknowledgement timed out"
+            ) from error
+        finally:
+            self._context_pending.pop(identity, None)
+
+    async def _dispatch_tool(self, call: ToolCallRequested, *, invalid: bool) -> None:
+        output: str
+        try:
+            self._require_active()
+            if invalid:
+                output = '{"error":"invalid_arguments"}'
+            else:
+                assert self._tool_dispatcher is not None
+                try:
+                    output = await asyncio.wait_for(
+                        self._tool_dispatcher.dispatch(call), timeout=self._tool_dispatch_timeout
+                    )
+                    if (
+                        not isinstance(output, str)
+                        or not output
+                        or len(output.encode("utf-8")) > self.capability.limits.tool_payload_bytes
+                    ):
+                        output = '{"error":"invalid_tool_output"}'
+                except TimeoutError:
+                    output = '{"error":"tool_timeout"}'
+                except Exception:
+                    output = '{"error":"tool_failed"}'
+            self._require_active()
+            await self.submit_tool_result(call.call_id, output)
+        except RealtimeError as error:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_EVENT_APPLY_FAILED,
+                operation_kind="tool.dispatch",
+                stable_code=error.code,
+            )
+
+    def _invalid_tool_arguments(self, call: ToolCallRequested) -> bool:
+        if len(call.arguments_json.encode("utf-8")) > self.capability.limits.tool_payload_bytes:
+            return True
+        try:
+            arguments = parse_arguments(call.arguments_json)
+            schema = next(
+                (tool["parameters"] for tool in self._request.tools if tool["name"] == call.name),
+                None,
+            )
+            return schema is None or not matches_schema(
+                arguments, cast(Mapping[str, object], schema)
+            )
+        except (ValueError, TypeError, RecursionError, OverflowError):
+            return True
 
     async def _submit_tool_result_attempt(
         self,
@@ -428,9 +563,12 @@ class ManagedRealtimeSession:
         while not (self._terminal_published.is_set() and self._events.empty()):
             item = await self._events.get()
             self._queued_output_frames = max(0, self._queued_output_frames - 1)
-            self._queued_output_bytes = max(
-                0, self._queued_output_bytes - self._event_size(item)
-            )
+            self._queued_output_bytes = max(0, self._queued_output_bytes - self._event_size(item))
+            if not self._is_current_generation() and not isinstance(
+                item, (SessionClosed, SessionFailed)
+            ):
+                self.late_event_count += 1
+                continue
             yield item
 
     async def _receive_loop(self) -> None:
@@ -473,8 +611,7 @@ class ManagedRealtimeSession:
                         if self._closing:
                             if isinstance(control_event, SessionClosed):
                                 valid_ack = (
-                                    control_event.related_event_id
-                                    == self._pending_close_event_id
+                                    control_event.related_event_id == self._pending_close_event_id
                                     and control_event.initiator is CloseInitiator.CLIENT
                                     and control_event.disposition is CloseDisposition.CLEAN
                                 )
@@ -558,6 +695,25 @@ class ManagedRealtimeSession:
             raise
 
     async def _apply(self, decoded: DecodedProviderEvent) -> bool:
+        if not self._is_current_generation():
+            self.late_event_count += 1
+            return True
+        if decoded.rejected_event_id in self._context_pending:
+            assert decoded.rejected_event_id is not None
+            pending = self._context_pending[decoded.rejected_event_id]
+            if not pending.done():
+                pending.set_exception(RealtimeError(RealtimeErrorCode.UNSUPPORTED))
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_EVENT_APPLY_FAILED,
+                operation_kind="context.unsupported",
+                stable_code=RealtimeErrorCode.UNSUPPORTED,
+            )
+            return True
+        if decoded.context_ack_id in self._context_pending:
+            assert decoded.context_ack_id is not None
+            pending = self._context_pending[decoded.context_ack_id]
+            if not pending.done():
+                pending.set_result(None)
         terminal_batch = any(isinstance(event, SessionFailed) for event in decoded.events)
         if decoded.provider_ready and not self._ready:
             self._ready = True
@@ -567,6 +723,7 @@ class ManagedRealtimeSession:
                     self.correlation,
                     self.capability.input_audio,
                     self.capability.output_audio,
+                    tools_acknowledged=decoded.tools_acknowledged,
                 )
             ):
                 await self._fail(RealtimeErrorCode.BUSY, retryable=False)
@@ -609,9 +766,7 @@ class ManagedRealtimeSession:
             if decoded.introduced_item_detail is None:
                 await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, retryable=False)
                 return False
-            response_id, item_id, output_index, item_type = (
-                decoded.introduced_item_detail
-            )
+            response_id, item_id, output_index, item_type = decoded.introduced_item_detail
             if (response_id, item_id) != decoded.introduced_item:
                 await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, retryable=False)
                 return False
@@ -667,17 +822,29 @@ class ManagedRealtimeSession:
                     or call_id != event.call_id
                     or response_id not in self._responses
                     or response_id in self._terminal_responses
-                    or (response_id, item_id, output_index)
-                    not in self._function_call_items
-                    or len(event.arguments_json.encode("utf-8"))
-                    > self.capability.limits.tool_payload_bytes
+                    or (response_id, item_id, output_index) not in self._function_call_items
+                    or (event.generation not in {0, self.generation})
                 ):
                     await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, retryable=False)
                     return False
                 if event.call_id in self._tools:
                     await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, retryable=False)
                     return False
+                if event.call_id in self._seen_tool_calls:
+                    self.duplicate_event_count += 1
+                    continue
                 self._tools[event.call_id] = _ToolRecord(ToolCallState.REQUESTED)
+                self._seen_tool_calls.add(event.call_id)
+                event = dataclasses.replace(event, generation=self.generation)
+                invalid_arguments = self._invalid_tool_arguments(event)
+                if self._tool_dispatcher is not None or invalid_arguments:
+                    task = asyncio.create_task(
+                        self._dispatch_tool(event, invalid=invalid_arguments)
+                    )
+                    self._tool_tasks.add(task)
+                    task.add_done_callback(self._tool_tasks.discard)
+                if invalid_arguments:
+                    continue
             if isinstance(
                 event,
                 (OutputText, OutputAudioStarted, OutputAudio, OutputAudioCompleted),
@@ -819,6 +986,13 @@ class ManagedRealtimeSession:
             if self._shutdown_complete:
                 return
             self._shutdown_complete = True
+            current = asyncio.current_task()
+            for pending in self._context_pending.values():
+                if not pending.done():
+                    pending.set_exception(RealtimeError(RealtimeErrorCode.CANCELLED))
+            for task in self._tool_tasks:
+                if task is not current:
+                    task.cancel()
             with contextlib.suppress(Exception):
                 await asyncio.wait_for(
                     self._connection.close(1000, "session terminal"),
@@ -834,7 +1008,7 @@ class ManagedRealtimeSession:
                     )
 
     def _require_active(self) -> None:
-        if self._terminal_owner is not None or self._closing:
+        if self._terminal_owner is not None or self._closing or not self._is_current_generation():
             raise RealtimeError(RealtimeErrorCode.CANCELLED, "session is closed")
 
     def _current_response(self) -> str | None:

@@ -22,6 +22,7 @@ from .contracts import (
     RealtimeEvent,
     RealtimeFeature,
     RealtimeOpenRequest,
+    RealtimePlaybackStats,
     ResponseFinished,
     SessionClosed,
     SessionFailed,
@@ -151,6 +152,7 @@ class LocalRealtimeChannelController:
         self._event_task: asyncio.Task[None] | None = None
         self._output_sequence = 0
         self._output_acked = 0
+        self._output_acked_bytes = 0
         self._output_pending: deque[tuple[int, int]] = deque()
         self._output_pending_bytes = 0
         self._output_condition = asyncio.Condition()
@@ -161,9 +163,18 @@ class LocalRealtimeChannelController:
         self._terminal_response_order: deque[str] = deque()
         self.late_frame_count = 0
         self.duplicate_frame_count = 0
+        self._sent_audio_bytes = 0
+        self._sent_audio_ms = 0.0
+        self._played_audio_ms = 0
+        self._output_audio = RealtimeAudioFormat(sample_rate=24_000)
 
     def diagnostics_snapshot(self) -> RealtimeDiagnosticSnapshot:
         return self._diagnostics.snapshot()
+
+    def playback_snapshot(self) -> RealtimePlaybackStats:
+        return RealtimePlaybackStats(
+            self._sent_audio_bytes, self._sent_audio_ms, self._played_audio_ms
+        )
 
     async def run(self, channel: LocalChannel) -> None:
         if self._channel is not None:
@@ -206,8 +217,10 @@ class LocalRealtimeChannelController:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "local.hello required")
         generation = value.get("generation")
         correlation = value.get("correlation")
-        if generation != 1 or not isinstance(correlation, str) or not _CORRELATION.fullmatch(
-            correlation
+        if (
+            generation != 1
+            or not isinstance(correlation, str)
+            or not _CORRELATION.fullmatch(correlation)
         ):
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "invalid local.hello")
         self._generation = generation
@@ -245,8 +258,10 @@ class LocalRealtimeChannelController:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "duplicate call.start")
         instructions = value.get("instructions")
         raw_features = value.get("required_features")
-        if not isinstance(instructions, str) or not instructions or not isinstance(
-            raw_features, list
+        if (
+            not isinstance(instructions, str)
+            or not instructions
+            or not isinstance(raw_features, list)
         ):
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "invalid call.start")
         try:
@@ -268,9 +283,7 @@ class LocalRealtimeChannelController:
             required_features=features,
         )
         try:
-            session = await self._opener._open_with_correlation(
-                request, self._correlation
-            )
+            session = await self._opener._open_with_correlation(request, self._correlation)
         except RealtimeError as error:
             await self._fail(error.code, error.retryable)
             return
@@ -379,18 +392,40 @@ class LocalRealtimeChannelController:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "invalid ACK sequence")
         if highest > self._output_sequence:
             raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "ACK exceeds sent output")
+        position = value.get("played_audio_ms", self._played_audio_ms)
+        acknowledged_bytes = self._output_acked_bytes + sum(
+            size for sequence, size in self._output_pending if sequence <= highest
+        )
+        acknowledged_ms = (
+            acknowledged_bytes
+            * 1000
+            / (2 * self._output_audio.sample_rate * self._output_audio.channels)
+        )
+        if (
+            not isinstance(position, int)
+            or isinstance(position, bool)
+            or position < self._played_audio_ms
+            or position > acknowledged_ms
+        ):
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "invalid playback position")
         async with self._output_condition:
+            self._played_audio_ms = position
             if highest <= self._output_acked:
                 return
             self._output_acked = highest
             while self._output_pending and self._output_pending[0][0] <= highest:
                 _sequence, size = self._output_pending.popleft()
                 self._output_pending_bytes -= size
+                self._output_acked_bytes += size
             self._output_condition.notify_all()
 
     async def _forward_events(self, stream: AsyncIterator[RealtimeEvent]) -> None:
+        generation = self._generation
         try:
             async for event in stream:
+                if generation != self._generation:
+                    self.late_frame_count += 1
+                    continue
                 if self._terminal:
                     return
                 if isinstance(event, SessionReady):
@@ -401,6 +436,7 @@ class LocalRealtimeChannelController:
                         await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, False)
                         return
                     self._ready = True
+                    self._output_audio = event.output_audio
                     await self._send_json(
                         {
                             "type": "call.ready",
@@ -442,7 +478,7 @@ class LocalRealtimeChannelController:
                     if identity != self._active_output:
                         await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, False)
                         return
-                    await self._send_output_audio(event.data)
+                    await self._send_output_audio(event.data, generation=generation)
                 elif isinstance(event, OutputAudioCompleted):
                     identity = _output_identity(event)
                     if (
@@ -497,23 +533,39 @@ class LocalRealtimeChannelController:
         except Exception:
             await self._fail(RealtimeErrorCode.INTERNAL, False)
 
-    async def _send_output_audio(self, pcm: bytes) -> None:
+    async def _send_output_audio(self, pcm: bytes, *, generation: int | None = None) -> None:
+        generation = self._generation if generation is None else generation
+        if not self._output_generation_current(generation):
+            self.late_frame_count += 1
+            return
         if not pcm or len(pcm) % 2:
             await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, False)
             return
         for offset in range(0, len(pcm), _OUTPUT_PCM_CHUNK_BYTES):
-            await self._send_output_chunk(pcm[offset : offset + _OUTPUT_PCM_CHUNK_BYTES])
+            await self._send_output_chunk(
+                pcm[offset : offset + _OUTPUT_PCM_CHUNK_BYTES], generation=generation
+            )
             if self._terminal:
                 return
 
-    async def _send_output_chunk(self, pcm: bytes) -> None:
+    def _output_generation_current(self, generation: int) -> bool:
+        return generation == self._generation and bool(
+            getattr(self._session, "is_current_generation", True)
+        )
+
+    async def _send_output_chunk(self, pcm: bytes, *, generation: int | None = None) -> None:
+        generation = self._generation if generation is None else generation
+
         async def wait_for_capacity() -> None:
             async with self._output_condition:
                 await self._output_condition.wait_for(
-                    lambda: self._terminal
-                    or (
-                        len(self._output_pending) < _WINDOW_FRAMES
-                        and self._output_pending_bytes + len(pcm) <= _WINDOW_BYTES
+                    lambda: (
+                        self._terminal
+                        or not self._output_generation_current(generation)
+                        or (
+                            len(self._output_pending) < _WINDOW_FRAMES
+                            and self._output_pending_bytes + len(pcm) <= _WINDOW_BYTES
+                        )
                     )
                 )
 
@@ -526,11 +578,14 @@ class LocalRealtimeChannelController:
                     wait_for_capacity(), timeout=self._producer_block_timeout_seconds
                 )
             except TimeoutError:
+                if not self._output_generation_current(generation):
+                    self.late_frame_count += 1
+                    return
                 self._record_local_timeout(RealtimeErrorCode.BUSY)
                 await self._cancel_active_response()
                 await self._fail(RealtimeErrorCode.BUSY, False)
                 return
-        if self._terminal:
+        if self._terminal or not self._output_generation_current(generation):
             return
         self._output_sequence += 1
         sequence = self._output_sequence
@@ -546,6 +601,11 @@ class LocalRealtimeChannelController:
                 )
             )
         )
+        if not self._terminal and generation == self._generation:
+            self._sent_audio_bytes += len(pcm)
+            self._sent_audio_ms += (
+                len(pcm) * 1000 / (2 * self._output_audio.sample_rate * self._output_audio.channels)
+            )
 
     def _remember_completed_output(self, identity: tuple[str, str, int, int]) -> None:
         self._completed_outputs.add(identity)
@@ -566,9 +626,7 @@ class LocalRealtimeChannelController:
     async def _fail(self, code: RealtimeErrorCode, retryable: bool) -> None:
         if not await self._claim_terminal():
             return
-        close_class = (
-            CloseDisposition.RETRYABLE if retryable else CloseDisposition.FATAL
-        )
+        close_class = CloseDisposition.RETRYABLE if retryable else CloseDisposition.FATAL
         self._record_local_state(
             RealtimeDiagnosticStage.LOCAL_ERROR,
             stable_code=code,
@@ -615,9 +673,7 @@ class LocalRealtimeChannelController:
         if session is not None:
             try:
                 if reason is not None:
-                    close_awaitable = cast(_ControlledCloseSession, session).close(
-                        reason=reason
-                    )
+                    close_awaitable = cast(_ControlledCloseSession, session).close(reason=reason)
                 else:
                     close_awaitable = session.close()
                 await asyncio.wait_for(
@@ -632,9 +688,7 @@ class LocalRealtimeChannelController:
     async def _close_channel(self) -> None:
         if self._channel is not None:
             with contextlib.suppress(Exception):
-                await asyncio.wait_for(
-                    self._channel.close(), timeout=self._close_timeout_seconds
-                )
+                await asyncio.wait_for(self._channel.close(), timeout=self._close_timeout_seconds)
 
     async def _send_json(self, value: dict[str, object]) -> None:
         await self._send_channel(encode_local_message(value))
@@ -643,9 +697,7 @@ class LocalRealtimeChannelController:
         with contextlib.suppress(Exception):
             await self._send_channel(encode_local_message(value), cancel_on_timeout=False)
 
-    async def _send_channel(
-        self, payload: str | bytes, *, cancel_on_timeout: bool = True
-    ) -> None:
+    async def _send_channel(self, payload: str | bytes, *, cancel_on_timeout: bool = True) -> None:
         assert self._channel is not None
         try:
             await asyncio.wait_for(

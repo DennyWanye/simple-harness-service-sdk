@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 from .contracts import (
     MintedRealtimeCredential,
@@ -12,6 +12,7 @@ from .contracts import (
     RealtimeEvent,
     RealtimeOpenRequest,
     RealtimeProfile,
+    ToolCallRequested,
 )
 
 
@@ -30,6 +31,13 @@ class DecodedProviderEvent:
     tool_ack_call_id: str | None = None
     tool_ack_identity: tuple[str, str, str, str, str] | None = None
     tool_call_identity: tuple[str, str, int, str] | None = None
+    tools_acknowledged: bool = False
+    context_ack_id: str | None = None
+    rejected_event_id: str | None = None
+
+
+class ToolDispatcher(Protocol):
+    async def dispatch(self, call: ToolCallRequested) -> str: ...
 
 
 class CredentialMinter(Protocol):
@@ -74,12 +82,23 @@ class RealtimeProviderAdapter(Protocol):
 
     def followup_response(self, call_id: str) -> Mapping[str, object]: ...
 
+    def append_message(
+        self, text: str, *, role: Literal["user", "system"]
+    ) -> Mapping[str, object]: ...
+
+    def update_instructions(self, text: str) -> Mapping[str, object]: ...
+
+    def out_of_band_response(self, text: str) -> Mapping[str, object]: ...
+
     def encode_client_event(self, event: Mapping[str, object]) -> str: ...
 
     def decode_server_event(self, payload: str) -> DecodedProviderEvent: ...
 
 
 class RealtimeSession(Protocol):
+    @property
+    def is_current_generation(self) -> bool: ...
+
     async def __aenter__(self) -> RealtimeSession: ...
 
     async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None: ...
@@ -98,5 +117,13 @@ class RealtimeSession(Protocol):
     ) -> None: ...
 
     async def submit_tool_result(self, call_id: str, output: str) -> None: ...
+
+    async def append_message(
+        self, text: str, *, role: Literal["user", "system"] = "user", trigger_response: bool
+    ) -> None: ...
+
+    async def update_instructions(self, text: str, *, trigger_response: bool) -> None: ...
+
+    async def out_of_band_response(self, text: str) -> None: ...
 
     async def close(self) -> None: ...

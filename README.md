@@ -3,11 +3,10 @@
 Thin authenticated service and transport framework for Simple Harness SDK. Harness remains the
 only durable command and execution authority; this package owns no database or execution worker.
 
-Version 0.3.12 adds a provider-neutral, full-duplex Realtime API alongside the existing durable
-command and Claude-style terminal chat APIs. `RealtimeClient` owns session ordering, bounded
-queues, interruption tombstones, one terminal owner, Tool acknowledgement, and stable domain
-events. Products provide only microphone/playback/UI policy and select a composition profile;
-they do not parse Qwen or OpenAI wire JSON.
+0.3.13 新增工具目录、可选自动工具循环、上下文注入及播放位置统计；离线验收状态见
+[接口与交接说明](docs/realtime-0.3.13.md)。`RealtimeClient` 负责会话顺序、有界队列、
+打断状态、工具回执和稳定事件；产品提供麦克风、播放和界面策略，选择组合配置，
+无需解析 Qwen 或 OpenAI 的原生 JSON。
 
 The optional `realtime` extra installs the concrete HTTPS/WebSocket primitives. The SDK includes
 an exact TokenSeller credential minter and relay transport, AF_UNIX and authenticated loopback
@@ -24,7 +23,7 @@ fields; sink failures never change session behavior.
 
 Four frozen authority packs are shipped as package data and as a deterministic cross-language
 bundle. A release manifest binds their root digest, three Python consumer locks, and the exact
-three-SDK release unit: service `0.3.12`, Harness `0.6.2`, and Memory `0.5.2`. Harness remains the
+three-SDK release unit: service `0.3.13`, Harness `0.13.0.dev20260925+opt.216`, and Memory `0.5.2`. Harness remains the
 only durable command authority; Realtime adds no database or execution worker.
 
 The 0.2.x terminal behavior remains compatible. Interactive TTYs receive command completion,
@@ -45,3 +44,7 @@ that pending input and visible echo work normally.
 
 Architecture boundaries, calibrated code evidence, and the approved Realtime Provider Program target
 are indexed in [`ARCHITECTURE/index.md`](ARCHITECTURE/index.md).
+
+## 私有安装组合
+
+Harness 使用精确版本 `==0.13.0.dev20260925+opt.216`，通过 `--find-links` 指向宿主的 `simple_harness/backend/vendor/` 或其在当前仓库内的副本。Memory extra 仍为 0.5.2。当前缺少私有轮子，完整 BOM、锁文件与安装组合尚未验收；请按[构建说明](docs/build-and-release.md)补齐离线材料后检查。

@@ -18,6 +18,7 @@ from .contracts import (
     RealtimeFeatureSet,
     RealtimeLimits,
     RealtimeOpenRequest,
+    RealtimePlaybackStats,
     RealtimeProfile,
     ResponseFinished,
     ResponseStarted,
@@ -57,6 +58,7 @@ from .ports import (
     RealtimeProviderAdapter,
     RealtimeSession,
     RealtimeTransport,
+    ToolDispatcher,
 )
 
 __all__ = (
@@ -89,6 +91,7 @@ __all__ = (
     "RealtimeFeatureSet",
     "RealtimeLimits",
     "RealtimeOpenRequest",
+    "RealtimePlaybackStats",
     "RealtimeProfile",
     "RealtimeProviderAdapter",
     "RealtimeSession",
@@ -104,6 +107,7 @@ __all__ = (
     "SpeechStarted",
     "SpeechStopped",
     "ToolCallRequested",
+    "ToolDispatcher",
     "TranscriptCompleted",
     "TranscriptDelta",
     "decode_local_message",

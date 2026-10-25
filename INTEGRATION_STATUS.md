@@ -1,3 +1,11 @@
+# Service SDK 0.3.13 阶段 2 状态
+
+本次完成 Realtime 工具目录、工具循环、上下文原语及播放统计的源码与离线测试。当前环境缺少 opt.216、Memory 0.5.2、编排 SDK 轮子和 mypy，不能标记为已验收或已发布。BOM 的实际 `execution_schema` 与私有来源仍待轮子核验，`uv.lock` 尚未重算。
+
+接口说明见 [Realtime 0.3.13](docs/realtime-0.3.13.md)，测试、阻塞与制品状态见[阶段 2 记录](simple_harness/plans/2026-10-24-unified-session-realtime/阶段2-记录.md)。真线路 A06/A07、完整 A14、发版与推送由 Claude 在补齐依赖及中继恢复后执行。OpenAI 仍仅离线使用，现有 conformance fixture 未修改。
+
+以下保留既有版本的历史记录，不代表 0.3.13 的验收结论。
+
 # Simple Harness Service SDK 0.3.0 release status
 
 [`v0.3.0`](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.3.0)

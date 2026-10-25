@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import gzip
 import importlib.util
 import json
@@ -90,8 +91,8 @@ def _valid_candidate_manifest() -> dict[str, Any]:
         "schema": "simple-harness-service-candidate-manifest-v2",
         "package": {
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.12",
-            "planned_tag": "v0.3.12",
+            "version": "0.3.13",
+            "planned_tag": "v0.3.13",
             "requires_python": ">=3.11",
         },
         "source": {"commit": "0" * 40, "source_date_epoch": 0},
@@ -260,6 +261,10 @@ def test_release_schema_targets_and_dynamic_version_contract() -> None:
     assert "VERSION =" not in build_script
     assert 'project.get("version")' in build_script
     assert project["requires-python"] == ">=3.11"
+    version_module = ast.parse((ROOT / "src/simple_harness_service/version.py").read_text())
+    assignment = version_module.body[1]
+    assert isinstance(assignment, ast.Assign)
+    assert ast.literal_eval(assignment.value) == project["version"]
 
 
 def test_candidate_manifest_is_validated_before_write(tmp_path: Path) -> None:
@@ -340,18 +345,30 @@ def test_release_scripts_pass_strict_mypy() -> None:
     )
 
 
-def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None:
+def test_three_sdk_release_unit_and_future_download_urls(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     candidate = _load_build_module()
-    wheel = tmp_path / "simple_harness_service_sdk-0.3.12-py3-none-any.whl"
+    read_json = candidate._read_json
+    bom = json.loads((ROOT / "src/simple_harness_service/compatibility-bom.json").read_text())
+    bom["harness"].update({
+        "url": "https://github.com/example/private/releases/download/opt/harness.whl",
+        "sha256": "d" * 64, "execution_schema": 42,
+        "verification_status": "verified-offline-wheel",
+    })
+    monkeypatch.setattr(candidate, "_read_json", lambda path, **kwargs: (
+        bom if path == candidate.COMPATIBILITY_BOM else read_json(path, **kwargs)
+    ))
+    wheel = tmp_path / "simple_harness_service_sdk-0.3.13-py3-none-any.whl"
     wheel.write_bytes(b"candidate-wheel-bytes")
 
     unit = candidate._sdk_release_unit(
         metadata={
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.12",
+            "version": "0.3.13",
             "requires_python": ">=3.11",
         },
-        planned_tag="v0.3.12",
+        planned_tag="v0.3.13",
         wheel=wheel,
     )
 
@@ -362,16 +379,30 @@ def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None
         "memory",
     ]
     assert [member["version"] for member in unit["members"]] == [
-        "0.3.12",
-        "0.6.2",
+        "0.3.13",
+        "0.13.0.dev20260925+opt.216",
         "0.5.2",
     ]
     assert unit["members"][0]["download_url"] == (
         "https://github.com/DennyWanye/simple-harness-service-sdk/releases/download/"
-        "v0.3.12/simple_harness_service_sdk-0.3.12-py3-none-any.whl"
+        "v0.3.13/simple_harness_service_sdk-0.3.13-py3-none-any.whl"
     )
     assert all(
         member["download_url"].startswith("https://github.com/")
         for member in unit["members"]
     )
     assert all(len(member["sha256"]) == 64 for member in unit["members"])
+
+
+def test_candidate_rejects_unverified_private_harness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    candidate = _load_build_module()
+    read_json = candidate._read_json
+    bom = json.loads((ROOT / "src/simple_harness_service/compatibility-bom.json").read_text())
+    bom["harness"]["verification_status"] = "pending-offline-wheel"
+    monkeypatch.setattr(candidate, "_read_json", lambda path, **kwargs: (
+        bom if path == candidate.COMPATIBILITY_BOM else read_json(path, **kwargs)
+    ))
+    with pytest.raises(RuntimeError, match="private Harness BOM verification pending"):
+        candidate.build(tmp_path / "candidate", planned_tag="v0.3.13")

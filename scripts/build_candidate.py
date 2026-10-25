@@ -533,6 +533,14 @@ def _copy_release_input(source: Path, output: Path) -> None:
 
 def build(output: Path, *, planned_tag: str) -> dict[str, object]:
     metadata = project_metadata()
+    bom = _read_json(COMPATIBILITY_BOM, schema="simple-harness-service-bom-v1")
+    harness = bom.get("harness")
+    if (
+        not isinstance(harness, dict)
+        or harness.get("verification_status") != "verified-offline-wheel"
+        or not isinstance(harness.get("execution_schema"), int)
+    ):
+        raise RuntimeError("private Harness BOM verification pending")
     version = metadata["version"]
     if planned_tag != f"v{version}":
         raise RuntimeError("planned tag differs from package version")

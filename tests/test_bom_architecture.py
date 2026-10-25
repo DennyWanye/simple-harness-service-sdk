@@ -25,15 +25,27 @@ def test_public_api_snapshot() -> None:
 
 def test_compatibility_bom_and_installed_harness_provenance() -> None:
     bom = load_bom()
-    assert bom["service"]["version"] == "0.3.12"
-    assert bom["harness"]["version"] == "0.6.2"
+    assert bom["service"]["version"] == "0.3.13"
+    assert bom["harness"]["version"] == "0.13.0.dev20260925+opt.216"
     assert bom["memory"]["version"] == "0.5.2"
-    assert bom["harness"]["execution_schema"] == 6
+    assert isinstance(bom["harness"]["execution_schema"], int)
+    assert bom["harness"]["verification_status"] == "verified-offline-wheel"
     assert bom["memory"]["memory_schema"] == 4
-    # The uv development environment deliberately demonstrates fail-closed behavior:
-    # its direct_url.json retains the URL but drops the archive digest.
-    with pytest.raises(ServiceError, match="SHA provenance missing"):
-        validate_installed_bom()
+    assert validate_installed_bom()["harness"] == bom["harness"]["version"]
+
+
+def test_private_harness_requirement_is_exact() -> None:
+    bom = load_bom()
+    memory = bom["memory"]
+    requirements = [
+        "simple-harness-sdk==0.13.0.dev20260925+opt.216",
+        f"simple-harness-memory-sdk @ {memory['url']}#sha256={memory['sha256']} ; "
+        "extra == 'memory'",
+    ]
+    validate_metadata_requirements(requirements)
+    requirements[0] = "simple-harness-sdk>=0.13.0.dev20260925"
+    with pytest.raises(ServiceError, match="harness metadata pin drift"):
+        validate_metadata_requirements(requirements)
 
 
 def test_thin_architecture_gate() -> None:
@@ -52,7 +64,7 @@ def test_metadata_validator_rejects_lookalike_distribution() -> None:
     harness = bom["harness"]
     memory = bom["memory"]
     requirements = [
-        f"simple-harness-sdk-evil @ {harness['url']}#sha256={harness['sha256']}",
+        f"simple-harness-sdk-evil=={harness['version']}",
         f"simple-harness-memory-sdk @ {memory['url']}#sha256={memory['sha256']} ; "
         "extra == 'memory'",
     ]
@@ -79,9 +91,7 @@ def test_direct_url_requires_one_exact_sha256(archive_info: object) -> None:
 
 def test_direct_url_accepts_only_exact_url_and_bytes_identity() -> None:
     item = {"url": "https://example.invalid/wheel.whl", "sha256": "d" * 64}
-    valid = json.dumps(
-        {"url": item["url"], "archive_info": {"hashes": {"sha256": item["sha256"]}}}
-    )
+    valid = json.dumps({"url": item["url"], "archive_info": {"hashes": {"sha256": item["sha256"]}}})
     _validate_direct_url("harness", item, valid)
     pip_valid = json.dumps(
         {

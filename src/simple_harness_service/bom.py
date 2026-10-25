@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.metadata as metadata
 import importlib.resources as resources
 import json
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -26,12 +27,23 @@ def validate_metadata_requirements(requires_dist: list[str]) -> None:
     bom = load_bom()
     for component in ("harness", "memory"):
         item = _item(bom, component)
+        if component == "harness":
+            matches = [
+                requirement
+                for requirement in requires_dist
+                if re.match(
+                    r"^simple[-_]harness[-_]sdk(?:\s|[=<>!~@;]|$)", requirement, re.IGNORECASE
+                )
+            ]
+            expected = f"{item['distribution']}=={item['version']}"
+            if len(matches) != 1 or matches[0].replace(" ", "").lower() != expected.lower():
+                raise ServiceError(ServiceErrorCode.INTERNAL, "harness metadata pin drift")
+            continue
         expected_url = f"{item['url']}#sha256={item['sha256']}"
         matches = [
             requirement
             for requirement in requires_dist
-            if requirement.partition("@")[0].strip().lower()
-            == str(item["distribution"]).lower()
+            if requirement.partition("@")[0].strip().lower() == str(item["distribution"]).lower()
         ]
         if len(matches) != 1 or expected_url not in matches[0].replace(" ", ""):
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} metadata pin drift")
@@ -54,6 +66,15 @@ def validate_installed_bom(*, include_memory: bool = False) -> dict[str, str]:
         distribution = metadata.distribution(str(item["distribution"]))
         if distribution.version != item["version"]:
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} version drift")
+        if component == "harness":
+            if item.get("verification_status") != "verified-offline-wheel" or not isinstance(
+                item.get("execution_schema"), int
+            ):
+                raise ServiceError(
+                    ServiceErrorCode.INTERNAL, "private Harness BOM verification pending"
+                )
+            result[component] = distribution.version
+            continue
         direct_url = distribution.read_text("direct_url.json")
         if direct_url is None:
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} source provenance missing")
@@ -62,9 +83,7 @@ def validate_installed_bom(*, include_memory: bool = False) -> dict[str, str]:
     return result
 
 
-def _validate_direct_url(
-    component: str, item: Mapping[str, object], direct_url: str
-) -> None:
+def _validate_direct_url(component: str, item: Mapping[str, object], direct_url: str) -> None:
     try:
         provenance = json.loads(direct_url)
     except json.JSONDecodeError as error:

@@ -55,9 +55,7 @@ _MESSAGE_FIELDS: dict[str, frozenset[str]] = {
     "call.stop": frozenset({"type", "generation", "reason"}),
     "call.state": frozenset({"type", "generation", "state"}),
     "call.event": frozenset({"type", "generation", "event"}),
-    "call.audio_ack": frozenset(
-        {"type", "generation", "direction", "highest_contiguous_sequence"}
-    ),
+    "call.audio_ack": frozenset({"type", "generation", "direction", "highest_contiguous_sequence"}),
     "call.error": frozenset({"type", "generation", "code", "retryable"}),
     "call.closed": frozenset({"type", "generation", "reason"}),
 }
@@ -68,7 +66,19 @@ def decode_local_message(payload: str) -> dict[str, Any]:
     message_type = value.get("type")
     if not isinstance(message_type, str) or message_type not in _MESSAGE_FIELDS:
         raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "unknown local message")
-    if frozenset(value) != _MESSAGE_FIELDS[message_type]:
+    fields = frozenset(value)
+    allowed = _MESSAGE_FIELDS[message_type]
+    if message_type == "call.audio_ack" and "played_audio_ms" in value:
+        allowed = allowed | {"played_audio_ms"}
+        position = value["played_audio_ms"]
+        if (
+            value.get("direction") != "output"
+            or not isinstance(position, int)
+            or isinstance(position, bool)
+            or position < 0
+        ):
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "invalid playback position")
+    if fields != allowed:
         raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "local fields do not match")
     generation = value.get("generation")
     if "generation" in value and (
@@ -84,7 +94,18 @@ def encode_local_message(value: dict[str, object]) -> str:
     message_type = value.get("type")
     if not isinstance(message_type, str) or message_type not in _MESSAGE_FIELDS:
         raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "unknown local message")
-    if frozenset(value) != _MESSAGE_FIELDS[message_type]:
+    allowed = _MESSAGE_FIELDS[message_type]
+    if message_type == "call.audio_ack" and "played_audio_ms" in value:
+        allowed = allowed | {"played_audio_ms"}
+        position = value["played_audio_ms"]
+        if (
+            value.get("direction") != "output"
+            or not isinstance(position, int)
+            or isinstance(position, bool)
+            or position < 0
+        ):
+            raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "invalid playback position")
+    if frozenset(value) != allowed:
         raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "local fields do not match")
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
@@ -97,15 +118,18 @@ def encode_pcm_frame(frame: LocalPcmFrame) -> bytes:
     limit = 65_536 if frame.direction is AudioDirection.INPUT else 262_144
     if len(frame.payload) > limit:
         raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "PCM frame is too large")
-    return PCM_HEADER.pack(
-        PCM_MAGIC,
-        PCM_VERSION,
-        int(frame.direction),
-        0,
-        frame.generation,
-        frame.sequence,
-        len(frame.payload),
-    ) + frame.payload
+    return (
+        PCM_HEADER.pack(
+            PCM_MAGIC,
+            PCM_VERSION,
+            int(frame.direction),
+            0,
+            frame.generation,
+            frame.sequence,
+            len(frame.payload),
+        )
+        + frame.payload
+    )
 
 
 def decode_pcm_frame(payload: bytes) -> LocalPcmFrame:

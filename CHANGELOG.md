@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.13（待完整离线验收）
+
+- 增加工具目录下发与回显校验、可选宿主自动工具循环、参数 schema 校验与 generation 去重。
+- 增加消息追加、指令更新、带外回复接口和不支持能力的明确错误。
+- 输出回执支持实际播放位置，提供已发送 PCM 字节、时长与实际播放位置快照。
+- Harness 精确钉版为私有 opt.216，Memory extra 保持 0.5.2；私有轮子、实际 schema、锁文件与完整门禁仍待补齐。
+
 ## 0.3.12
 
 - Allow product compositions to batch consecutive local PCM frames into one upstream audio write

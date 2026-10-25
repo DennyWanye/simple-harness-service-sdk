@@ -76,5 +76,7 @@
   "load_credentials",
   "provision_credentials",
   "validate_installed_bom",
-  "validate_metadata_requirements"
+  "validate_metadata_requirements",
+  "RealtimePlaybackStats",
+  "ToolDispatcher"
 ]

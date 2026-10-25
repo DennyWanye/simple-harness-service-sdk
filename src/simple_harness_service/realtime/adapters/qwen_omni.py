@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
+from typing import Literal
 
 from ..contracts import (
     OutputAudio,
@@ -28,6 +30,7 @@ from ..contracts import (
     TranscriptDelta,
 )
 from ..ports import DecodedProviderEvent
+from ..tool_schema import validate_tools
 from ._shared import decode_base64_pcm, parse_terminal_usage
 from ._shared import new_event_id as _event_id
 from ._shared import require_nonnegative_integer as _integer
@@ -64,8 +67,13 @@ class QwenOmniAdapter:
 
     def __init__(self, wire: QwenWireCodec | None = None) -> None:
         self._wire = wire or QwenWireCodec()
+        self._tools: list[dict[str, object]] = []
+        self._context_events: dict[str, Mapping[str, object] | None] = {}
+        self._instruction_update: tuple[str, str] | None = None
 
     def session_update(self, request: RealtimeOpenRequest) -> Mapping[str, object]:
+        validate_tools(request.tools, limit=self.capability.limits.tool_payload_bytes)
+        self._tools = deepcopy(request.tools)
         return {
             "event_id": _event_id(),
             "type": "session.update",
@@ -74,6 +82,7 @@ class QwenOmniAdapter:
                 "model": "qwen3.5-omni-flash-realtime-2026-03-15",
                 "voice": "Tina",
                 "instructions": request.instructions,
+                **({"tools": deepcopy(self._tools)} if self._tools else {}),
                 "audio": {
                     "input": {"format": {"type": "pcm", "sample_rate": 16_000}},
                     "output": {"format": {"type": "pcm", "sample_rate": 24_000}},
@@ -118,6 +127,32 @@ class QwenOmniAdapter:
         del call_id
         return {"event_id": _event_id(), "type": "response.create"}
 
+    def append_message(
+        self, text: str, *, role: Literal["user", "system"] = "user"
+    ) -> Mapping[str, object]:
+        identity = _event_id()
+        item: dict[str, object] = {
+            "id": identity,
+            "type": "message",
+            "role": role,
+            "content": [{"type": "input_text", "text": text}],
+        }
+        self._context_events[identity] = deepcopy(item)
+        return {
+            "event_id": identity,
+            "type": "conversation.item.create",
+            "item": item,
+        }
+
+    def update_instructions(self, text: str) -> Mapping[str, object]:
+        identity = _event_id()
+        self._instruction_update = (identity, text)
+        self._context_events[identity] = None
+        return {"event_id": identity, "type": "session.update", "session": {"instructions": text}}
+
+    def out_of_band_response(self, text: str) -> Mapping[str, object]:
+        raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "Qwen has no out-of-band response")
+
     def encode_client_event(self, event: Mapping[str, object]) -> str:
         return self._wire.encode_client_event(event)
 
@@ -126,11 +161,20 @@ class QwenOmniAdapter:
         event_type = _string(value.get("type"), "type")
         event_id = _string(value.get("event_id"), "event_id")
         if event_type == "session.updated":
+            if self._instruction_update is not None:
+                identity, text = self._instruction_update
+                if _object(value.get("session"), "session").get("instructions") == text:
+                    self._instruction_update = None
+                    self._context_events.pop(identity, None)
+                    return DecodedProviderEvent(
+                        event_id, session_acknowledged=True, context_ack_id=identity
+                    )
             self._validate_session_ack(value)
             return DecodedProviderEvent(
                 event_id,
                 provider_ready=True,
                 session_acknowledged=True,
+                tools_acknowledged=bool(self._tools),
             )
         if event_type == "input_audio_buffer.committed":
             return DecodedProviderEvent(event_id)
@@ -198,9 +242,7 @@ class QwenOmniAdapter:
             part = _object(value.get("part"), "part")
             if event_type.endswith("added"):
                 events = (OutputAudioStarted(*identity),) if part.get("type") == "audio" else ()
-                return DecodedProviderEvent(
-                    event_id, events, introduced_content=identity
-                )
+                return DecodedProviderEvent(event_id, events, introduced_content=identity)
             return DecodedProviderEvent(event_id, completed_content=identity)
         if event_type in {"response.text.delta", "response.text.done"}:
             identity = self._content_identity(value)
@@ -240,6 +282,9 @@ class QwenOmniAdapter:
             item_id = _string(value.get("item_id"), "item_id")
             output_index = _integer(value.get("output_index"), "output_index")
             call_id = _string(value.get("call_id"), "call_id")
+            arguments = value.get("arguments")
+            if not isinstance(arguments, str):
+                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "arguments must be a string")
             return DecodedProviderEvent(
                 event_id,
                 (
@@ -247,13 +292,26 @@ class QwenOmniAdapter:
                         response_id,
                         call_id,
                         _string(value.get("name"), "name"),
-                        _string(value.get("arguments"), "arguments"),
+                        arguments,
                     ),
                 ),
                 tool_call_identity=(response_id, item_id, output_index, call_id),
             )
         if event_type == "conversation.item.created":
             item = _object(value.get("item"), "item")
+            context_id = item.get("id")
+            if isinstance(context_id, str) and context_id in self._context_events:
+                expected = self._context_events[context_id]
+                if (
+                    expected is None
+                    or item.get("status") != "completed"
+                    or any(item.get(key) != value for key, value in expected.items())
+                ):
+                    raise RealtimeError(
+                        RealtimeErrorCode.PROTOCOL_ERROR, "context message mismatch"
+                    )
+                self._context_events.pop(context_id)
+                return DecodedProviderEvent(event_id, context_ack_id=context_id)
             raw_call_id = item.get("call_id")
             if item.get("type") == "function_call_output":
                 ack_identity = (
@@ -267,9 +325,7 @@ class QwenOmniAdapter:
                 ack_identity = None
             return DecodedProviderEvent(
                 event_id,
-                tool_ack_call_id=(
-                    ack_identity[3] if ack_identity is not None else None
-                ),
+                tool_ack_call_id=(ack_identity[3] if ack_identity is not None else None),
                 tool_ack_identity=ack_identity,
             )
         if event_type == "response.done":
@@ -277,6 +333,25 @@ class QwenOmniAdapter:
         if event_type == "error":
             error = _object(value.get("error"), "error")
             code, retryable = self._map_error(error)
+            rejected = error.get("event_id")
+            if (
+                rejected is None
+                and len(self._context_events) == 1
+                and (
+                    code is RealtimeErrorCode.INVALID_REQUEST
+                    or error.get("code") in {"InvalidParameter", "unsupported", "unsupported_event"}
+                )
+            ):
+                rejected = next(iter(self._context_events))
+            if isinstance(rejected, str) and rejected in self._context_events:
+                self._context_events.pop(rejected)
+                if self._instruction_update is not None and self._instruction_update[0] == rejected:
+                    self._instruction_update = None
+                return DecodedProviderEvent(
+                    event_id,
+                    (SessionFailed(RealtimeErrorCode.UNSUPPORTED, False),),
+                    rejected_event_id=rejected,
+                )
             return DecodedProviderEvent(event_id, (SessionFailed(code, retryable),))
         return DecodedProviderEvent(event_id)
 
@@ -289,8 +364,8 @@ class QwenOmniAdapter:
             _integer(value.get("content_index"), "content_index"),
         )
 
-    @staticmethod
     def _validate_session_ack(
+        self,
         value: Mapping[str, object],
     ) -> None:
         if set(value) != {"event_id", "type", "session"}:
@@ -308,11 +383,15 @@ class QwenOmniAdapter:
             "input_audio_transcription",
             "turn_detection",
         }
-        if set(session) != expected_keys:
+        if not expected_keys.issubset(session) or set(session) - expected_keys - {"tools"}:
             raise RealtimeError(
                 RealtimeErrorCode.PROTOCOL_ERROR,
                 "Qwen session fields do not match",
             )
+        if self._tools and "tools" not in session:
+            raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "Qwen did not acknowledge tools")
+        if "tools" in session and session["tools"] != self._tools:
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "Qwen tool catalog mismatch")
         _string(session.get("id"), "session.id")
         _string(session.get("instructions"), "session.instructions")
         expected = {
