@@ -99,6 +99,7 @@ class ManagedRealtimeSession:
         self._tool_tasks: set[asyncio.Task[None]] = set()
         self._context_lock = asyncio.Lock()
         self._context_pending: dict[str, asyncio.Future[None]] = {}
+        self._context_ack_id: str | None = None
         self.correlation = correlation
         self.generation = generation
         self._diagnostics = diagnostics or RealtimeDiagnostics()
@@ -179,6 +180,10 @@ class ManagedRealtimeSession:
     @property
     def is_current_generation(self) -> bool:
         return self._is_current_generation()
+
+    @property
+    def context_ack_id(self) -> str | None:
+        return self._context_ack_id
 
     async def send_audio(self, pcm: bytes) -> None:
         self._require_active()
@@ -714,10 +719,17 @@ class ManagedRealtimeSession:
                 stable_code=RealtimeErrorCode.UNSUPPORTED,
             )
             return True
-        if decoded.context_ack_id in self._context_pending:
-            assert decoded.context_ack_id is not None
-            pending = self._context_pending[decoded.context_ack_id]
+        context_request_id = decoded.context_request_id or decoded.context_ack_id
+        if context_request_id in self._context_pending:
+            assert context_request_id is not None
+            pending = self._context_pending[context_request_id]
             if not pending.done():
+                if (
+                    decoded.context_ack_id is not None
+                    and not decoded.session_acknowledged
+                    and decoded.introduced_response_id is None
+                ):
+                    self._context_ack_id = decoded.context_ack_id
                 pending.set_result(None)
         terminal_batch = any(isinstance(event, SessionFailed) for event in decoded.events)
         if decoded.provider_ready and not self._ready:

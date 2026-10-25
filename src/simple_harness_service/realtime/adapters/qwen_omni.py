@@ -71,6 +71,8 @@ class QwenOmniAdapter:
         self._tools: list[dict[str, object]] = []
         self._context_events: dict[str, Mapping[str, object] | None] = {}
         self._instruction_update: tuple[str, str] | None = None
+        self._context_seen_item_ids: set[str] = set()
+        self._context_seen_event_ids: set[str] = set()
 
     def session_update(self, request: RealtimeOpenRequest) -> Mapping[str, object]:
         validate_tools(request.tools, limit=self.capability.limits.tool_payload_bytes)
@@ -161,19 +163,29 @@ class QwenOmniAdapter:
         value = self._wire.decode_server_event(payload)
         event_type = _string(value.get("type"), "type")
         event_id = _string(value.get("event_id"), "event_id")
+        if event_id in self._context_seen_event_ids:
+            return DecodedProviderEvent(
+                event_id, session_acknowledged=event_type == "session.updated"
+            )
         if event_type == "session.updated":
             if self._instruction_update is not None:
                 context_identity, expected_instructions = self._instruction_update
+                instructions = _object(value.get("session"), "session").get("instructions")
                 if (
-                    _object(value.get("session"), "session").get("instructions")
-                    == expected_instructions
+                    not isinstance(instructions, str)
+                    or instructions.strip() != expected_instructions.strip()
                 ):
-                    self._instruction_update = None
-                    self._context_events.pop(context_identity, None)
-                    return DecodedProviderEvent(
-                        event_id, session_acknowledged=True, context_ack_id=context_identity
+                    raise RealtimeError(
+                        RealtimeErrorCode.PROTOCOL_ERROR, "context instructions mismatch"
                     )
+                self._instruction_update = None
+                self._context_events.pop(context_identity, None)
+                self._context_seen_event_ids.add(event_id)
+                return DecodedProviderEvent(
+                    event_id, session_acknowledged=True, context_request_id=context_identity
+                )
             normalized_tools = self._validate_session_ack(value)
+            self._context_seen_event_ids.add(event_id)
             return DecodedProviderEvent(
                 event_id,
                 provider_ready=True,
@@ -305,18 +317,10 @@ class QwenOmniAdapter:
         if event_type == "conversation.item.created":
             item = _object(value.get("item"), "item")
             context_id = item.get("id")
-            if isinstance(context_id, str) and context_id in self._context_events:
-                expected = self._context_events[context_id]
-                if (
-                    expected is None
-                    or item.get("status") != "completed"
-                    or any(item.get(key) != value for key, value in expected.items())
-                ):
-                    raise RealtimeError(
-                        RealtimeErrorCode.PROTOCOL_ERROR, "context message mismatch"
-                    )
-                self._context_events.pop(context_id)
-                return DecodedProviderEvent(event_id, context_ack_id=context_id)
+            if item.get("type") == "message" or (
+                isinstance(context_id, str) and context_id in self._context_events
+            ):
+                return self._context_message_created(event_id, item)
             raw_call_id = item.get("call_id")
             if item.get("type") == "function_call_output":
                 ack_identity = (
@@ -328,6 +332,7 @@ class QwenOmniAdapter:
                 )
             else:
                 ack_identity = None
+            self._context_seen_event_ids.add(event_id)
             return DecodedProviderEvent(
                 event_id,
                 tool_ack_call_id=(ack_identity[3] if ack_identity is not None else None),
@@ -350,6 +355,7 @@ class QwenOmniAdapter:
                 rejected = next(iter(self._context_events))
             if isinstance(rejected, str) and rejected in self._context_events:
                 self._context_events.pop(rejected)
+                self._context_seen_item_ids.add(rejected)
                 if self._instruction_update is not None and self._instruction_update[0] == rejected:
                     self._instruction_update = None
                 return DecodedProviderEvent(
@@ -359,6 +365,67 @@ class QwenOmniAdapter:
                 )
             return DecodedProviderEvent(event_id, (SessionFailed(code, retryable),))
         return DecodedProviderEvent(event_id)
+
+    def _context_message_created(
+        self, event_id: str, item: Mapping[str, object]
+    ) -> DecodedProviderEvent:
+        server_id = _string(item.get("id"), "item.id")
+        if server_id in self._context_seen_item_ids:
+            self._context_seen_event_ids.add(event_id)
+            return DecodedProviderEvent(event_id)
+        pending = next(
+            (
+                (identity, expected)
+                for identity, expected in self._context_events.items()
+                if expected is not None
+            ),
+            None,
+        )
+        content = item.get("content")
+        unrelated_audio = (
+            server_id not in self._context_events
+            and isinstance(content, list)
+            and bool(content)
+            and all(
+                isinstance(part, dict) and part.get("type") == "input_audio" for part in content
+            )
+        )
+        if pending is None or unrelated_audio:
+            if server_id in self._context_events:
+                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "unexpected context message")
+            self._context_seen_item_ids.add(server_id)
+            self._context_seen_event_ids.add(event_id)
+            return DecodedProviderEvent(event_id)
+        request_id, expected = pending
+        if (
+            item.get("type") != "message"
+            or item.get("status") != "completed"
+            or item.get("role") != expected["role"]
+            or (server_id in self._context_events and server_id != request_id)
+            or self._context_text_parts(content) != self._context_text_parts(expected["content"])
+        ):
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "context message mismatch")
+        self._context_events.pop(request_id)
+        self._context_seen_item_ids.update((request_id, server_id))
+        self._context_seen_event_ids.add(event_id)
+        return DecodedProviderEvent(
+            event_id, context_ack_id=server_id, context_request_id=request_id
+        )
+
+    @staticmethod
+    def _context_text_parts(content: object) -> tuple[tuple[str, str], ...]:
+        if not isinstance(content, list) or not content:
+            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "context content missing")
+        parts: list[tuple[str, str]] = []
+        for part in content:
+            if (
+                not isinstance(part, dict)
+                or part.get("type") != "input_text"
+                or not isinstance(part.get("text"), str)
+            ):
+                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "context content mismatch")
+            parts.append(("input_text", part["text"]))
+        return tuple(parts)
 
     @staticmethod
     def _content_identity(value: Mapping[str, object]) -> tuple[str, str, int, int]:

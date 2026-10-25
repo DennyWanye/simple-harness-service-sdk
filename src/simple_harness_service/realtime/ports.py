@@ -35,6 +35,7 @@ class DecodedProviderEvent:
     tool_catalog_normalized: bool = False
     context_ack_id: str | None = None
     rejected_event_id: str | None = None
+    context_request_id: str | None = None
 
 
 class ToolDispatcher(Protocol):
@@ -99,6 +100,9 @@ class RealtimeProviderAdapter(Protocol):
 class RealtimeSession(Protocol):
     @property
     def is_current_generation(self) -> bool: ...
+
+    @property
+    def context_ack_id(self) -> str | None: ...
 
     async def __aenter__(self) -> RealtimeSession: ...
 

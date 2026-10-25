@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.15
+
+- Qwen 消息确认按最早待确认请求的角色、input_text 类型与正文匹配，支持服务端分配或保留原 item ID，并保留原请求的确认关联。
+- 会话的只读 context_ack_id 暴露最近已确认消息的服务端 ID；重复、迟到或越序回显不误确认后续消息，工具结果与输入音频项目继续走各自路径。
+- Qwen instructions 确认按去首尾空白后的内容比较，历史回灌不触发回复，播报在有效确认后仅续答一次。
+
 ## 0.3.14
 
 - Qwen 工具回显按 function 名称、required 集合与 properties 键集合确认，支持中继规范化后的 function 包裹；非语义差异仅记无正文诊断，缺失、额外或不匹配工具报 unsupported。

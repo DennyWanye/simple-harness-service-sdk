@@ -31,7 +31,7 @@ def test_public_api_snapshot() -> None:
 
 def test_compatibility_bom_and_installed_harness_provenance() -> None:
     bom = load_bom()
-    assert bom["service"]["version"] == "0.3.14"
+    assert bom["service"]["version"] == "0.3.15"
     assert bom["harness"]["version"] == "0.13.0.dev20260925"
     assert bom["memory"]["version"] == "0.5.2"
     assert bom["harness"]["execution_schema"] == 5
@@ -47,7 +47,7 @@ def test_compatibility_bom_and_installed_harness_provenance() -> None:
     )
     assert bom["memory"]["memory_schema"] == SCHEMA_VERSION
     assert validate_installed_bom(include_memory=True) == {
-        "service": "0.3.14",
+        "service": "0.3.15",
         "harness": metadata.version("simple-harness-sdk"),
         "memory": "0.5.2",
     }

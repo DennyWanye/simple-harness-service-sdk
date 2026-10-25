@@ -1,0 +1,30 @@
+{
+  "history": {
+    "text": "An earlier user request\nAn earlier answer",
+    "echo": {
+      "type": "conversation.item.created",
+      "event_id": "event_history_created",
+      "item": {
+        "id": "item_provider_history",
+        "type": "message",
+        "status": "completed",
+        "role": "user",
+        "content": [{"type": "input_text", "text": "An earlier user request\nAn earlier answer"}]
+      }
+    }
+  },
+  "announcement": {
+    "text": "The report is ready",
+    "echo": {
+      "type": "conversation.item.created",
+      "event_id": "event_announcement_created",
+      "item": {
+        "id": "item_provider_announcement",
+        "type": "message",
+        "status": "completed",
+        "role": "user",
+        "content": [{"type": "input_text", "text": "The report is ready"}]
+      }
+    }
+  }
+}

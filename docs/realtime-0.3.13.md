@@ -1,4 +1,4 @@
-# Realtime 0.3.13 / 0.3.14 接口与交接
+# Realtime 0.3.13～0.3.15 接口与交接
 
 本版源码补充工具目录、可选自动工具循环、上下文注入与播放统计。Qwen 真线路能力仍待中继恢复后确认。OpenAI 适配器只用于离线编码与 fixture 校验，未开放真实连接。
 
@@ -32,9 +32,13 @@ await session.update_instructions("Answer briefly.", trigger_response=False)
 await session.out_of_band_response("Summarize the current task.")
 ```
 
-`append_message` 默认 `role="user"`，只允许 `user`、`system`。编码为 `conversation.item.create(message/input_text)`，收到与所请求角色、内容和完成状态一致的 item 回执后，按 `trigger_response` 决定是否请求回复。
+`append_message` 默认 `role="user"`，只允许 `user`、`system`。编码为 `conversation.item.create(message/input_text)`。0.3.15 起，Qwen 以发送顺序选出最早待确认消息，并核对 message 类型、completed 状态、角色、每段 input_text 的类型与完整正文；服务端可以另分配 item ID，也可以保留原 ID。消息正文不去空白、不仅凭文本匹配，也不能跳过较早请求去确认后续消息。
 
-Qwen 的 `update_instructions` 编码为第二次 `session.update(instructions)`；收到包含对应 instructions 的 `session.updated` 后，按开关决定是否发送 `response.create`。OpenAI 离线适配器先更新 session instructions，确认后可发 `response.create(instructions)`，因此 `trigger_response=False` 能更新指令而不生成回复。
+解码结果用 `context_request_id` 保留原调用关联，`context_ack_id` 保存真实服务端消息 ID。`RealtimeSession.context_ack_id` 是只读的最近已确认消息 ID，首次确认前为 None；instructions 更新不覆盖最近的消息 ID。方法成功返回后可读取该 ID 供后续引用。`append_message` 本身的返回值仍为 None。
+
+有效确认之后才按 `trigger_response` 决定是否请求回复：False 用于历史回灌而不自动回答，True 只续答一次。正文、角色、类型或状态不符时失败且不触发 response.create；同一会话已确认的服务端/原请求 ID 与已处理事件 ID 都去重，重复或迟到回显不再次消费消息队列。去重依赖提供方消息/事件 ID 的稳定身份，不将同正文的全新 ID 解释为跨连接重传证明。普通 input_audio 项目和工具结果确认不消费待确认文本消息，旧 generation 的回显不允许触发新回复。
+
+Qwen 的 `update_instructions` 编码为第二次 `session.update(instructions)`；收到 instructions 去首尾空白后与请求内容相同的 `session.updated` 后，按开关决定是否发送 `response.create`。OpenAI 离线适配器先更新 session instructions，确认后可发 `response.create(instructions)`，因此 `trigger_response=False` 能更新指令而不生成回复。
 
 同一会话的注入串行进行，等待回执期间接收循环继续运行。与注入请求关联的上游拒绝映射为 `unsupported`，写入无内容诊断，并使当前方法抛出同一错误。Qwen 只有一个待确认注入时，无关联 ID 的请求类型拒绝也映射为 `unsupported`；认证、限流等其他错误保留原分类。回执超时为 `timeout` 并终结会话，避免在结果不明时自动重发。
 
