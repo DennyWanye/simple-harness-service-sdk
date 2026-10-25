@@ -2,7 +2,7 @@
 
 2026-10-25：阶段 2 源码与完整离线门禁已通过。Python 3.13 同环境可导入 `simple_harness`、`agent_orchestrator`、`simple_harness_service`、`simple_harness_service.realtime`；编排包随 opt.216 轮子提供。实测 Harness execution schema 5、Memory schema 4；两个依赖轮子的 SHA-256 与安装来源已核验。
 
-本仓库全套 410 条测试通过，严格 mypy 的 43 个源文件通过，ruff、公开接口、架构门禁和四包 authority 同步检查通过。正式候选绑定源码提交，并携带两个依赖轮子和三个消费端锁；具体制品散列与复现结果见[阶段 2 记录](plans/2026-10-25-stage2/阶段2-记录.md)。
+本仓库全套 410 条测试通过，严格 mypy 的 43 个源文件通过，ruff、公开接口、架构门禁和四包 authority 同步检查通过。正式候选绑定源码提交，并携带两个依赖轮子和三个消费端锁；正式候选源码为 `8ce257d6bbcffa4f745a12279d89dac88736299f`，轮子 SHA-256 为 `de11691051d373440cdf9165b4c2a52e188204ef4b830b81341baa6d16d0c346`，清单 SHA-256 为 `85ab775587aea0ea48699a9819a78f8eef48728ef159a27d415af1034d0f28d2`；候选目录 `dist/candidate-0.3.13/`。三个轮子及 sdist 的 twine 检查 4 项通过，新 Python 3.13 环境四包导入与完整安装 BOM 通过。具体制品散列与复现结果见[阶段 2 记录](plans/2026-10-25-stage2/阶段2-记录.md)。
 
 Memory 0.5.2 的元数据仍声明 Harness `<0.7`，因此全 extra 的 `uv lock` 不可解析；保留原 extra，按[构建说明](docs/build-and-release.md)先安装私有 Harness，再以 `--no-deps` 安装 Memory 和本包。原 `uv.lock` 是历史快照，不能直接用于同步当前组合。正式候选的三个 Realtime 运行锁独立解析并验证。Linux ARM64 因 deepseek-recipe 必需轮子要求，将最低基线明确为 glibc ≥ 2.28；本次只验证跨平台依赖解析，不代表 Linux 真机执行通过。
 
