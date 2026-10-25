@@ -3,7 +3,7 @@
 Thin authenticated service and transport framework for Simple Harness SDK. Harness remains the
 only durable command and execution authority; this package owns no database or execution worker.
 
-0.3.13 新增工具目录、可选自动工具循环、上下文注入及播放位置统计；离线验收状态见
+0.3.14 修复中继工具回显规范化，并放宽 Harness 主线依赖；工具循环、上下文注入和播放位置接口见
 [接口与交接说明](docs/realtime-0.3.13.md)。`RealtimeClient` 负责会话顺序、有界队列、
 打断状态、工具回执和稳定事件；产品提供麦克风、播放和界面策略，选择组合配置，
 无需解析 Qwen 或 OpenAI 的原生 JSON。
@@ -23,7 +23,7 @@ fields; sink failures never change session behavior.
 
 Four frozen authority packs are shipped as package data and as a deterministic cross-language
 bundle. A release manifest binds their root digest, three Python consumer locks, and the exact
-three-SDK release unit: service `0.3.13`, Harness `0.13.0.dev20260925+opt.216`, and Memory `0.5.2`. Harness remains the
+three-SDK release unit: service `0.3.14`, Harness `>=0.13.0.dev20260925`, and Memory `0.5.2`. Harness remains the
 only durable command authority; Realtime adds no database or execution worker.
 
 The 0.2.x terminal behavior remains compatible. Interactive TTYs receive command completion,
@@ -47,4 +47,4 @@ are indexed in [`ARCHITECTURE/index.md`](ARCHITECTURE/index.md).
 
 ## 私有安装组合
 
-Harness 使用精确版本 `==0.13.0.dev20260925+opt.216`，通过 `--find-links` 指向宿主的 `simple_harness/backend/vendor/` 或其在当前仓库内的副本。Memory extra 仍为 0.5.2。opt.216 同时提供 `agent_orchestrator`。BOM、同环境导入与 410 条测试已验收；Memory 元数据仍钉旧 Harness，需按[构建说明](docs/build-and-release.md)使用分步 `--no-deps` 安装，不使用历史 `uv.lock` 同步该组合。
+Harness 使用 `>=0.13.0.dev20260925`，通过 `--find-links` 指向 `build/vendor/`，接受 `+opt.N` 本地版本。BOM 记录主线下限与 execution schema 5，返回实际安装版本；正式候选单独冻结本次实测轮子的版本与 SHA。Memory extra 仍为 0.5.2，其旧 Harness 元数据约束需要按[构建说明](docs/build-and-release.md)分步 `--no-deps` 安装，不用历史 `uv.lock` 同步当前组合。

@@ -92,8 +92,8 @@ def _valid_candidate_manifest() -> dict[str, Any]:
         "schema": "simple-harness-service-candidate-manifest-v2",
         "package": {
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.13",
-            "planned_tag": "v0.3.13",
+            "version": "0.3.14",
+            "planned_tag": "v0.3.14",
             "requires_python": ">=3.11",
         },
         "source": {"commit": "0" * 40, "source_date_epoch": 0},
@@ -340,16 +340,16 @@ def test_release_scripts_pass_strict_mypy() -> None:
 
 def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None:
     candidate = _load_build_module()
-    wheel = tmp_path / "simple_harness_service_sdk-0.3.13-py3-none-any.whl"
+    wheel = tmp_path / "simple_harness_service_sdk-0.3.14-py3-none-any.whl"
     wheel.write_bytes(b"candidate-wheel-bytes")
 
     unit = candidate._sdk_release_unit(
         metadata={
             "distribution": "simple-harness-service-sdk",
-            "version": "0.3.13",
+            "version": "0.3.14",
             "requires_python": ">=3.11",
         },
-        planned_tag="v0.3.13",
+        planned_tag="v0.3.14",
         wheel=wheel,
     )
 
@@ -360,13 +360,15 @@ def test_three_sdk_release_unit_and_future_download_urls(tmp_path: Path) -> None
         "memory",
     ]
     assert [member["version"] for member in unit["members"]] == [
-        "0.3.13",
-        "0.13.0.dev20260925+opt.216",
+        "0.3.14",
+        json.loads((ROOT / "src/simple_harness_service/compatibility-bom.json").read_text())[
+            "harness"
+        ]["candidate"]["version"],
         "0.5.2",
     ]
     assert unit["members"][0]["download_url"] == (
         "https://github.com/DennyWanye/simple-harness-service-sdk/releases/download/"
-        "v0.3.13/simple_harness_service_sdk-0.3.13-py3-none-any.whl"
+        "v0.3.14/simple_harness_service_sdk-0.3.14-py3-none-any.whl"
     )
     assert all(
         member["download_url"].startswith(("https://github.com/", "wheelhouse:"))
@@ -382,6 +384,7 @@ def test_candidate_dependency_wheels_require_exact_bytes(tmp_path: Path) -> None
         wheel = tmp_path / f"{role}.whl"
         wheel.write_bytes(role.encode())
         bom[role] = {"wheel": wheel.name, "sha256": hashlib.sha256(wheel.read_bytes()).hexdigest()}
+    bom["harness"] = {"candidate": bom["harness"]}
     wheels = candidate.dependency_wheels(bom, tmp_path)
     assert set(wheels) == {"harness", "memory"}
     wheels["harness"].write_bytes(b"changed")
@@ -396,3 +399,31 @@ def test_candidate_manifest_accepts_bundled_private_wheel(tmp_path: Path) -> Non
     candidate._write_candidate_manifest(
         tmp_path / "manifest.json", manifest, expected_target_ids=candidate.EXPECTED_TARGET_IDS
     )
+
+
+def test_target_locks_freeze_the_measured_candidate_harness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    candidate = _load_build_module()
+    bom = json.loads((ROOT / "src/simple_harness_service/compatibility-bom.json").read_text())
+    version = bom["harness"]["candidate"]["version"]
+    calls: list[tuple[str, ...]] = []
+
+    def run(*args: str, **kwargs: Any) -> str:
+        calls.append(args)
+        destination = Path(args[args.index("--output-file") + 1])
+        destination.write_text(f"simple-harness-sdk=={version} --hash=sha256:{SHA256}\n")
+        return ""
+
+    monkeypatch.setattr(candidate, "run", run)
+    candidate.compile_target_locks(
+        tmp_path / "locks",
+        policy={"dependency_cutoff": "2026-10-25T00:00:00Z"},
+        targets=[
+            {"id": "test", "python_version": "3.13", "python_platform": "aarch64-apple-darwin"}
+        ],
+        env={},
+        harness_version=version,
+    )
+    constraint = Path(calls[0][calls[0].index("--constraint") + 1])
+    assert constraint.read_text() == f"simple-harness-sdk=={version}\n"

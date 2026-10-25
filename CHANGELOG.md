@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.14
+
+- Qwen 工具回显按 function 名称、required 集合与 properties 键集合确认，支持中继规范化后的 function 包裹；非语义差异仅记无正文诊断，缺失、额外或不匹配工具报 unsupported。
+- Harness 依赖改为 `>=0.13.0.dev20260925`，BOM 的运行兼容规则与候选轮子快照分开，允许后续本地版本并实测校验 execution schema 5。
+- 候选仍携带实际核验的轮子；三平台运行锁通过候选约束文件冻结该次版本，不把候选 opt 号写回产品依赖。
+
 ## 0.3.13
 
 - 增加工具目录下发与回显校验、可选宿主自动工具循环、参数 schema 校验与 generation 去重。

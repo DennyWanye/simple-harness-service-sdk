@@ -1,4 +1,4 @@
-# Realtime 0.3.13 接口与离线交接
+# Realtime 0.3.13 / 0.3.14 接口与交接
 
 本版源码补充工具目录、可选自动工具循环、上下文注入与播放统计。Qwen 真线路能力仍待中继恢复后确认。OpenAI 适配器只用于离线编码与 fixture 校验，未开放真实连接。
 
@@ -8,7 +8,7 @@
 
 为避免离线环境引入新的运行依赖，schema 使用明确的受限子集：`type`（含类型列表）、`properties`、`required`、`additionalProperties`（布尔值或子 schema）、`items`、`enum`、`const`、`minimum`、`maximum`、`minLength`、`maxLength`、`minItems`、`maxItems`、`anyOf`、`oneOf`、`allOf`、`title`、`description`。嵌套最多 32 层；`$ref`、远程 schema、正则等其他关键词直接拒绝。请求格式或 schema 错误抛 `ValueError`；协商阶段的目录超限抛 `RealtimeError(INVALID_REQUEST)`。
 
-Qwen 在初次 `session.update` 下发非空目录。初次 `session.updated` 必须完整回显同一目录，缺少目录报 `unsupported`，目录不一致报 `protocol_error`。只有通过确认后才产生 `SessionReady(tools_acknowledged=True)`；空目录不要求工具回显，该标志为 `False`。
+Qwen 在初次 `session.update` 下发非空目录。0.3.14 起，初次 `session.updated` 按语义确认目录：function 名称集合、每个工具的 `parameters.required` 集合及 `properties` 键集合相同即可；兼容平铺工具和中继的 `{type, function:{…}}` 包裹。描述空白、默认值、additionalProperties、字段或工具顺序等非语义差异不阻断，只产生 `session.tools.normalized` 无正文诊断。缺失、额外、重复或语义不匹配工具报 `unsupported`。只有通过确认后才产生 `SessionReady(tools_acknowledged=True)`；空目录不要求工具回显，该标志为 `False`。
 
 宿主可向 `RealtimeClient(..., tool_dispatcher=dispatcher)` 注入 `ToolDispatcher`：
 
@@ -48,17 +48,20 @@ Qwen 的 `update_instructions` 编码为第二次 `session.update(instructions)`
 
 ## 同环境安装与元数据限制
 
-Harness 精确钉版为 `simple-harness-sdk==0.13.0.dev20260925+opt.216`；PEP 440 的本地版本号不能用于 `>=`。`memory` extra 维持原来的 Memory 0.5.2 URL 与 SHA-256。宿主私有轮子目录为 `simple_harness/backend/vendor/`。在宿主侧或把轮子复制到本仓库 `vendor/` 后，示意安装如下：
+Harness 依赖为 `simple-harness-sdk>=0.13.0.dev20260925`，不把本地版本号放入范围下限，因此 `+opt.217/218` 等可匹配。BOM 主线下限为 `0.13.0.dev20260925`，本地版本以安装时实测为准，并检查实际 execution schema=5；候选实测版本及 SHA 单独存于 `harness.candidate`。`memory` extra 维持原来的 Memory 0.5.2 URL 与 SHA-256。宿主私有轮子目录为 `simple_harness/backend/vendor/`。在宿主侧或把轮子复制到本仓库 `vendor/` 后，示意安装如下：
 
 ```bash
 SDK_WHEELS="$PWD/build/vendor"
 uv pip install --python .venv/bin/python --no-deps \
-  "$SDK_WHEELS/simple_harness_sdk-0.13.0.dev20260925+opt.216-py3-none-any.whl" \
+  --find-links "$SDK_WHEELS" \
+  'simple-harness-sdk>=0.13.0.dev20260925' \
   "$SDK_WHEELS/simple_harness_memory_sdk-0.5.2-py3-none-any.whl"
 uv pip install --python .venv/bin/python --no-deps -e .
 .venv/bin/python -c 'import simple_harness, agent_orchestrator, simple_harness_service, simple_harness_service.realtime'
 ```
 
-opt.216 轮子本身已包含 `agent_orchestrator`，无需另装编排轮子。上方示意安装请使用[构建说明](build-and-release.md)中的实际分步命令；Memory 0.5.2 的 `simple-harness-sdk<0.7` 元数据约束仍存在，需要显式 `--no-deps`。
+本次实测 Harness 轮子已包含 `agent_orchestrator`，无需另装编排轮子。上方示意安装请使用[构建说明](build-and-release.md)中的实际分步命令；Memory 0.5.2 的 `simple-harness-sdk<0.7` 元数据约束仍存在，需要显式 `--no-deps`。
 
 2026-10-25 已实测确认四个包同环境导入，Harness execution schema 为 5，Memory schema 为 4。BOM 已写入实际轮子 SHA-256，移除待核验状态。安装后的来源验证支持与 BOM 文件名及 SHA 同时相符的本地轮子，Memory 的原始 URL 与 SHA 继续保留。完整测试、严格类型和候选复现检查结果见[阶段记录](../plans/2026-10-25-stage2/阶段2-记录.md)。
+
+0.3.14 的来源校验不再将候选 opt 号当作所有安装的唯一版本。安装候选实测版本时继续精确核对冻结 SHA；其他满足下限的本地版本需登记其自身轮子名称和 archive SHA，再核对实际 schema。其他版本的登记散列不等于已与候选快照散列比较，私有轮子仍由宿主提供。

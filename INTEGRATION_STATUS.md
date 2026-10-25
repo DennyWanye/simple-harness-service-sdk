@@ -1,3 +1,11 @@
+# Service SDK 0.3.14 状态
+
+0.3.14 修复两处阶段 3a 真线路阻断：Qwen 工具目录按 function 名称和参数键集合语义确认，兼容中继包裹与非语义规范化；Harness 产品依赖改为 `>=0.13.0.dev20260925`，实际本地版本和 schema 安装时验证。BOM 与候选快照分开，正式候选仍冻结轮子字节与三平台锁。
+
+真实回显仅从用户授权的 phase0/s02 样本读取工具结构，测试未复制原始日志、转写、音频或凭据。本次实际环境已升级到 opt.217，相关测试 120 条、全套 423 条均通过，严格 mypy 43 源文件及 ruff、公开接口、架构、authority 检查通过；候选结果以[阶段记录的 0.3.14 节](plans/2026-10-25-stage2/阶段2-记录.md)为准。真线路复验仍等 Claude 用探针跑，不发版、不推送。
+
+以下为 0.3.13 与更早版本的历史结果，不能用于替代 0.3.14 的验收。
+
 # Service SDK 0.3.13 阶段 2 状态
 
 2026-10-25：阶段 2 源码与完整离线门禁已通过。Python 3.13 同环境可导入 `simple_harness`、`agent_orchestrator`、`simple_harness_service`、`simple_harness_service.realtime`；编排包随 opt.216 轮子提供。实测 Harness execution schema 5、Memory schema 4；两个依赖轮子的 SHA-256 与安装来源已核验。

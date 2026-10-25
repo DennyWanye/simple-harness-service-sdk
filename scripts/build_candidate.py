@@ -370,9 +370,14 @@ def compile_target_locks(
     policy: dict[str, Any],
     targets: list[dict[str, str]],
     env: dict[str, str],
+    harness_version: str,
     wheelhouse: Path = ROOT / "build/vendor",
 ) -> list[dict[str, str]]:
     output.mkdir(parents=True)
+    if re.fullmatch(r"[A-Za-z0-9.!+_-]+", harness_version) is None:
+        raise RuntimeError("candidate Harness version invalid")
+    constraint = output / "candidate-harness-constraint.txt"
+    constraint.write_text(f"simple-harness-sdk=={harness_version}\n", encoding="utf-8")
     result: list[dict[str, str]] = []
     for target in targets:
         filename = f"realtime-lock-{target['id']}.txt"
@@ -382,6 +387,8 @@ def compile_target_locks(
             "pip",
             "compile",
             str(PROJECT_FILE),
+            "--constraint",
+            str(constraint),
             "--find-links",
             str(wheelhouse),
             "--no-emit-find-links",
@@ -421,6 +428,10 @@ def dependency_wheels(bom: Mapping[str, Any], wheelhouse: Path) -> dict[str, Pat
         item = bom.get(role)
         if not isinstance(item, dict):
             raise RuntimeError("dependency wheel BOM invalid")
+        if role == "harness":
+            item = item.get("candidate")
+            if not isinstance(item, dict):
+                raise RuntimeError("candidate Harness wheel BOM invalid")
         filename, digest = item.get("wheel"), item.get("sha256")
         if (
             not isinstance(filename, str)
@@ -489,6 +500,10 @@ def _sdk_release_unit(
         if not isinstance(item, dict):
             raise RuntimeError("three-SDK compatibility BOM mismatch")
         distribution = item.get("distribution")
+        if role == "harness":
+            item = item.get("candidate")
+            if not isinstance(item, dict):
+                raise RuntimeError("candidate Harness release unit invalid")
         version = item.get("version")
         url = item.get("url")
         digest = item.get("sha256")
@@ -594,7 +609,12 @@ def build(
         lock_roots = [temporary / "locks-first", temporary / "locks-second"]
         lock_records = [
             compile_target_locks(
-                root, policy=policy, targets=targets, env=env, wheelhouse=wheelhouse
+                root,
+                policy=policy,
+                targets=targets,
+                env=env,
+                wheelhouse=wheelhouse,
+                harness_version=str(harness["candidate"]["version"]),
             )
             for root in lock_roots
         ]

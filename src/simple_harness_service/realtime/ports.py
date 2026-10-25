@@ -32,6 +32,7 @@ class DecodedProviderEvent:
     tool_ack_identity: tuple[str, str, str, str, str] | None = None
     tool_call_identity: tuple[str, str, int, str] | None = None
     tools_acknowledged: bool = False
+    tool_catalog_normalized: bool = False
     context_ack_id: str | None = None
     rejected_event_id: str | None = None
 

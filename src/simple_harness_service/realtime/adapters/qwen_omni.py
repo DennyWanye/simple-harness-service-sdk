@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from copy import deepcopy
 from typing import Literal
@@ -172,12 +173,13 @@ class QwenOmniAdapter:
                     return DecodedProviderEvent(
                         event_id, session_acknowledged=True, context_ack_id=context_identity
                     )
-            self._validate_session_ack(value)
+            normalized_tools = self._validate_session_ack(value)
             return DecodedProviderEvent(
                 event_id,
                 provider_ready=True,
                 session_acknowledged=True,
                 tools_acknowledged=bool(self._tools),
+                tool_catalog_normalized=normalized_tools,
             )
         if event_type == "input_audio_buffer.committed":
             return DecodedProviderEvent(event_id)
@@ -370,7 +372,7 @@ class QwenOmniAdapter:
     def _validate_session_ack(
         self,
         value: Mapping[str, object],
-    ) -> None:
+    ) -> bool:
         if set(value) != {"event_id", "type", "session"}:
             raise RealtimeError(
                 RealtimeErrorCode.PROTOCOL_ERROR,
@@ -393,8 +395,15 @@ class QwenOmniAdapter:
             )
         if self._tools and "tools" not in session:
             raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "Qwen did not acknowledge tools")
-        if "tools" in session and session["tools"] != self._tools:
-            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "Qwen tool catalog mismatch")
+        normalized_tools = False
+        if "tools" in session:
+            if self._tool_catalog_signature(session["tools"]) != self._tool_catalog_signature(
+                self._tools
+            ):
+                raise RealtimeError(
+                    RealtimeErrorCode.UNSUPPORTED, "Qwen tool catalog not acknowledged"
+                )
+            normalized_tools = json.dumps(session["tools"]) != json.dumps(self._tools)
         _string(session.get("id"), "session.id")
         _string(session.get("instructions"), "session.instructions")
         expected = {
@@ -424,6 +433,44 @@ class QwenOmniAdapter:
                 RealtimeErrorCode.PROTOCOL_ERROR,
                 "Qwen turn detection acknowledgement mismatch",
             )
+        return normalized_tools
+
+    @staticmethod
+    def _tool_catalog_signature(
+        tools: object,
+    ) -> dict[str, tuple[frozenset[str], frozenset[str]]]:
+        signature: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
+        if not isinstance(tools, list):
+            raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "Qwen tool catalog is not a list")
+        for tool in tools:
+            if not isinstance(tool, dict) or tool.get("type") != "function":
+                raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "Qwen function tool missing")
+            function = tool.get("function", tool)
+            if not isinstance(function, dict):
+                raise RealtimeError(RealtimeErrorCode.UNSUPPORTED, "Qwen function tool malformed")
+            name = function.get("name")
+            parameters = function.get("parameters", {})
+            if (
+                not isinstance(name, str)
+                or not name
+                or name in signature
+                or not isinstance(parameters, dict)
+            ):
+                raise RealtimeError(
+                    RealtimeErrorCode.UNSUPPORTED, "Qwen function identity mismatch"
+                )
+            required = parameters.get("required", [])
+            properties = parameters.get("properties", {})
+            if (
+                not isinstance(required, list)
+                or not all(isinstance(key, str) for key in required)
+                or not isinstance(properties, dict)
+            ):
+                raise RealtimeError(
+                    RealtimeErrorCode.UNSUPPORTED, "Qwen function parameters malformed"
+                )
+            signature[name] = (frozenset(required), frozenset(properties))
+        return signature
 
     @staticmethod
     def _response_done(event_id: str, value: Mapping[str, object]) -> DecodedProviderEvent:

@@ -103,9 +103,7 @@ def test_qwen_tool_catalog_acknowledgement(echo: str) -> None:
     else:
         with pytest.raises(RealtimeError) as caught:
             adapter.decode_server_event(json.dumps(ack))
-        assert caught.value.code is (
-            RealtimeErrorCode.UNSUPPORTED if echo == "missing" else RealtimeErrorCode.PROTOCOL_ERROR
-        )
+        assert caught.value.code is RealtimeErrorCode.UNSUPPORTED
 
 
 @pytest.mark.parametrize("adapter", [QwenOmniAdapter(), OpenAIRealtimeAdapter()])

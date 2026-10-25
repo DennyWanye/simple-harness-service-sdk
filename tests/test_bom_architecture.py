@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import importlib.metadata as metadata
 import json
 import subprocess
 from dataclasses import fields
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 from simple_harness import CommandReceipt as HarnessCommandReceipt
 from simple_harness_memory.backends.sqlite import SCHEMA_VERSION
 
@@ -16,6 +18,7 @@ from simple_harness_service import (
     validate_installed_bom,
     validate_metadata_requirements,
 )
+from simple_harness_service import bom as bom_module
 from simple_harness_service.bom import _validate_direct_url
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,8 +31,8 @@ def test_public_api_snapshot() -> None:
 
 def test_compatibility_bom_and_installed_harness_provenance() -> None:
     bom = load_bom()
-    assert bom["service"]["version"] == "0.3.13"
-    assert bom["harness"]["version"] == "0.13.0.dev20260925+opt.216"
+    assert bom["service"]["version"] == "0.3.14"
+    assert bom["harness"]["version"] == "0.13.0.dev20260925"
     assert bom["memory"]["version"] == "0.5.2"
     assert bom["harness"]["execution_schema"] == 5
     assert "verification_status" not in bom["harness"]
@@ -44,8 +47,8 @@ def test_compatibility_bom_and_installed_harness_provenance() -> None:
     )
     assert bom["memory"]["memory_schema"] == SCHEMA_VERSION
     assert validate_installed_bom(include_memory=True) == {
-        "service": "0.3.13",
-        "harness": "0.13.0.dev20260925+opt.216",
+        "service": "0.3.14",
+        "harness": metadata.version("simple-harness-sdk"),
         "memory": "0.5.2",
     }
 
@@ -64,18 +67,48 @@ def test_local_wheel_provenance_requires_exact_filename_and_digest() -> None:
             _validate_direct_url("harness", item, invalid)
 
 
-def test_private_harness_requirement_is_exact() -> None:
+def test_private_harness_requirement_accepts_mainline_floor() -> None:
     bom = load_bom()
     memory = bom["memory"]
     requirements = [
-        "simple-harness-sdk==0.13.0.dev20260925+opt.216",
+        "simple-harness-sdk>=0.13.0.dev20260925",
         f"simple-harness-memory-sdk @ {memory['url']}#sha256={memory['sha256']} ; "
         "extra == 'memory'",
     ]
     validate_metadata_requirements(requirements)
-    requirements[0] = "simple-harness-sdk>=0.13.0.dev20260925"
+    requirements[0] = "simple-harness-sdk==0.13.0.dev20260925+opt.216"
     with pytest.raises(ServiceError, match="harness metadata pin drift"):
         validate_metadata_requirements(requirements)
+
+
+@pytest.mark.parametrize("local", ["opt.216", "opt.217", "opt.218"])
+def test_installed_harness_local_version_is_observed(
+    local: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = metadata.distribution
+    version = f"0.13.0.dev20260925+{local}"
+    candidate = load_bom()["harness"]["candidate"]
+    digest = candidate["sha256"] if candidate["version"] == version else "e" * 64
+
+    class HarnessDistribution:
+        def __init__(self) -> None:
+            self.version = version
+
+        def read_text(self, name: str) -> str:
+            return json.dumps(
+                {
+                    "url": f"file:///private/simple_harness_sdk-{version}-py3-none-any.whl",
+                    "archive_info": {"hashes": {"sha256": digest}},
+                }
+            )
+
+    monkeypatch.setattr(
+        bom_module.metadata,
+        "distribution",
+        lambda name: HarnessDistribution() if name == "simple-harness-sdk" else original(name),
+    )
+    assert validate_installed_bom()["harness"] == version
+    assert Version(version).public == load_bom()["harness"]["version"]
 
 
 def test_thin_architecture_gate() -> None:

@@ -698,6 +698,11 @@ class ManagedRealtimeSession:
         if not self._is_current_generation():
             self.late_event_count += 1
             return True
+        if decoded.tool_catalog_normalized:
+            self._record_provider_diagnostic(
+                RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,
+                operation_kind="session.tools.normalized",
+            )
         if decoded.rejected_event_id in self._context_pending:
             assert decoded.rejected_event_id is not None
             pending = self._context_pending[decoded.rejected_event_id]

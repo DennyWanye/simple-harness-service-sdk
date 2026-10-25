@@ -2,17 +2,22 @@
   "schema": "simple-harness-service-bom-v1",
   "service": {
     "distribution": "simple-harness-service-sdk",
-    "version": "0.3.13",
+    "version": "0.3.14",
     "python": ">=3.11"
   },
   "harness": {
     "distribution": "simple-harness-sdk",
-    "version": "0.13.0.dev20260925+opt.216",
+    "version": "0.13.0.dev20260925",
+    "requirement": ">=0.13.0.dev20260925",
+    "local_version_policy": "installed",
     "execution_schema": 5,
-    "wheel": "simple_harness_sdk-0.13.0.dev20260925+opt.216-py3-none-any.whl",
-    "provenance": "private-wheel",
-    "url": "wheelhouse:simple_harness_sdk-0.13.0.dev20260925+opt.216-py3-none-any.whl",
-    "sha256": "e57c03fc912e5c9a2fc3fa91c1e16c44f235a9a2d09af8665495968b225b2d34"
+    "candidate": {
+      "version": "0.13.0.dev20260925+opt.217",
+      "wheel": "simple_harness_sdk-0.13.0.dev20260925+opt.217-py3-none-any.whl",
+      "provenance": "private-wheel",
+      "url": "wheelhouse:simple_harness_sdk-0.13.0.dev20260925+opt.217-py3-none-any.whl",
+      "sha256": "23623352e321600e39f9b9756ea7aa269e90a2c9ec1fb73aed1d4198283c16e1"
+    }
   },
   "memory": {
     "distribution": "simple-harness-memory-sdk",

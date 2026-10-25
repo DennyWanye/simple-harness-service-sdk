@@ -7,9 +7,13 @@ import importlib.resources as resources
 import json
 import re
 from collections.abc import Mapping
+from dataclasses import fields
 from pathlib import PurePosixPath
 from typing import Any
 from urllib.parse import unquote, urlparse
+
+from packaging.version import InvalidVersion, Version
+from simple_harness import CommandReceipt as HarnessCommandReceipt
 
 from .contracts import ServiceError, ServiceErrorCode
 
@@ -37,7 +41,7 @@ def validate_metadata_requirements(requires_dist: list[str]) -> None:
                     r"^simple[-_]harness[-_]sdk(?:\s|[=<>!~@;]|$)", requirement, re.IGNORECASE
                 )
             ]
-            expected = f"{item['distribution']}=={item['version']}"
+            expected = f"{item['distribution']}>={item['version']}"
             if len(matches) != 1 or matches[0].replace(" ", "").lower() != expected.lower():
                 raise ServiceError(ServiceErrorCode.INTERNAL, "harness metadata pin drift")
             continue
@@ -66,14 +70,58 @@ def validate_installed_bom(*, include_memory: bool = False) -> dict[str, str]:
             continue
         item = _item(bom, component)
         distribution = metadata.distribution(str(item["distribution"]))
-        if distribution.version != item["version"]:
+        if component == "harness":
+            try:
+                compatible = Version(distribution.version) >= Version(str(item["version"]))
+            except InvalidVersion:
+                compatible = False
+            schema = next(
+                (
+                    field.default
+                    for field in fields(HarnessCommandReceipt)
+                    if field.name == "execution_schema_version"
+                ),
+                None,
+            )
+            if not compatible or schema != item["execution_schema"]:
+                raise ServiceError(ServiceErrorCode.INTERNAL, "harness version/schema drift")
+        elif distribution.version != item["version"]:
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} version drift")
         direct_url = distribution.read_text("direct_url.json")
         if direct_url is None:
             raise ServiceError(ServiceErrorCode.INTERNAL, f"{component} source provenance missing")
-        _validate_direct_url(component, item, direct_url)
+        if component == "harness":
+            _validate_harness_provenance(item, distribution.version, direct_url)
+        else:
+            _validate_direct_url(component, item, direct_url)
         result[component] = distribution.version
     return result
+
+
+def _validate_harness_provenance(
+    item: Mapping[str, object], installed_version: str, direct_url: str
+) -> None:
+    candidate = item.get("candidate")
+    if isinstance(candidate, dict) and candidate.get("version") == installed_version:
+        _validate_direct_url("harness", candidate, direct_url)
+        return
+    try:
+        provenance = json.loads(direct_url)
+        digest = provenance["archive_info"]["hashes"]["sha256"]
+    except (ValueError, KeyError, TypeError):
+        raise ServiceError(ServiceErrorCode.INTERNAL, "harness SHA provenance missing") from None
+    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise ServiceError(ServiceErrorCode.INTERNAL, "harness SHA provenance malformed")
+    filename = f"simple_harness_sdk-{installed_version}-py3-none-any.whl"
+    _validate_direct_url(
+        "harness",
+        {
+            "wheel": filename,
+            "url": f"wheelhouse:{filename}",
+            "sha256": digest,
+        },
+        direct_url,
+    )
 
 
 def _validate_direct_url(component: str, item: Mapping[str, object], direct_url: str) -> None:
