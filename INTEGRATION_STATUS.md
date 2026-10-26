@@ -2,7 +2,7 @@
 
 0.3.20 修复输入语音 item 被 created 角色元数据覆盖的问题：speech_started/committed 和 message/input_audio 建立用户来源，role=assistant/in_progress 不再将其重标为助手。矛盾记 item_role_metadata_mismatch，携带 item_id 和受限声明角色；助手新增身份仍要求带有效 response_id 的 output_item.added。
 
-新增 origin 保存首次来源，后续元数据不改变来源或刷新旧登记代数；source 查询语义及旧快照读取保持。新增 21 项反例覆盖 live7 五分支、阶段 0 完整轮次与边界；0.3.19 五表 43 项继续通过。相关 945 项、全套 1159 项全部通过，严格 mypy 44 源文件、ruff、11 文件格式、公开接口、架构和 authority 门禁通过。接口见[角色合同](docs/realtime-0.3.20.md)，候选结果见[阶段记录 0.3.20 节](plans/2026-10-25-stage2/阶段2-记录.md)。
+新增 origin 保存首次来源，后续元数据不改变来源或刷新旧登记代数；source 查询语义及旧快照读取保持。新增 21 项反例覆盖 live7 五分支、阶段 0 完整轮次与边界；0.3.19 五表 43 项继续通过。相关 945 项、全套 1159 项全部通过，严格 mypy 44 源文件、ruff、11 文件格式、公开接口、架构和 authority 门禁通过。接口见[角色合同](docs/realtime-0.3.20.md)，正式候选源码 `dada251bfc3be14012d901c4ea99bb6a43a66ea4`，目录 `dist/candidate-0.3.20/`，wheel SHA-256 `f1e091bfe6656148d9541035bc0b0231e26636acf9b25ca9cc16c8ce1bcad3f0`；两次构建字节一致，twine 4 项、新环境四包导入/完整 BOM 及安装后 751 项合同全部通过。候选结果见[阶段记录 0.3.20 节](plans/2026-10-25-stage2/阶段2-记录.md)。
 
 原始帧角色矛盾在阶段 0 首日已存在，SDK 直接兼容，不等待中继改字段。回放使用脱敏帧和合成正文/PCM，不冒充五条分支的真线路复验；Host 后续业务、恢复和独立评审仍需 Claude 执行。本次不改 Host、不发版、不推送。
 
