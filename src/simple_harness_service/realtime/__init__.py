@@ -14,6 +14,7 @@ from .contracts import (
     RealtimeError,
     RealtimeErrorCode,
     RealtimeEvent,
+    RealtimeFailureContext,
     RealtimeFeature,
     RealtimeFeatureSet,
     RealtimeLimits,
@@ -87,13 +88,17 @@ __all__ = (
     "RealtimeError",
     "RealtimeErrorCode",
     "RealtimeEvent",
+    "RealtimeFailureContext",
     "RealtimeFeature",
     "RealtimeFeatureSet",
+    "RealtimeIdentityTable",
+    "RealtimeItemIdentity",
     "RealtimeLimits",
     "RealtimeOpenRequest",
     "RealtimePlaybackStats",
     "RealtimeProfile",
     "RealtimeProviderAdapter",
+    "RealtimeRecoveryState",
     "RealtimeSession",
     "RealtimeTransport",
     "ResponseFinished",
@@ -115,3 +120,5 @@ __all__ = (
     "encode_local_message",
     "encode_pcm_frame",
 )
+
+from .recovery import RealtimeIdentityTable, RealtimeItemIdentity, RealtimeRecoveryState

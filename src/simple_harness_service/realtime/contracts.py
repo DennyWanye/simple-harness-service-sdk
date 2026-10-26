@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TypeAlias
@@ -25,6 +26,139 @@ class RealtimeErrorCode(StrEnum):
     INTERNAL = "internal"
 
 
+_SAFE_FAILURE_FIELDS = frozenset(
+    {
+        "type",
+        "event_id",
+        "related_event_id",
+        "response_id",
+        "item_id",
+        "call_id",
+        "id",
+        "output_index",
+        "content_index",
+        "session",
+        "response",
+        "item",
+        "part",
+        "content",
+        "role",
+        "status",
+        "code",
+        "retryable",
+        "fatal",
+        "message_class",
+        "retry_after_ms",
+        "transcript",
+        "delta",
+        "audio",
+        "text",
+        "instructions",
+        "tools",
+        "arguments",
+        "name",
+        "initiator",
+        "disposition",
+        "active_response",
+        "settlement",
+        "remaining_ms",
+        "error",
+        "control_version",
+        "sdk_protocol_version",
+        "relay_session_id",
+        "provider",
+        "wire_protocol",
+        "wire_version",
+        "capability",
+        "capability_digest",
+        "expires_at_ms",
+        "reason",
+        "usage",
+    }
+)
+_FAILURE_REASONS = frozenset(
+    {
+        "validation_failed",
+        "missing_identity",
+        "invalid_integer",
+        "invalid_object",
+        "invalid_string",
+        "invalid_identity",
+        "invalid_range",
+        "unknown_enum",
+        "non_terminal_error",
+        "field_set",
+        "missing_field",
+        "unresolved_item_missing_response_id",
+        "suspected_assistant_missing_response_id",
+    }
+)
+_STABLE_METADATA = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
+
+
+@dataclass(frozen=True, slots=True)
+class RealtimeFailureContext:
+    stage: str
+    event_type: str
+    generation: int
+    field_names: tuple[str, ...] = ()
+    validation_field: str | None = None
+    validation_reason: str | None = None
+    related_event_id: str | None = None
+    client_event_type: str | None = None
+    control_code: RealtimeErrorCode | None = None
+    message_class: str | None = None
+    retryable: bool | None = None
+    fatal: bool | None = None
+    retry_after_ms: int | None = None
+
+    def __post_init__(self) -> None:
+        for value in (
+            self.stage,
+            self.event_type,
+            self.validation_reason,
+            self.client_event_type,
+            self.message_class,
+        ):
+            if value is not None and (
+                not isinstance(value, str) or _STABLE_METADATA.fullmatch(value) is None
+            ):
+                raise ValueError("invalid failure metadata")
+        if (
+            not isinstance(self.generation, int)
+            or isinstance(self.generation, bool)
+            or self.generation < 1
+        ):
+            raise ValueError("invalid failure generation")
+        if not isinstance(self.field_names, tuple) or any(
+            v not in _SAFE_FAILURE_FIELDS for v in self.field_names
+        ):
+            raise ValueError("invalid failure field names")
+        if (
+            self.validation_field is not None
+            and self.validation_field
+            not in _SAFE_FAILURE_FIELDS
+            | {"fields", "response.id", "item.id", "item.call_id", "session.id"}
+        ):
+            raise ValueError("invalid validation field")
+        if self.related_event_id is not None and (
+            not isinstance(self.related_event_id, str)
+            or re.fullmatch(r"[!-~]{1,128}", self.related_event_id) is None
+        ):
+            raise ValueError("invalid related event identity")
+        for flag in (self.retryable, self.fatal):
+            if flag is not None and not isinstance(flag, bool):
+                raise ValueError("invalid control boolean")
+        if self.retry_after_ms is not None and (
+            not isinstance(self.retry_after_ms, int)
+            or isinstance(self.retry_after_ms, bool)
+            or not 0 <= self.retry_after_ms <= 3_600_000
+        ):
+            raise ValueError("invalid retry interval")
+        if self.control_code is not None:
+            object.__setattr__(self, "control_code", RealtimeErrorCode(self.control_code))
+
+
 class RealtimeError(RuntimeError):
     """Stable error raised before open, or for invalid product operations."""
 
@@ -34,7 +168,13 @@ class RealtimeError(RuntimeError):
         message: str | None = None,
         *,
         retryable: bool = False,
+        validation_field: str | None = None,
+        validation_reason: str | None = None,
+        failure: RealtimeFailureContext | None = None,
     ) -> None:
+        self.validation_field = validation_field
+        self.validation_reason = validation_reason
+        self.failure = failure
         self.code = RealtimeErrorCode(code)
         self.retryable = retryable
         super().__init__(message or self.code.value)
@@ -388,6 +528,10 @@ class SessionClosed:
     settlement: str = "none"
     related_event_id: str | None = None
     kind: str = field(default="SessionClosed", init=False)
+    control_code: RealtimeErrorCode | None = field(default=None, compare=False)
+    message_class: str | None = field(default=None, compare=False)
+    client_event_type: str | None = field(default=None, compare=False)
+    failure: RealtimeFailureContext | None = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "initiator", CloseInitiator(self.initiator))
@@ -403,6 +547,13 @@ class SessionFailed:
     code: RealtimeErrorCode
     retryable: bool
     kind: str = field(default="SessionFailed", init=False)
+    control_code: RealtimeErrorCode | None = field(default=None, compare=False)
+    message_class: str | None = field(default=None, compare=False)
+    related_event_id: str | None = field(default=None, compare=False)
+    client_event_type: str | None = field(default=None, compare=False)
+    fatal: bool | None = field(default=None, compare=False)
+    retry_after_ms: int | None = field(default=None, compare=False)
+    failure: RealtimeFailureContext | None = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "code", RealtimeErrorCode(self.code))

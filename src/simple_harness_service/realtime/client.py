@@ -9,10 +9,13 @@ import secrets
 import time
 
 from .contracts import (
+    _FAILURE_REASONS,
     RealtimeError,
     RealtimeErrorCode,
+    RealtimeFailureContext,
     RealtimeOpenRequest,
     RealtimeProfile,
+    SessionFailed,
 )
 from .observability import (
     RealtimeDiagnostics,
@@ -20,8 +23,9 @@ from .observability import (
     RealtimeDiagnosticStage,
 )
 from .ports import CredentialMinter, RealtimeProviderAdapter, RealtimeTransport, ToolDispatcher
+from .recovery import RealtimeRecoveryState
 from .relay_control import RelayControlCodec
-from .session import ManagedRealtimeSession
+from .session import ManagedRealtimeSession, _safe_event_fields
 from .tool_schema import validate_tools
 
 _CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
@@ -55,6 +59,7 @@ class RealtimeClient:
         close_timeout: float = 5.0,
         tool_dispatcher: ToolDispatcher | None = None,
         tool_dispatch_timeout: float = 30.0,
+        recovery_state: RealtimeRecoveryState | None = None,
     ) -> None:
         if profile.capability != adapter.capability:
             raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "profile/adapter mismatch")
@@ -76,6 +81,7 @@ class RealtimeClient:
         self._tool_dispatcher = tool_dispatcher
         self._tool_dispatch_timeout = tool_dispatch_timeout
         self._seen_tool_calls: dict[str, set[str]] = {}
+        self._recovery_state = recovery_state or RealtimeRecoveryState()
         self._generation = 0
         self._generation_lock = asyncio.Lock()
         self._correlation_lock = asyncio.Lock()
@@ -131,9 +137,23 @@ class RealtimeClient:
         try:
             session = await self._open_reserved_inner(request, correlation)
         except Exception as error:
+            failure = error.failure if isinstance(error, RealtimeError) else None
+            if failure is None:
+                failure = RealtimeFailureContext(
+                    "open.failure",
+                    _failure_operation_kind(error, "open.failure"),
+                    max(
+                        self._generation + 1,
+                        self._recovery_state.identity_table(request.external_session_id).generation
+                        + 1,
+                    ),
+                )
+                if isinstance(error, RealtimeError):
+                    error.failure = failure
             self._diagnostics.emit(
                 correlation=correlation,
                 stage=RealtimeDiagnosticStage.OPEN_FAILED,
+                failure=failure,
                 stable_code=_stable_code(error),
                 operation_kind=_failure_operation_kind(error, "open.failure"),
                 duration_ms=_duration_ms(started_ns),
@@ -239,7 +259,42 @@ class RealtimeClient:
             )
             if created is None:
                 raise RealtimeError(RealtimeErrorCode.UNAVAILABLE, retryable=True)
-            self._control.validate_session_created(created, credential, open_event_id)
+            try:
+                self._control.validate_session_created(created, credential, open_event_id)
+            except RealtimeError as error:
+                event_type, fields = _safe_event_fields(created)
+                control = None
+                with contextlib.suppress(RealtimeError):
+                    control = self._control.decode_runtime_event(created)
+                error.failure = RealtimeFailureContext(
+                    "control.open",
+                    event_type,
+                    max(
+                        self._generation + 1,
+                        self._recovery_state.identity_table(request.external_session_id).generation
+                        + 1,
+                    ),
+                    fields,
+                    validation_field=error.validation_field
+                    if error.validation_field in fields
+                    else "fields",
+                    validation_reason=error.validation_reason
+                    if error.validation_reason in _FAILURE_REASONS
+                    else "validation_failed",
+                    related_event_id=control.related_event_id
+                    if isinstance(control, SessionFailed)
+                    else open_event_id,
+                    client_event_type="tokenseller.session.open",
+                    control_code=control.control_code
+                    if isinstance(control, SessionFailed)
+                    else None,
+                    message_class=control.message_class
+                    if isinstance(control, SessionFailed)
+                    else None,
+                    retryable=control.retryable if isinstance(control, SessionFailed) else None,
+                    fatal=control.fatal if isinstance(control, SessionFailed) else None,
+                )
+                raise
             async with self._generation_lock:
                 self._generation += 1
                 generation = self._generation
@@ -261,7 +316,11 @@ class RealtimeClient:
                     request.external_session_id, set()
                 ),
                 is_current_generation=lambda: self._generation == generation,
+                recovery_state=self._recovery_state,
+                client_events={open_event_id: "tokenseller.session.open"},
             )
+            generation = session.generation
+            self._generation = generation
             await asyncio.wait_for(session.start(), timeout=self._open_timeout)
             return session
         except TimeoutError as error:

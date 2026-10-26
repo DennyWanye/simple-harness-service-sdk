@@ -14,7 +14,12 @@ from ..contracts import RealtimeError, RealtimeErrorCode, ResponseUsage
 
 def require_string(value: object, name: str) -> str:
     if not isinstance(value, str) or not value:
-        raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, f"{name} is required")
+        raise RealtimeError(
+            RealtimeErrorCode.PROTOCOL_ERROR,
+            f"{name} is required",
+            validation_field=name,
+            validation_reason="invalid_string",
+        )
     return value
 
 
@@ -27,19 +32,34 @@ def optional_identifier(value: object) -> str | None:
 def require_identifier(value: object, name: str) -> str:
     identity = optional_identifier(value)
     if identity is None:
-        raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, f"{name} is required")
+        raise RealtimeError(
+            RealtimeErrorCode.PROTOCOL_ERROR,
+            f"{name} is required",
+            validation_field=name,
+            validation_reason="missing_identity",
+        )
     return identity
 
 
 def require_nonnegative_integer(value: object, name: str) -> int:
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, f"{name} must be an integer")
+        raise RealtimeError(
+            RealtimeErrorCode.PROTOCOL_ERROR,
+            f"{name} must be an integer",
+            validation_field=name,
+            validation_reason="invalid_integer",
+        )
     return value
 
 
 def require_object(value: object, name: str) -> dict[str, Any]:
     if not isinstance(value, dict) or not all(isinstance(key, str) for key in value):
-        raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, f"{name} must be an object")
+        raise RealtimeError(
+            RealtimeErrorCode.PROTOCOL_ERROR,
+            f"{name} must be an object",
+            validation_field=name,
+            validation_reason="invalid_object",
+        )
     return value
 
 

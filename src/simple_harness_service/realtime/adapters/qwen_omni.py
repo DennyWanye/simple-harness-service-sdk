@@ -31,6 +31,7 @@ from ..contracts import (
     TranscriptDelta,
 )
 from ..ports import DecodedProviderEvent
+from ..recovery import RealtimeIdentityTable
 from ..tool_schema import validate_tools
 from ._shared import decode_base64_pcm, parse_terminal_usage
 from ._shared import new_event_id as _event_id
@@ -75,11 +76,19 @@ class QwenOmniAdapter:
         self._instruction_update: tuple[str, str] | None = None
         self._context_seen_item_ids: set[str] = set()
         self._context_seen_event_ids: set[str] = set()
-        self._user_item_ids: set[str] = set()
+        self.identity_table = RealtimeIdentityTable()
+        self.identity_table.begin_generation(1)
+        self._bound_identity = False
+
+    def bind_identity_table(self, table: RealtimeIdentityTable) -> None:
+        self.identity_table = table
+        self._bound_identity = True
 
     def session_update(self, request: RealtimeOpenRequest) -> Mapping[str, object]:
         validate_tools(request.tools, limit=self.capability.limits.tool_payload_bytes)
-        self._user_item_ids.clear()
+        if not self._bound_identity:
+            self.identity_table = RealtimeIdentityTable()
+            self.identity_table.begin_generation(1)
         self._tools = deepcopy(request.tools)
         return {
             "event_id": _event_id(),
@@ -171,6 +180,40 @@ class QwenOmniAdapter:
             return DecodedProviderEvent(
                 event_id, session_acknowledged=event_type == "session.updated"
             )
+        if event_type in {"response.output_item.added", "response.output_item.done"}:
+            nested = value.get("item")
+            if isinstance(nested, Mapping):
+                nested_id = _optional_id(nested.get("id"))
+                if nested_id is not None:
+                    role = nested.get(
+                        "role",
+                        "assistant" if _optional_id(value.get("response_id")) is not None else None,
+                    )
+                    if "role" in nested and (
+                        not isinstance(role, str) or role not in {"user", "assistant", "system"}
+                    ):
+                        raise RealtimeError(
+                            RealtimeErrorCode.PROTOCOL_ERROR,
+                            "invalid item role",
+                            validation_field="role",
+                            validation_reason="unknown_enum",
+                        )
+                    if isinstance(role, str) and role in {"assistant", "system"}:
+                        self.identity_table.register(
+                            nested_id,
+                            role="assistant" if role == "assistant" else "system",
+                            source="output_item",
+                            confirmed=False,
+                        )
+                    elif (
+                        role == "user"
+                        and nested.get("type") == "message"
+                        and nested.get("status") == "completed"
+                    ):
+                        self.identity_table.register(
+                            nested_id, role="user", source="output_item", confirmed=True
+                        )
+                        return DecodedProviderEvent(event_id)
         # Lifecycle events carry their scope in response.id. Item events must
         # be classified before any assistant content or audio is decoded.
         if event_type.startswith("response.") and event_type not in {
@@ -207,11 +250,18 @@ class QwenOmniAdapter:
                 tool_catalog_normalized=normalized_tools,
             )
         if event_type == "input_audio_buffer.committed":
-            self._user_item_ids.add(_id(value.get("item_id"), "item_id"))
+            self.identity_table.register(
+                _id(value.get("item_id"), "item_id"),
+                role="user",
+                source="committed",
+                confirmed=True,
+            )
             return DecodedProviderEvent(event_id)
         if event_type == "input_audio_buffer.speech_started":
             turn_id = _id(value.get("item_id"), "item_id")
-            self._user_item_ids.add(turn_id)
+            self.identity_table.register(
+                turn_id, role="user", source="speech_started", confirmed=False
+            )
             return DecodedProviderEvent(event_id, (SpeechStarted(turn_id),))
         if event_type == "input_audio_buffer.speech_stopped":
             turn_id = _id(value.get("item_id"), "item_id")
@@ -227,6 +277,7 @@ class QwenOmniAdapter:
             )
         if event_type == "conversation.item.input_audio_transcription.completed":
             turn_id = _id(value.get("item_id"), "item_id")
+            self.identity_table.register(turn_id, role="user", source="transcript", confirmed=True)
             transcript = value.get("transcript")
             # DashScope can close a very short VAD noise turn with an empty
             # transcript while continuing to generate the associated response.
@@ -391,8 +442,19 @@ class QwenOmniAdapter:
             if item_id is not None and nested_id is not None and item_id != nested_id:
                 raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "conflicting item identity")
             item_id = item_id if item_id is not None else nested_id
-        if item_id is None or item_id not in self._user_item_ids:
-            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "response_id is required")
+        if item_id is None or not self.identity_table.is_user(item_id):
+            identity = self.identity_table.lookup(item_id) if item_id is not None else None
+            reason = (
+                "suspected_assistant_missing_response_id"
+                if identity is not None and identity.role == "assistant"
+                else "unresolved_item_missing_response_id"
+            )
+            raise RealtimeError(
+                RealtimeErrorCode.PROTOCOL_ERROR,
+                "response_id is required",
+                validation_field="response_id",
+                validation_reason=reason,
+            )
         is_transcript = event_type in {
             "response.audio_transcript.delta",
             "response.audio_transcript.done",
@@ -440,6 +502,22 @@ class QwenOmniAdapter:
         if pending is None or unrelated_audio:
             if server_id in self._context_events:
                 raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "unexpected context message")
+            if (
+                unrelated_audio
+                and item.get("type") == "message"
+                and item.get("role") == "user"
+                and item.get("status") == "completed"
+            ):
+                self.identity_table.register(
+                    server_id, role="user", source="input_audio_item", confirmed=True
+                )
+            elif isinstance(item.get("role"), str) and item.get("role") in {"assistant", "system"}:
+                self.identity_table.register(
+                    server_id,
+                    role="assistant" if item.get("role") == "assistant" else "system",
+                    source="conversation_item",
+                    confirmed=False,
+                )
             self._context_seen_item_ids.add(server_id)
             self._context_seen_event_ids.add(event_id)
             return DecodedProviderEvent(event_id)
@@ -455,8 +533,14 @@ class QwenOmniAdapter:
         self._context_events.pop(request_id)
         self._context_seen_item_ids.update((request_id, server_id))
         self._context_seen_event_ids.add(event_id)
-        if expected["role"] == "user":
-            self._user_item_ids.add(server_id)
+        if expected["role"] in {"user", "system"}:
+            self.identity_table.register(
+                server_id,
+                role="user" if expected["role"] == "user" else "system",
+                source="context_ack",
+                confirmed=True,
+                aliases=(request_id,),
+            )
         return DecodedProviderEvent(
             event_id, context_ack_id=server_id, context_request_id=request_id
         )

@@ -78,5 +78,9 @@
   "validate_installed_bom",
   "validate_metadata_requirements",
   "RealtimePlaybackStats",
-  "ToolDispatcher"
+  "ToolDispatcher",
+  "RealtimeFailureContext",
+  "RealtimeIdentityTable",
+  "RealtimeItemIdentity",
+  "RealtimeRecoveryState"
 ]

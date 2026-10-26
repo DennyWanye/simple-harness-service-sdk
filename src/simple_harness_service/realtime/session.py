@@ -14,7 +14,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Literal, cast
 
+from .adapters._shared import strict_json_object
 from .contracts import (
+    _FAILURE_REASONS,
+    _SAFE_FAILURE_FIELDS,
     CloseDisposition,
     CloseInitiator,
     MintedRealtimeCredential,
@@ -26,6 +29,7 @@ from .contracts import (
     RealtimeError,
     RealtimeErrorCode,
     RealtimeEvent,
+    RealtimeFailureContext,
     RealtimeOpenRequest,
     ResponseFinished,
     ResponseStatus,
@@ -34,6 +38,7 @@ from .contracts import (
     SessionReady,
     ToolCallRequested,
     ToolCallState,
+    TranscriptCompleted,
 )
 from .observability import (
     RealtimeDiagnostics,
@@ -41,6 +46,7 @@ from .observability import (
     RealtimeDiagnosticStage,
 )
 from .ports import DecodedProviderEvent, RealtimeConnection, RealtimeProviderAdapter, ToolDispatcher
+from .recovery import RealtimeIdentityTable, RealtimeRecoveryState
 from .relay_control import RelayControlCodec
 from .tool_schema import matches_schema, parse_arguments, validate_tools
 
@@ -82,6 +88,8 @@ class ManagedRealtimeSession:
         seen_tool_calls: set[str] | None = None,
         is_current_generation: Callable[[], bool] | None = None,
         tool_dispatch_timeout: float = 30.0,
+        recovery_state: RealtimeRecoveryState | None = None,
+        client_events: Mapping[str, str] | None = None,
     ) -> None:
         if write_timeout <= 0 or tool_ack_timeout <= 0 or close_timeout <= 0:
             raise ValueError("Realtime timeouts must be positive")
@@ -91,8 +99,21 @@ class ManagedRealtimeSession:
         self._credential = credential
         self._request = deepcopy(request)
         self._tool_dispatcher = tool_dispatcher
-        self._seen_tool_calls = seen_tool_calls if seen_tool_calls is not None else set()
-        self._is_current_generation = is_current_generation or (lambda: True)
+        self._recovery_state = recovery_state or RealtimeRecoveryState()
+        self._identity_table = self._recovery_state.identity_table(request.external_session_id)
+        generation = self._recovery_state.begin_session(request.external_session_id, generation)
+        self._seen_tool_calls = self._recovery_state.tool_calls(request.external_session_id)
+        if seen_tool_calls is not None:
+            self._seen_tool_calls.update(seen_tool_calls)
+        self._external_seen_tool_calls = seen_tool_calls
+        self._completed_inputs = self._recovery_state.completed_inputs(request.external_session_id)
+        current: Callable[[], bool] = is_current_generation or (lambda: True)
+        self._is_current_generation: Callable[[], bool] = lambda: (
+            current() and self._identity_table.generation == generation
+        )
+        binder = getattr(self._adapter, "bind_identity_table", None)
+        if callable(binder):
+            binder(self._identity_table)
         if tool_dispatch_timeout <= 0:
             raise ValueError("tool dispatch timeout must be positive")
         self._tool_dispatch_timeout = tool_dispatch_timeout
@@ -151,6 +172,11 @@ class ManagedRealtimeSession:
         self.close_ack_mismatch_count = 0
         self._diagnostic_event_kinds: set[str] = set()
         self._terminal_error_code: RealtimeErrorCode | None = None
+        self._failure_context: RealtimeFailureContext | None = None
+        self._last_event_type = "session.start"
+        self._last_field_names: tuple[str, ...] = ()
+        self._sent_event_types: dict[str, str] = dict(client_events or {})
+        self._first_user_transcript = False
 
     async def start(self) -> None:
         try:
@@ -162,10 +188,14 @@ class ManagedRealtimeSession:
         if self._request.tools and not self.capability.features.tool_calling:
             raise RealtimeError(RealtimeErrorCode.UNSUPPORTED)
         update = self._adapter.session_update(self._request)
-        await asyncio.wait_for(
-            self._connection.send_text(self._adapter.encode_client_event(update)),
-            timeout=self._write_timeout,
+        self._remember_client_event(update)
+        self._diagnostics.emit(
+            correlation=self.correlation,
+            generation=self.generation,
+            stage=RealtimeDiagnosticStage.RECOVERY,
+            operation_kind="recovery.restored" if self.generation > 1 else "recovery.started",
         )
+        await self._send_runtime_event(update)
         self._receiver = asyncio.create_task(self._receive_loop())
 
     async def __aenter__(self) -> ManagedRealtimeSession:
@@ -184,6 +214,10 @@ class ManagedRealtimeSession:
     @property
     def context_ack_id(self) -> str | None:
         return self._context_ack_id
+
+    @property
+    def identity_table(self) -> RealtimeIdentityTable:
+        return self._identity_table
 
     async def send_audio(self, pcm: bytes) -> None:
         self._require_active()
@@ -264,14 +298,37 @@ class ManagedRealtimeSession:
         await asyncio.shield(attempt)
 
     async def append_message(
-        self, text: str, *, role: Literal["user", "system"] = "user", trigger_response: bool
+        self,
+        text: str,
+        *,
+        role: Literal["user", "system"] = "user",
+        trigger_response: bool,
+        idempotency_key: str | None = None,
     ) -> None:
         self._validate_context(text)
         if role not in {"user", "system"}:
             raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "invalid message role")
         async with self._context_lock:
+            if idempotency_key is not None:
+                digest = hashlib.sha256(
+                    json.dumps([text, role, trigger_response]).encode()
+                ).hexdigest()
+                prior = self._recovery_state.claim_message(
+                    self._request.external_session_id, idempotency_key, digest
+                )
+                if prior is not None:
+                    self._context_ack_id = prior
+                    self._diagnostics.emit(
+                        correlation=self.correlation,
+                        generation=self.generation,
+                        stage=RealtimeDiagnosticStage.RECOVERY,
+                        operation_kind="recovery.message_deduplicated",
+                    )
+                    return
             await self._inject_context(
-                self._adapter.append_message(text, role=role), trigger_response=trigger_response
+                self._adapter.append_message(text, role=role),
+                trigger_response=trigger_response,
+                idempotency_key=idempotency_key,
             )
 
     async def update_instructions(self, text: str, *, trigger_response: bool) -> None:
@@ -300,7 +357,13 @@ class ManagedRealtimeSession:
         ):
             raise RealtimeError(RealtimeErrorCode.INVALID_REQUEST, "invalid context text")
 
-    async def _inject_context(self, event: Mapping[str, object], *, trigger_response: bool) -> None:
+    async def _inject_context(
+        self,
+        event: Mapping[str, object],
+        *,
+        trigger_response: bool,
+        idempotency_key: str | None = None,
+    ) -> None:
         self._require_active()
         identity = cast(str, event["event_id"])
         acknowledgement: asyncio.Future[None] = asyncio.get_running_loop().create_future()
@@ -309,9 +372,14 @@ class ManagedRealtimeSession:
             await self._send_runtime_event(event)
             await asyncio.wait_for(acknowledgement, timeout=self._tool_ack_timeout)
             self._require_active()
+            if idempotency_key is not None and self._context_ack_id is not None:
+                self._recovery_state.confirm_message(
+                    self._request.external_session_id, idempotency_key, self._context_ack_id
+                )
             if trigger_response and event["type"] != "response.create":
                 await self._send_runtime_event(self._adapter.followup_response(""))
         except TimeoutError as error:
+            self._capture_failure("context.ack_timeout", event=event, related_event_id=identity)
             self._record_provider_diagnostic(
                 RealtimeDiagnosticStage.PROVIDER_EVENT_APPLY_FAILED,
                 operation_kind="context.ack_timeout",
@@ -319,7 +387,9 @@ class ManagedRealtimeSession:
             )
             await self._fail(RealtimeErrorCode.TIMEOUT, retryable=False)
             raise RealtimeError(
-                RealtimeErrorCode.TIMEOUT, "context acknowledgement timed out"
+                RealtimeErrorCode.TIMEOUT,
+                "context acknowledgement timed out",
+                failure=self._failure_context,
             ) from error
         finally:
             self._context_pending.pop(identity, None)
@@ -380,6 +450,7 @@ class ManagedRealtimeSession:
             event, _item_identity = self._adapter.tool_result(call_id, output)
             record.output = output
             record.ack = asyncio.Event()
+            self._remember_client_event(event)
             record.result_payload = self._adapter.encode_client_event(event)
             record.state = ToolCallState.RESULT_SENT
         if record.state is ToolCallState.RESULT_SENT:
@@ -390,28 +461,49 @@ class ManagedRealtimeSession:
                     timeout=self._write_timeout,
                 )
             except TimeoutError as error:
+                failure = self._record_attempt_failure(
+                    record.result_payload, RealtimeErrorCode.TIMEOUT
+                )
                 raise RealtimeError(
                     RealtimeErrorCode.TIMEOUT,
                     "tool result send is ambiguous; retry the same output",
                     retryable=True,
+                    failure=failure,
                 ) from error
             except Exception as error:
+                failure = self._record_attempt_failure(
+                    record.result_payload, RealtimeErrorCode.UNAVAILABLE
+                )
                 raise RealtimeError(
                     RealtimeErrorCode.UNAVAILABLE,
                     "tool result send is ambiguous; retry the same output",
                     retryable=True,
+                    failure=failure,
                 ) from error
             assert record.ack is not None
             try:
                 await asyncio.wait_for(record.ack.wait(), timeout=self._tool_ack_timeout)
             except TimeoutError as error:
+                result_event = json.loads(record.result_payload)
+                self._capture_failure(
+                    "tool.ack_timeout",
+                    event=result_event,
+                    related_event_id=result_event.get("event_id"),
+                )
+                self._record_provider_diagnostic(
+                    RealtimeDiagnosticStage.PROVIDER_EVENT_APPLY_FAILED,
+                    operation_kind="tool.ack_timeout",
+                    stable_code=RealtimeErrorCode.PROTOCOL_ERROR,
+                )
                 await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, retryable=False)
                 raise RealtimeError(
                     RealtimeErrorCode.PROTOCOL_ERROR,
                     "ambiguous tool result acknowledgement",
+                    failure=self._failure_context,
                 ) from error
         if record.state is ToolCallState.RESULT_ACKED:
             followup = self._adapter.followup_response(call_id)
+            self._remember_client_event(followup)
             record.followup_payload = self._adapter.encode_client_event(followup)
             record.state = ToolCallState.FOLLOWUP_REQUESTED
             if call_id not in self._followup_waiting:
@@ -424,25 +516,35 @@ class ManagedRealtimeSession:
                     timeout=self._write_timeout,
                 )
             except TimeoutError as error:
+                failure = self._record_attempt_failure(
+                    record.followup_payload, RealtimeErrorCode.TIMEOUT
+                )
                 raise RealtimeError(
                     RealtimeErrorCode.TIMEOUT,
                     "followup response send is ambiguous; retry the same output",
                     retryable=True,
+                    failure=failure,
                 ) from error
             except Exception as error:
+                failure = self._record_attempt_failure(
+                    record.followup_payload, RealtimeErrorCode.UNAVAILABLE
+                )
                 raise RealtimeError(
                     RealtimeErrorCode.UNAVAILABLE,
                     "followup response send is ambiguous; retry the same output",
                     retryable=True,
+                    failure=failure,
                 ) from error
 
     async def _send_runtime_event(self, event: Mapping[str, object]) -> None:
+        self._remember_client_event(event)
         try:
             await asyncio.wait_for(
                 self._connection.send_text(self._adapter.encode_client_event(event)),
                 timeout=self._write_timeout,
             )
         except TimeoutError as error:
+            self._capture_failure("provider.send", event=event)
             self._record_provider_diagnostic(
                 RealtimeDiagnosticStage.PROVIDER_SEND_FAILED,
                 operation_kind="transport.send.timeout",
@@ -453,16 +555,20 @@ class ManagedRealtimeSession:
                 RealtimeErrorCode.TIMEOUT,
                 "provider write timed out",
                 retryable=True,
+                failure=self._failure_context,
             ) from error
         except RealtimeError as error:
+            self._capture_failure("provider.send", event=event, error=error)
             self._record_provider_diagnostic(
                 RealtimeDiagnosticStage.PROVIDER_SEND_FAILED,
                 operation_kind=_transport_failure_kind(error),
                 stable_code=error.code,
             )
             await self._fail(error.code, retryable=error.retryable)
+            error.failure = self._failure_context
             raise
         except Exception as error:
+            self._capture_failure("provider.send", event=event)
             self._record_provider_diagnostic(
                 RealtimeDiagnosticStage.PROVIDER_SEND_FAILED,
                 operation_kind=_transport_failure_kind(error),
@@ -473,6 +579,7 @@ class ManagedRealtimeSession:
                 RealtimeErrorCode.UNAVAILABLE,
                 "provider write failed",
                 retryable=True,
+                failure=self._failure_context,
             ) from error
 
     async def close(self, *, reason: str = "client_hangup") -> None:
@@ -498,6 +605,7 @@ class ManagedRealtimeSession:
             generation=self.generation,
         )
         close_payload, close_event_id = self._control._build_bound_session_close(reason)
+        self._remember_client_event(json.loads(close_payload))
         self._pending_close_event_id = close_event_id
         self._close_ack = asyncio.get_running_loop().create_future()
         acknowledgement: SessionClosed | None = None
@@ -507,8 +615,14 @@ class ManagedRealtimeSession:
                 timeout=self._close_timeout,
             )
         except TimeoutError:
+            self._capture_failure(
+                "provider.send", event=json.loads(close_payload), related_event_id=close_event_id
+            )
             self._record_close_ack_timeout()
         except Exception:
+            self._capture_failure(
+                "provider.send", event=json.loads(close_payload), related_event_id=close_event_id
+            )
             self._record_close_ack_timeout()
         else:
             try:
@@ -531,6 +645,7 @@ class ManagedRealtimeSession:
             if acknowledgement is not None
             else SessionClosed(reason, CloseInitiator.CLIENT, CloseDisposition.CLEAN)
         )
+        terminal = dataclasses.replace(terminal, failure=self._failure_context)
         await self._emit_terminal_safe(terminal)
         self._record_terminal_diagnostic(terminal.disposition)
         self._diagnostics.emit(
@@ -553,6 +668,11 @@ class ManagedRealtimeSession:
         }
 
     def _record_close_ack_timeout(self) -> None:
+        self._capture_failure(
+            "close.ack_timeout",
+            event={"type": "tokenseller.session.close"},
+            related_event_id=self._pending_close_event_id,
+        )
         self.close_ack_timeout_count += 1
         started_ns = self._controlled_close_started_ns or self._created_ns
         self._diagnostics.emit(
@@ -585,6 +705,9 @@ class ManagedRealtimeSession:
                     try:
                         payload = await self._connection.receive_text()
                     except RealtimeError as error:
+                        self._capture_failure(
+                            "provider.receive", event={"type": "transport.receive"}, error=error
+                        )
                         self._record_provider_diagnostic(
                             RealtimeDiagnosticStage.PROVIDER_RECEIVE_FAILED,
                             operation_kind=_transport_failure_kind(error),
@@ -592,6 +715,9 @@ class ManagedRealtimeSession:
                         )
                         raise
                     except Exception as error:
+                        self._capture_failure(
+                            "provider.receive", event={"type": "transport.receive"}
+                        )
                         self._record_provider_diagnostic(
                             RealtimeDiagnosticStage.PROVIDER_RECEIVE_FAILED,
                             operation_kind=_transport_failure_kind(error),
@@ -601,8 +727,13 @@ class ManagedRealtimeSession:
                     if payload is None:
                         if self._closing:
                             return
+                        self._capture_failure("provider.receive", event={"type": "transport.eof"})
                         await self._fail(RealtimeErrorCode.UNAVAILABLE, retryable=True)
                         return
+                    if not self._is_current_generation() and not self._closing:
+                        self.late_event_count += 1
+                        continue
+                    self._last_event_type, self._last_field_names = _safe_event_fields(payload)
                     operation_kind, fingerprint = _provider_event_metadata(payload)
                     if operation_kind not in self._diagnostic_event_kinds:
                         self._diagnostic_event_kinds.add(operation_kind)
@@ -611,7 +742,22 @@ class ManagedRealtimeSession:
                             operation_kind=operation_kind,
                             fingerprint=fingerprint,
                         )
-                    control_event = self._control.decode_runtime_event(payload)
+                    try:
+                        control_event = self._control.decode_runtime_event(payload)
+                    except RealtimeError as error:
+                        related, client_type = self._known_client_reference(payload)
+                        self._capture_failure(
+                            "control.decode",
+                            error=error,
+                            related_event_id=related,
+                            client_event_type=client_type,
+                        )
+                        self._record_provider_diagnostic(
+                            RealtimeDiagnosticStage.CONTROL_EVENT_DECODE_FAILED,
+                            operation_kind="control.validation_failed",
+                            stable_code=error.code,
+                        )
+                        raise
                     if control_event is not None:
                         if self._closing:
                             if isinstance(control_event, SessionClosed):
@@ -629,6 +775,28 @@ class ManagedRealtimeSession:
                             self.late_event_count += 1
                             continue
                         if isinstance(control_event, SessionFailed):
+                            related = control_event.related_event_id
+                            client_type = (
+                                self._sent_event_types.get(related) if related is not None else None
+                            )
+                            self._capture_failure(
+                                "control.terminal",
+                                related_event_id=related,
+                                client_event_type=client_type,
+                                control_code=control_event.control_code,
+                                message_class=control_event.message_class,
+                                retryable=control_event.retryable,
+                                fatal=control_event.fatal,
+                                retry_after_ms=control_event.retry_after_ms,
+                            )
+                            control_event = dataclasses.replace(
+                                control_event, client_event_type=client_type
+                            )
+                            self._record_provider_diagnostic(
+                                RealtimeDiagnosticStage.CONTROL_TERMINATED,
+                                operation_kind="control.terminal",
+                                stable_code=control_event.code,
+                            )
                             await self._finish_terminal(
                                 control_event,
                                 CloseInitiator.RELAY,
@@ -638,6 +806,17 @@ class ManagedRealtimeSession:
                             )
                             return
                         if isinstance(control_event, SessionClosed):
+                            client_type = self._sent_event_types.get(
+                                control_event.related_event_id or ""
+                            )
+                            self._capture_failure(
+                                "control.closed",
+                                related_event_id=control_event.related_event_id,
+                                client_event_type=client_type,
+                            )
+                            control_event = dataclasses.replace(
+                                control_event, client_event_type=client_type
+                            )
                             await self._finish_terminal(
                                 control_event,
                                 control_event.initiator,
@@ -654,6 +833,7 @@ class ManagedRealtimeSession:
                     try:
                         decoded = self._adapter.decode_server_event(payload)
                     except RealtimeError as error:
+                        self._capture_failure("adapter.decode", error=error)
                         self._record_provider_diagnostic(
                             RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED,
                             operation_kind=operation_kind,
@@ -662,6 +842,7 @@ class ManagedRealtimeSession:
                         )
                         raise
                     except Exception:
+                        self._capture_failure("adapter.decode")
                         self._record_provider_diagnostic(
                             RealtimeDiagnosticStage.PROVIDER_EVENT_DECODE_FAILED,
                             operation_kind=operation_kind,
@@ -742,6 +923,12 @@ class ManagedRealtimeSession:
                 ):
                     self._context_ack_id = decoded.context_ack_id
                 pending.set_result(None)
+                self._diagnostics.emit(
+                    correlation=self.correlation,
+                    generation=self.generation,
+                    stage=RealtimeDiagnosticStage.RECOVERY,
+                    operation_kind="recovery.context_acknowledged",
+                )
         terminal_batch = any(isinstance(event, SessionFailed) for event in decoded.events)
         if decoded.provider_ready and not self._ready:
             self._ready = True
@@ -839,6 +1026,31 @@ class ManagedRealtimeSession:
             await self._fail(RealtimeErrorCode.PROTOCOL_ERROR, retryable=False)
             return False
         for event in decoded.events:
+            if isinstance(event, TranscriptCompleted):
+                user_identity = self.identity_table.lookup(event.turn_id)
+                if user_identity is not None and user_identity.source in {
+                    "speech_started",
+                    "committed",
+                    "transcript",
+                }:
+                    if event.turn_id in self._completed_inputs:
+                        self.duplicate_event_count += 1
+                        continue
+                    self._completed_inputs.add(event.turn_id)
+                if (
+                    not self._first_user_transcript
+                    and user_identity is not None
+                    and user_identity.source
+                    in {"speech_started", "committed", "transcript", "input_audio_item"}
+                    and user_identity.generation == self.generation
+                ):
+                    self._first_user_transcript = True
+                    self._diagnostics.emit(
+                        correlation=self.correlation,
+                        generation=self.generation,
+                        stage=RealtimeDiagnosticStage.RECOVERY,
+                        operation_kind="recovery.first_user_transcript",
+                    )
             if isinstance(event, ToolCallRequested):
                 identity = decoded.tool_call_identity
                 if identity is None:
@@ -863,6 +1075,8 @@ class ManagedRealtimeSession:
                     continue
                 self._tools[event.call_id] = _ToolRecord(ToolCallState.REQUESTED)
                 self._seen_tool_calls.add(event.call_id)
+                if self._external_seen_tool_calls is not None:
+                    self._external_seen_tool_calls.add(event.call_id)
                 event = dataclasses.replace(event, generation=self.generation)
                 invalid_arguments = self._invalid_tool_arguments(event)
                 if self._tool_dispatcher is not None or invalid_arguments:
@@ -982,6 +1196,9 @@ class ManagedRealtimeSession:
         if not await self._claim_terminal(initiator, disposition):
             return
         self._terminal_error_code = event.code if isinstance(event, SessionFailed) else None
+        if isinstance(event, SessionFailed):
+            self._capture_failure("adapter.apply")
+        event = dataclasses.replace(event, failure=self._failure_context)
         await self._emit_terminal_safe(event)
         self._record_terminal_diagnostic(
             disposition,
@@ -1017,7 +1234,9 @@ class ManagedRealtimeSession:
             current = asyncio.current_task()
             for pending in self._context_pending.values():
                 if not pending.done():
-                    pending.set_exception(RealtimeError(RealtimeErrorCode.CANCELLED))
+                    pending.set_exception(
+                        RealtimeError(RealtimeErrorCode.CANCELLED, failure=self._failure_context)
+                    )
             for task in self._tool_tasks:
                 if task is not current:
                     task.cancel()
@@ -1037,7 +1256,9 @@ class ManagedRealtimeSession:
 
     def _require_active(self) -> None:
         if self._terminal_owner is not None or self._closing or not self._is_current_generation():
-            raise RealtimeError(RealtimeErrorCode.CANCELLED, "session is closed")
+            raise RealtimeError(
+                RealtimeErrorCode.CANCELLED, "session is closed", failure=self._failure_context
+            )
 
     def _current_response(self) -> str | None:
         for response_id in reversed(self._response_order):
@@ -1070,10 +1291,107 @@ class ManagedRealtimeSession:
         self._diagnostics.emit(
             correlation=self.correlation,
             stage=RealtimeDiagnosticStage.SESSION_TERMINAL,
+            failure=self._failure_context,
             stable_code=code,
             close_class=disposition,
             generation=self.generation,
             duration_ms=duration_ms,
+        )
+
+    def _record_attempt_failure(
+        self, payload: str, code: RealtimeErrorCode
+    ) -> RealtimeFailureContext:
+        event_type, fields = _safe_event_fields(payload)
+        failure = RealtimeFailureContext(
+            "provider.send", event_type, self.generation, fields, client_event_type=event_type
+        )
+        self._diagnostics.emit(
+            correlation=self.correlation,
+            generation=self.generation,
+            stage=RealtimeDiagnosticStage.PROVIDER_SEND_FAILED,
+            stable_code=code,
+            operation_kind="tool.send_ambiguous",
+            failure=failure,
+        )
+        return failure
+
+    def _known_client_reference(self, payload: str) -> tuple[str | None, str | None]:
+        try:
+            value = strict_json_object(payload)
+        except RealtimeError:
+            return None, None
+        related = value.get("related_event_id")
+        if isinstance(related, str) and related in self._sent_event_types:
+            return related, self._sent_event_types[related]
+        return None, None
+
+    def _remember_client_event(self, event: Mapping[str, object]) -> None:
+        identity = event.get("event_id")
+        event_type, _ = _safe_event_fields(event)
+        if isinstance(identity, str):
+            self._sent_event_types[identity] = event_type
+
+    def _capture_failure(
+        self,
+        stage: str,
+        *,
+        event: Mapping[str, object] | None = None,
+        error: RealtimeError | None = None,
+        related_event_id: str | None = None,
+        client_event_type: str | None = None,
+        control_code: RealtimeErrorCode | None = None,
+        message_class: str | None = None,
+        retryable: bool | None = None,
+        fatal: bool | None = None,
+        retry_after_ms: int | None = None,
+    ) -> None:
+        if self._failure_context is not None:
+            return
+        event_type, fields = (
+            _safe_event_fields(event)
+            if event is not None
+            else (self._last_event_type, self._last_field_names)
+        )
+        if related_event_id is None and event is not None:
+            event_id = event.get("event_id")
+            if isinstance(event_id, str) and event_id in self._sent_event_types:
+                related_event_id = event_id
+        validation_field = error.validation_field if error is not None else None
+        if validation_field not in _SAFE_FAILURE_FIELDS | {
+            "fields",
+            "response.id",
+            "item.id",
+            "item.call_id",
+            "session.id",
+        }:
+            validation_field = None
+        self._failure_context = RealtimeFailureContext(
+            stage,
+            event_type,
+            self.generation,
+            fields,
+            validation_field=validation_field,
+            validation_reason=(
+                error.validation_reason
+                if error.validation_reason in _FAILURE_REASONS
+                else "validation_failed"
+            )
+            if error
+            else None,
+            related_event_id=related_event_id,
+            client_event_type=client_event_type
+            or (
+                event_type
+                if event is not None
+                and stage
+                in {"provider.send", "context.ack_timeout", "tool.ack_timeout", "close.ack_timeout"}
+                else None
+            ),
+            control_code=control_code,
+            message_class=message_class,
+            retryable=retryable,
+            fatal=fatal,
+            retry_after_ms=retry_after_ms,
         )
 
     def _record_provider_diagnostic(
@@ -1094,6 +1412,7 @@ class ManagedRealtimeSession:
             fingerprint=fingerprint,
             duration_ms=_duration_ms(self._created_ns),
             provider_event_type=provider_event_type,
+            failure=self._failure_context,
         )
 
     @staticmethod
@@ -1184,3 +1503,33 @@ def _json_shape(value: object) -> object:
     if isinstance(value, float):
         return "number"
     return "unknown"
+
+
+def _safe_event_fields(value: object) -> tuple[str, tuple[str, ...]]:
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except (ValueError, TypeError):
+            value = None
+    if not isinstance(value, Mapping):
+        return "invalid_provider_event", ()
+    kind = value.get("type")
+    event_type = (
+        kind
+        if isinstance(kind, str)
+        and _DIAGNOSTIC_EVENT_KIND.fullmatch(kind)
+        and (
+            _SECRET_MARKER.search(kind) is None
+            or kind
+            in {
+                "tokenseller.error",
+                "tokenseller.session.closed",
+                "tokenseller.session.expiring",
+                "tokenseller.session.open",
+                "tokenseller.session.close",
+                "tokenseller.session.created",
+            }
+        )
+        else "unknown_provider_event"
+    )
+    return event_type, tuple(sorted(key for key in value if key in _SAFE_FAILURE_FIELDS))

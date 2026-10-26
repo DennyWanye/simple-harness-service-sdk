@@ -14,6 +14,7 @@ from .contracts import (
     RealtimeProfile,
     ToolCallRequested,
 )
+from .recovery import RealtimeIdentityTable
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +107,9 @@ class RealtimeSession(Protocol):
     @property
     def context_ack_id(self) -> str | None: ...
 
+    @property
+    def identity_table(self) -> RealtimeIdentityTable: ...
+
     async def __aenter__(self) -> RealtimeSession: ...
 
     async def __aexit__(self, exc_type: object, exc: object, traceback: object) -> None: ...
@@ -126,7 +130,12 @@ class RealtimeSession(Protocol):
     async def submit_tool_result(self, call_id: str, output: str) -> None: ...
 
     async def append_message(
-        self, text: str, *, role: Literal["user", "system"] = "user", trigger_response: bool
+        self,
+        text: str,
+        *,
+        role: Literal["user", "system"] = "user",
+        trigger_response: bool,
+        idempotency_key: str | None = None,
     ) -> None: ...
 
     async def update_instructions(self, text: str, *, trigger_response: bool) -> None: ...

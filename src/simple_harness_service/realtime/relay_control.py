@@ -199,9 +199,7 @@ def _capability_authority() -> dict[str, Any]:
 
 
 def _validate_capability_authority(document: Mapping[str, object]) -> None:
-    wallet_revision = _string(
-        document.get("wallet_pricing_revision"), "wallet_pricing_revision"
-    )
+    wallet_revision = _string(document.get("wallet_pricing_revision"), "wallet_pricing_revision")
     wallet_digest = _string(
         document.get("wallet_pricing_revision_digest"),
         "wallet_pricing_revision_digest",
@@ -355,9 +353,7 @@ class RelayControlCodec:
             ),
         )
         _opaque_id(value.get("event_id"), "event_id")
-        created_related_event_id = _opaque_id(
-            value.get("related_event_id"), "related_event_id"
-        )
+        created_related_event_id = _opaque_id(value.get("related_event_id"), "related_event_id")
         _opaque_id(value.get("relay_session_id"), "relay_session_id")
         if created_related_event_id != _opaque_id(related_event_id, "expected related_event_id"):
             raise RealtimeError(
@@ -415,58 +411,49 @@ class RelayControlCodec:
             required = frozenset(
                 {"type", "event_id", "code", "retryable", "fatal", "message_class"}
             )
-            allowed = frozenset(
-                {
-                "type",
-                "event_id",
-                "related_event_id",
-                "code",
-                "retryable",
-                "fatal",
-                "message_class",
-                "retry_after_ms",
-                }
-            )
-            if not required.issubset(value) or not set(value).issubset(allowed):
-                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "control fields do not match")
-            _opaque_id(value.get("event_id"), "event_id")
-            if "related_event_id" in value:
-                _opaque_id(value.get("related_event_id"), "related_event_id")
-            try:
-                raw_code = _string(value.get("code"), "code")
-                if raw_code not in _CONTROL_ERROR_CODES:
-                    raise ValueError(raw_code)
-                code = RealtimeErrorCode(raw_code)
-            except ValueError as error:
-                raise RealtimeError(
-                    RealtimeErrorCode.PROTOCOL_ERROR, "unknown error code"
-                ) from error
+            allowed = required | {"related_event_id", "retry_after_ms"}
+            missing = required - set(value)
+            if missing:
+                raise _control_failure(sorted(missing)[0], "missing_field")
+            if not set(value).issubset(allowed):
+                raise _control_failure("fields", "field_set")
+            for name in ("event_id", "related_event_id"):
+                if name == "event_id" or name in value:
+                    try:
+                        _opaque_id(value.get(name), name)
+                    except RealtimeError:
+                        raise _control_failure(name, "invalid_identity") from None
+            raw_code = value.get("code")
+            if not isinstance(raw_code, str) or raw_code not in _CONTROL_ERROR_CODES:
+                raise _control_failure("code", "unknown_enum")
+            code = RealtimeErrorCode(raw_code)
             retryable = value.get("retryable")
             if not isinstance(retryable, bool):
-                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "retryable must be bool")
-            fatal = value.get("fatal")
-            if fatal is not True:
-                raise RealtimeError(
-                    RealtimeErrorCode.PROTOCOL_ERROR,
-                    "non-terminal control errors are unsupported",
-                )
-            message_class = _string(value.get("message_class"), "message_class")
-            if (
-                _MESSAGE_CLASS.fullmatch(message_class) is None
-                or message_class not in _MESSAGE_CLASSES
-            ):
-                raise RealtimeError(
-                    RealtimeErrorCode.PROTOCOL_ERROR,
-                    "unknown message class",
-                )
+                raise _control_failure("retryable", "invalid_type")
+            if not isinstance(value.get("fatal"), bool):
+                raise _control_failure("fatal", "invalid_type")
+            if value["fatal"] is not True:
+                raise _control_failure("fatal", "non_terminal_error")
+            message_class = value.get("message_class")
+            if not isinstance(message_class, str) or message_class not in _MESSAGE_CLASSES:
+                raise _control_failure("message_class", "unknown_enum")
             if "retry_after_ms" in value:
-                retry_after_ms = _integer(value.get("retry_after_ms"), "retry_after_ms")
-                if retry_after_ms > 3_600_000:
-                    raise RealtimeError(
-                        RealtimeErrorCode.PROTOCOL_ERROR,
-                        "retry_after_ms is out of range",
-                    )
-            return SessionFailed(code, retryable)
+                retry_after_ms = value["retry_after_ms"]
+                if (
+                    not isinstance(retry_after_ms, int)
+                    or isinstance(retry_after_ms, bool)
+                    or not 0 <= retry_after_ms <= 3_600_000
+                ):
+                    raise _control_failure("retry_after_ms", "invalid_range")
+            return SessionFailed(
+                code,
+                retryable,
+                control_code=code,
+                message_class=message_class,
+                related_event_id=value.get("related_event_id"),
+                fatal=True,
+                retry_after_ms=value.get("retry_after_ms"),
+            )
         if event_type == "tokenseller.session.closed":
             _exact_keys(
                 value,
@@ -509,12 +496,19 @@ class RelayControlCodec:
                 disposition,
                 active_response=_string(value.get("active_response"), "active_response"),
                 settlement=_string(value.get("settlement"), "settlement"),
-                related_event_id=_opaque_id(
-                    value.get("related_event_id"), "related_event_id"
-                ),
+                related_event_id=_opaque_id(value.get("related_event_id"), "related_event_id"),
             )
         raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "unknown control event")
 
     @staticmethod
     def _audio_document(value: RealtimeAudioFormat) -> dict[str, object]:
         return {"codec": value.codec, "sample_rate": value.sample_rate, "channels": value.channels}
+
+
+def _control_failure(field: str, reason: str) -> RealtimeError:
+    return RealtimeError(
+        RealtimeErrorCode.PROTOCOL_ERROR,
+        "invalid control frame",
+        validation_field=field,
+        validation_reason=reason,
+    )

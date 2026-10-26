@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
 
-from .contracts import CloseDisposition, RealtimeErrorCode
+from .contracts import CloseDisposition, RealtimeErrorCode, RealtimeFailureContext
 
 _CORRELATION = re.compile(r"^corr_[0-9A-HJKMNP-TV-Z]{26}$")
 _OPERATION_KIND = re.compile(r"^[a-z][a-z0-9_.-]{0,127}$")
@@ -36,6 +36,9 @@ class RealtimeDiagnosticStage(StrEnum):
     INPUT_AUDIO_SUMMARY = "input_audio_summary"
     OUTPUT_AUDIO = "output_audio"
     OUTPUT_AUDIO_SUMMARY = "output_audio_summary"
+    CONTROL_EVENT_DECODE_FAILED = "control_event_decode_failed"
+    CONTROL_TERMINATED = "control_terminated"
+    RECOVERY = "recovery"
     PROVIDER_EVENT_RECEIVED = "provider_event_received"
     PROVIDER_EVENT_DECODE_FAILED = "provider_event_decode_failed"
     PROVIDER_EVENT_APPLY_FAILED = "provider_event_apply_failed"
@@ -68,6 +71,7 @@ class RealtimeDiagnosticEvent:
     byte_count: int = 0
     duration_ms: int = 0
     provider_event_type: str | None = None
+    failure: RealtimeFailureContext | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -94,6 +98,8 @@ class RealtimeDiagnosticEvent:
             or _OPERATION_KIND.fullmatch(self.provider_event_type) is None
         ):
             raise ValueError("provider_event_type must be a bounded stable identifier")
+        if self.failure is not None and not isinstance(self.failure, RealtimeFailureContext):
+            raise ValueError("invalid failure context")
         _non_negative_integer(self.frame_count, "frame_count")
         _non_negative_integer(self.byte_count, "byte_count")
         _non_negative_integer(self.duration_ms, "duration_ms")
@@ -176,6 +182,7 @@ class RealtimeDiagnostics:
         byte_count: int = 0,
         duration_ms: int = 0,
         provider_event_type: str | None = None,
+        failure: RealtimeFailureContext | None = None,
     ) -> RealtimeDiagnosticEvent:
         event = RealtimeDiagnosticEvent(
             correlation=correlation,
@@ -189,6 +196,7 @@ class RealtimeDiagnostics:
             byte_count=byte_count,
             duration_ms=duration_ms,
             provider_event_type=provider_event_type,
+            failure=failure,
         )
         with self._state_changed:
             self._events.append(event)

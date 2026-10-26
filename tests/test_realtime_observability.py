@@ -46,6 +46,7 @@ def test_diagnostic_event_is_immutable_and_has_exact_allowlist() -> None:
         "byte_count",
         "duration_ms",
         "provider_event_type",
+        "failure",
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         event.byte_count = 5  # type: ignore[misc]

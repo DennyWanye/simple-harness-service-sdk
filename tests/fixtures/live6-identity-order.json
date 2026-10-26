@@ -1,0 +1,429 @@
+{
+  "schema": "metadata-order-only",
+  "scenarios": [
+    {
+      "name": "demo-run1",
+      "steps": [
+        {
+          "line": 21,
+          "direction": "wire_server",
+          "type": "input_audio_buffer.speech_started",
+          "item_id": "identity_1",
+          "response_id": null
+        },
+        {
+          "line": 99,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_1",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": [
+            "input_audio"
+          ]
+        },
+        {
+          "line": 112,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_2"
+        },
+        {
+          "line": 113,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_3",
+          "response_id": null,
+          "role": null,
+          "status": "in_progress",
+          "item_type": "function_call",
+          "content_types": []
+        },
+        {
+          "line": 116,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_2"
+        },
+        {
+          "line": 117,
+          "direction": "wire_client",
+          "type": "conversation.item.create",
+          "item_id": null,
+          "role": null,
+          "item_type": "function_call_output"
+        },
+        {
+          "line": 127,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_4",
+          "response_id": null,
+          "role": null,
+          "status": "completed",
+          "item_type": "function_call_output",
+          "content_types": []
+        },
+        {
+          "line": 131,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_5"
+        },
+        {
+          "line": 132,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_6",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": []
+        },
+        {
+          "line": 180,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_5"
+        },
+        {
+          "line": 199,
+          "direction": "wire_server",
+          "type": "input_audio_buffer.speech_started",
+          "item_id": "identity_7",
+          "response_id": null
+        },
+        {
+          "line": 287,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_7",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": [
+            "input_audio"
+          ]
+        },
+        {
+          "line": 303,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_8"
+        },
+        {
+          "line": 304,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_9",
+          "response_id": null,
+          "role": null,
+          "status": "in_progress",
+          "item_type": "function_call",
+          "content_types": []
+        },
+        {
+          "line": 327,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_8"
+        },
+        {
+          "line": 328,
+          "direction": "wire_client",
+          "type": "conversation.item.create",
+          "item_id": null,
+          "role": null,
+          "item_type": "function_call_output"
+        },
+        {
+          "line": 366,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_10",
+          "response_id": null,
+          "role": null,
+          "status": "completed",
+          "item_type": "function_call_output",
+          "content_types": []
+        },
+        {
+          "line": 370,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_11"
+        },
+        {
+          "line": 371,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_12",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": []
+        },
+        {
+          "line": 488,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_11"
+        },
+        {
+          "line": 554,
+          "direction": "wire_client",
+          "type": "conversation.item.create",
+          "item_id": "identity_13",
+          "role": "user",
+          "item_type": "message"
+        },
+        {
+          "line": 561,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_14",
+          "response_id": null,
+          "role": "user",
+          "status": "completed",
+          "item_type": "message",
+          "content_types": [
+            "input_text"
+          ]
+        },
+        {
+          "line": 567,
+          "direction": "wire_server",
+          "type": "response.audio_transcript.done",
+          "item_id": "identity_15",
+          "response_id": ""
+        }
+      ],
+      "unresolved_item": "identity_15"
+    },
+    {
+      "name": "A08-run1",
+      "steps": [
+        {
+          "line": 22,
+          "direction": "wire_server",
+          "type": "input_audio_buffer.speech_started",
+          "item_id": "identity_1",
+          "response_id": null
+        },
+        {
+          "line": 98,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_1",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": [
+            "input_audio"
+          ]
+        },
+        {
+          "line": 112,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_2"
+        },
+        {
+          "line": 113,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_3",
+          "response_id": null,
+          "role": null,
+          "status": "in_progress",
+          "item_type": "function_call",
+          "content_types": []
+        },
+        {
+          "line": 116,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_2"
+        },
+        {
+          "line": 117,
+          "direction": "wire_client",
+          "type": "conversation.item.create",
+          "item_id": null,
+          "role": null,
+          "item_type": "function_call_output"
+        },
+        {
+          "line": 124,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_4",
+          "response_id": null,
+          "role": null,
+          "status": "completed",
+          "item_type": "function_call_output",
+          "content_types": []
+        },
+        {
+          "line": 131,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_5"
+        },
+        {
+          "line": 132,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_6",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": []
+        },
+        {
+          "line": 228,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_5"
+        },
+        {
+          "line": 247,
+          "direction": "wire_server",
+          "type": "input_audio_buffer.speech_started",
+          "item_id": "identity_7",
+          "response_id": null
+        },
+        {
+          "line": 338,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_7",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": [
+            "input_audio"
+          ]
+        },
+        {
+          "line": 353,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_8"
+        },
+        {
+          "line": 354,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_9",
+          "response_id": null,
+          "role": null,
+          "status": "in_progress",
+          "item_type": "function_call",
+          "content_types": []
+        },
+        {
+          "line": 372,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_8"
+        },
+        {
+          "line": 373,
+          "direction": "wire_client",
+          "type": "conversation.item.create",
+          "item_id": null,
+          "role": null,
+          "item_type": "function_call_output"
+        },
+        {
+          "line": 408,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_10",
+          "response_id": null,
+          "role": null,
+          "status": "completed",
+          "item_type": "function_call_output",
+          "content_types": []
+        },
+        {
+          "line": 415,
+          "direction": "wire_server",
+          "type": "response.output_item.added",
+          "item_id": null,
+          "response_id": "identity_11"
+        },
+        {
+          "line": 416,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_12",
+          "response_id": null,
+          "role": "assistant",
+          "status": "in_progress",
+          "item_type": "message",
+          "content_types": []
+        },
+        {
+          "line": 512,
+          "direction": "wire_server",
+          "type": "response.output_item.done",
+          "item_id": null,
+          "response_id": "identity_11"
+        },
+        {
+          "line": 586,
+          "direction": "wire_client",
+          "type": "conversation.item.create",
+          "item_id": "identity_13",
+          "role": "user",
+          "item_type": "message"
+        },
+        {
+          "line": 591,
+          "direction": "wire_server",
+          "type": "conversation.item.created",
+          "item_id": "identity_14",
+          "response_id": null,
+          "role": "user",
+          "status": "completed",
+          "item_type": "message",
+          "content_types": [
+            "input_text"
+          ]
+        },
+        {
+          "line": 598,
+          "direction": "wire_server",
+          "type": "response.audio_transcript.done",
+          "item_id": "identity_15",
+          "response_id": ""
+        }
+      ],
+      "unresolved_item": "identity_15"
+    }
+  ]
+}
