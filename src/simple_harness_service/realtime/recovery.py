@@ -216,6 +216,7 @@ class RealtimeRecoveryState:
                     or not isinstance(item["aliases"], (list, tuple))
                 ):
                     raise ValueError("invalid recovered source")
+                state.table.generation = item["generation"]
                 state.table.register(
                     _identity(item["canonical_id"]),
                     role="user",
@@ -223,6 +224,7 @@ class RealtimeRecoveryState:
                     confirmed=True,
                     aliases=tuple(_identity(v) for v in item["aliases"]),
                 )
+                state.table.generation = generation
             state.tool_calls.update(_identity(v) for v in record["tool_calls"])
             state.completed_inputs.update(_identity(v) for v in record["completed_inputs"])
             for message_key, message in record["messages"].items():

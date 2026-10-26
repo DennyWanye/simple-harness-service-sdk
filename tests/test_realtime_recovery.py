@@ -393,3 +393,15 @@ async def test_rebound_instructions_ack_then_history_and_next_turn() -> None:
             json.loads(s)["type"] in {"response.create", "input_audio_buffer.append"}
             for s in connection.sent
         )
+
+
+def test_snapshot_preserves_original_identity_generation() -> None:
+    state = recovery()
+    state.begin_session("session", 1)
+    state.identity_table("session").register(
+        "original_user", role="user", source="committed", confirmed=True
+    )
+    state.begin_session("session", 2)
+    restored = type(state).from_snapshot(json.loads(json.dumps(state.snapshot())))
+    assert restored.identity_table("session").generation == 2
+    assert restored.identity_table("session").lookup("original_user").generation == 1
