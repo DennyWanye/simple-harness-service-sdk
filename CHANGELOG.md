@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.20
+
+- 用户语音按来源事件登记；speech_started/committed 或 message/input_audio 建立的身份不会被 created 的 assistant 角色元数据覆盖。
+- 角色矛盾仅记录 item_role_metadata_mismatch，包含 item ID 和受限的声明角色，不终止转写或会话；助手新增身份仍要求有效 response_id。
+- 身份新增 origin 保存首次来源，保留 source 查询语义及旧快照读取；补齐 live7 五分支和阶段 0 完整轮次的脱敏反例。
+
 ## 0.3.19
 
 - 增加可查询的身份表，关联输入、上下文服务端别名、已完成输入音频消息和嵌套输出身份；显式恢复状态保留跨代已确认用户身份。

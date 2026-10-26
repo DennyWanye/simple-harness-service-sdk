@@ -22,6 +22,7 @@ class RealtimeItemIdentity:
     generation: int
     confirmed: bool
     aliases: tuple[str, ...] = ()
+    origin: str | None = None
 
 
 class RealtimeIdentityTable:
@@ -52,11 +53,15 @@ class RealtimeIdentityTable:
         source: str,
         confirmed: bool,
         aliases: tuple[str, ...] = (),
+        origin: str | None = None,
     ) -> RealtimeItemIdentity:
         _identity(item_id)
         existing = self.lookup(item_id)
-        if existing is not None and existing.role != role and role != "assistant":
-            raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "conflicting item role")
+        if existing is not None and existing.role != role:
+            if source in {"conversation_item", "output_item"}:
+                return existing
+            else:
+                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "conflicting item role")
         linked = tuple(dict.fromkeys((item_id, *aliases, *(existing.aliases if existing else ()))))
         for alias in linked:
             _identity(alias)
@@ -70,6 +75,7 @@ class RealtimeIdentityTable:
             self.generation,
             confirmed or (existing.confirmed if existing and existing.role == role else False),
             linked,
+            (existing.origin or existing.source) if existing else (origin or source),
         )
         for alias in linked:
             self._items[alias] = item
@@ -191,7 +197,18 @@ class RealtimeRecoveryState:
                 if (
                     not isinstance(item, dict)
                     or set(item)
-                    != {"canonical_id", "role", "source", "generation", "confirmed", "aliases"}
+                    not in (
+                        {"canonical_id", "role", "source", "generation", "confirmed", "aliases"},
+                        {
+                            "canonical_id",
+                            "role",
+                            "source",
+                            "generation",
+                            "confirmed",
+                            "aliases",
+                            "origin",
+                        },
+                    )
                     or item["role"] != "user"
                     or item["confirmed"] is not True
                 ):
@@ -217,12 +234,23 @@ class RealtimeRecoveryState:
                 ):
                     raise ValueError("invalid recovered source")
                 state.table.generation = item["generation"]
+                origin = item.get("origin", item["source"])
+                if not isinstance(origin, str) or origin not in {
+                    "context_ack",
+                    "speech_started",
+                    "committed",
+                    "transcript",
+                    "output_item",
+                    "input_audio_item",
+                }:
+                    raise ValueError("invalid recovered origin")
                 state.table.register(
                     _identity(item["canonical_id"]),
                     role="user",
                     source=item["source"],
                     confirmed=True,
                     aliases=tuple(_identity(v) for v in item["aliases"]),
+                    origin=origin,
                 )
                 state.table.generation = generation
             state.tool_calls.update(_identity(v) for v in record["tool_calls"])

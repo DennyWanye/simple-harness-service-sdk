@@ -2,6 +2,8 @@
 
 本版完善身份、用户附带事件、控制错误、首因诊断和显式恢复状态。离线合同通过不等于 Host 真线路放行；live6 两个失败 item 的嵌套身份未被原探针保存，仍不得直接认定为 user 或 assistant。文字 Provider 请求拒绝不由本包修复。
 
+0.3.20 补充用户输入角色元数据合同，新增 origin 并保留旧快照读取；见[角色合同说明](realtime-0.3.20.md)。
+
 ## 身份与用户附带事件
 
 `session.identity_table.lookup(item_id)` 返回不可变的 `RealtimeItemIdentity`，包含 canonical_id、role、source、generation、confirmed、aliases。表关联 speech_started、committed、completed/user/input_audio、上下文确认的服务端 ID/原请求别名及嵌套 output_item 身份。

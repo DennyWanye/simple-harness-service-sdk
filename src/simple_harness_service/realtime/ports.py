@@ -39,6 +39,7 @@ class DecodedProviderEvent:
     context_request_id: str | None = None
     user_side_transcript_ignored: bool = False
     user_side_response_event_ignored: str | None = None
+    item_role_metadata_mismatch: tuple[str, str] | None = None
 
 
 class ToolDispatcher(Protocol):

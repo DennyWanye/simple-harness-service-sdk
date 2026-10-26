@@ -3,7 +3,7 @@
 Thin authenticated service and transport framework for Simple Harness SDK. Harness remains the
 only durable command and execution authority; this package owns no database or execution worker.
 
-0.3.19 增加可查询身份表、控制终止原因、首因诊断和显式恢复状态；五条合同及重绑接入见
+0.3.20 按输入来源识别用户语音，兼容 message/input_audio 被声明为 assistant 的线路元数据；角色矛盾只记诊断。见[角色合同说明](docs/realtime-0.3.20.md)。五条合同及重绑接入见
 [0.3.19 接口说明](docs/realtime-0.3.19.md)。工具循环和基础接口见
 [接口与交接说明](docs/realtime-0.3.13.md)。`RealtimeClient` 负责会话顺序、有界队列、
 打断状态、工具回执和稳定事件；产品提供麦克风、播放和界面策略，选择组合配置，
@@ -17,14 +17,14 @@ authority pack and production admission exist.
 
 Realtime diagnostics are opt-in through a provider-neutral sink and are no-op by default. The
 bounded immutable snapshot exposes only opaque correlation, lifecycle stage, stable error or close
-class, generation, sampled frame and byte counts, duration, Provider event kind/type, and a content-free
+class, generation, sampled frame and byte counts, duration, Provider event kind/type, role mismatch item identity and declared role, and a content-free
 JSON-shape fingerprint. Terminal summaries retain exact input/output totals. Secrets, bearer
 tokens, API keys, raw audio, text, instructions, and exception bodies are not accepted diagnostic
 fields; sink failures never change session behavior.
 
 Four frozen authority packs are shipped as package data and as a deterministic cross-language
 bundle. A release manifest binds their root digest, three Python consumer locks, and the exact
-three-SDK release unit: service `0.3.19`, Harness `>=0.13.0.dev20260925`, and Memory `0.5.2`. Harness remains the
+three-SDK release unit: service `0.3.20`, Harness `>=0.13.0.dev20260925`, and Memory `0.5.2`. Harness remains the
 only durable command authority; Realtime adds no database or execution worker.
 
 The 0.2.x terminal behavior remains compatible. Interactive TTYs receive command completion,

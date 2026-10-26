@@ -198,7 +198,13 @@ class QwenOmniAdapter:
                             validation_field="role",
                             validation_reason="unknown_enum",
                         )
-                    if isinstance(role, str) and role in {"assistant", "system"}:
+                    scoped = _optional_id(value.get("response_id")) is not None
+                    if (
+                        scoped
+                        and event_type == "response.output_item.added"
+                        and isinstance(role, str)
+                        and role in {"assistant", "system"}
+                    ):
                         self.identity_table.register(
                             nested_id,
                             role="assistant" if role == "assistant" else "system",
@@ -206,7 +212,8 @@ class QwenOmniAdapter:
                             confirmed=False,
                         )
                     elif (
-                        role == "user"
+                        scoped
+                        and role == "user"
                         and nested.get("type") == "message"
                         and nested.get("status") == "completed"
                     ):
@@ -479,6 +486,49 @@ class QwenOmniAdapter:
         self, event_id: str, item: Mapping[str, object]
     ) -> DecodedProviderEvent:
         server_id = _id(item.get("id"), "item.id")
+        content = item.get("content")
+        has_input_audio = isinstance(content, list) and any(
+            isinstance(part, dict) and part.get("type") == "input_audio" for part in content
+        )
+        known = self.identity_table.lookup(server_id)
+        known_input = (
+            known is not None
+            and known.role == "user"
+            and known.origin
+            in {
+                "speech_started",
+                "committed",
+                "input_audio_item",
+                "transcript",
+            }
+        )
+        if item.get("type") == "message" and (has_input_audio or known_input):
+            if server_id in self._context_events:
+                raise RealtimeError(RealtimeErrorCode.PROTOCOL_ERROR, "context message mismatch")
+            self.identity_table.register(
+                server_id,
+                role="user",
+                source="input_audio_item"
+                if has_input_audio
+                else known.source
+                if known
+                else "input_audio_item",
+                confirmed=item.get("status") == "completed",
+            )
+            raw_role = item.get("role")
+            declared = (
+                raw_role
+                if isinstance(raw_role, str) and raw_role in {"user", "assistant", "system"}
+                else "missing"
+                if raw_role is None
+                else "invalid"
+            )
+            self._context_seen_item_ids.add(server_id)
+            self._context_seen_event_ids.add(event_id)
+            return DecodedProviderEvent(
+                event_id,
+                item_role_metadata_mismatch=(server_id, declared) if declared != "user" else None,
+            )
         if server_id in self._context_seen_item_ids:
             self._context_seen_event_ids.add(event_id)
             return DecodedProviderEvent(event_id)
@@ -510,13 +560,6 @@ class QwenOmniAdapter:
             ):
                 self.identity_table.register(
                     server_id, role="user", source="input_audio_item", confirmed=True
-                )
-            elif isinstance(item.get("role"), str) and item.get("role") in {"assistant", "system"}:
-                self.identity_table.register(
-                    server_id,
-                    role="assistant" if item.get("role") == "assistant" else "system",
-                    source="conversation_item",
-                    confirmed=False,
                 )
             self._context_seen_item_ids.add(server_id)
             self._context_seen_event_ids.add(event_id)

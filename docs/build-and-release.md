@@ -1,6 +1,6 @@
 # 构建与私有发布
 
-0.3.19 已通过完整离线功能与质量门禁。私有 Harness 主线同时包含 `simple_harness`、`agent_orchestrator`，无需额外编排轮子。Host 联合回环及 A09～A11 真线路复验等 Claude 用探针跑；本次只生成候选，不发布或推送。
+0.3.20 已通过完整离线功能与质量门禁。私有 Harness 主线同时包含 `simple_harness`、`agent_orchestrator`，无需额外编排轮子。Host 联合回环及 A09～A11 真线路复验等 Claude 用探针跑；本次只生成候选，不发布或推送。
 
 ## 制品与 BOM
 
@@ -63,11 +63,11 @@ python3 scripts/sync_realtime_authority.py --check
 
 ```bash
 TMPDIR="$PWD/build/tmp" .venv/bin/python scripts/build_candidate.py \
-  --output dist/candidate-0.3.19 --planned-tag v0.3.19 --wheelhouse build/vendor
-.venv/bin/python -m twine check dist/candidate-0.3.19/*.whl \
-  dist/candidate-0.3.19/simple_harness_service_sdk-*.tar.gz
+  --output dist/candidate-0.3.20 --planned-tag v0.3.20 --wheelhouse build/vendor
+.venv/bin/python -m twine check dist/candidate-0.3.20/*.whl \
+  dist/candidate-0.3.20/simple_harness_service_sdk-*.tar.gz
 ```
 
 构建器保留两次发行包字节比较、两次 authority bundle 比较、三个目标锁文件的两次比较，以及完整清单 schema 校验。产品元数据继续使用 `>=0.13.0.dev20260925`；候选构建器通过独立约束文件冻结 `harness.candidate.version`，即使 wheelhouse 中同时有多个 opt 版本，也只解析本次实测版本。运行锁使用 `--find-links` 解析私有 Harness，移除机器专用路径并保留精确版本与 SHA。Linux ARM64 的平台基线为 `aarch64-manylinux_2_28`（glibc ≥ 2.28），因为必需的 deepseek-recipe 0.1.1 无 manylinux2014 轮子；未声明旧 glibc 支持，也未执行 Linux 真机运行验收。截止时间更新为 `2026-10-25T00:00:00Z`，因为旧截止日期早于该主线必需的 deepseek-recipe 0.1.1 发布时间。
 
-候选清单绑定 Service 0.3.19、本次实测 Harness 轮子、Memory 0.5.2、四个 authority pack、三份消费端锁与源码提交。源码 wheel 和 sdist 均需两次字节一致；Memory 旧元数据约束不因打包而改变。候选只供私有分发，任何未来地址均为晋级定位，不代表本次已上传。发布端只能分发冻结字节，不能重建、覆盖资产或移动标签。
+候选清单绑定 Service 0.3.20、本次实测 Harness 轮子、Memory 0.5.2、四个 authority pack、三份消费端锁与源码提交。源码 wheel 和 sdist 均需两次字节一致；Memory 旧元数据约束不因打包而改变。候选只供私有分发，任何未来地址均为晋级定位，不代表本次已上传。发布端只能分发冻结字节，不能重建、覆盖资产或移动标签。

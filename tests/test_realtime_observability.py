@@ -47,6 +47,8 @@ def test_diagnostic_event_is_immutable_and_has_exact_allowlist() -> None:
         "duration_ms",
         "provider_event_type",
         "failure",
+        "item_id",
+        "declared_role",
     )
     with pytest.raises(dataclasses.FrozenInstanceError):
         event.byte_count = 5  # type: ignore[misc]
@@ -61,6 +63,10 @@ def test_diagnostic_event_is_immutable_and_has_exact_allowlist() -> None:
         ("generation", True),
         ("operation_kind", "Bearer-secret"),
         ("fingerprint", "not-a-digest"),
+        ("item_id", ""),
+        ("item_id", "x" * 513),
+        ("declared_role", "private arbitrary text"),
+        ("declared_role", []),
         ("provider_event_type", "not an event type"),
         ("provider_event_type", "x" * 129),
         ("frame_count", -1),

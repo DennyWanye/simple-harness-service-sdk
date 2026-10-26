@@ -884,6 +884,17 @@ class ManagedRealtimeSession:
         if not self._is_current_generation():
             self.late_event_count += 1
             return True
+        if decoded.item_role_metadata_mismatch is not None:
+            item_id, declared_role = decoded.item_role_metadata_mismatch
+            self._diagnostics.emit(
+                correlation=self.correlation,
+                generation=self.generation,
+                stage=RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,
+                operation_kind="item_role_metadata_mismatch",
+                provider_event_type="conversation.item.created",
+                item_id=item_id,
+                declared_role=declared_role,
+            )
         if decoded.user_side_response_event_ignored is not None:
             self._record_provider_diagnostic(
                 RealtimeDiagnosticStage.PROVIDER_EVENT_RECEIVED,

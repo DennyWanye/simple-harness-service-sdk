@@ -72,6 +72,8 @@ class RealtimeDiagnosticEvent:
     duration_ms: int = 0
     provider_event_type: str | None = None
     failure: RealtimeFailureContext | None = None
+    item_id: str | None = None
+    declared_role: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -100,6 +102,22 @@ class RealtimeDiagnosticEvent:
             raise ValueError("provider_event_type must be a bounded stable identifier")
         if self.failure is not None and not isinstance(self.failure, RealtimeFailureContext):
             raise ValueError("invalid failure context")
+        if self.item_id is not None and (
+            not isinstance(self.item_id, str) or not self.item_id.strip() or len(self.item_id) > 512
+        ):
+            raise ValueError("invalid diagnostic item identity")
+        if self.declared_role is not None and (
+            not isinstance(self.declared_role, str)
+            or self.declared_role
+            not in {
+                "user",
+                "assistant",
+                "system",
+                "missing",
+                "invalid",
+            }
+        ):
+            raise ValueError("invalid declared role")
         _non_negative_integer(self.frame_count, "frame_count")
         _non_negative_integer(self.byte_count, "byte_count")
         _non_negative_integer(self.duration_ms, "duration_ms")
@@ -183,6 +201,8 @@ class RealtimeDiagnostics:
         duration_ms: int = 0,
         provider_event_type: str | None = None,
         failure: RealtimeFailureContext | None = None,
+        item_id: str | None = None,
+        declared_role: str | None = None,
     ) -> RealtimeDiagnosticEvent:
         event = RealtimeDiagnosticEvent(
             correlation=correlation,
@@ -197,6 +217,8 @@ class RealtimeDiagnostics:
             duration_ms=duration_ms,
             provider_event_type=provider_event_type,
             failure=failure,
+            item_id=item_id,
+            declared_role=declared_role,
         )
         with self._state_changed:
             self._events.append(event)
