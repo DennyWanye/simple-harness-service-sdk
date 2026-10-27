@@ -61,7 +61,7 @@ TMPDIR="$PWD/build/tmp" .venv/bin/python scripts/build_candidate.py --output dis
 | `simple_harness_service.bom.validate_installed_bom()` | 通过，返回 Service 0.3.20、Harness opt.221 |
 | Harness direct_url SHA | 与 BOM 的 opt.221 SHA 一致，通过 |
 
-## 未做与后续边界
+## 未做与后续边界（发版准备阶段的历史状态）
 
 - 未打 tag、未 push、未执行 gh release、未运行人工发布脚本；未生成或改写正式发布回执，现有 `RELEASE_RECEIPT.json` 仍为历史记录。
 - 未更改版本号、依赖下限、任何实时协议合同、提示词或工具说明。未运行整套测试，也未做 Windows / Linux 真机验收。
@@ -69,3 +69,49 @@ TMPDIR="$PWD/build/tmp" .venv/bin/python scripts/build_candidate.py --output dis
 - Memory 0.5.2 的旧 Harness 元数据约束冲突仍存在，本次全新安装不包含 Memory extra；开发环境原有 Memory 组合仅用于相应 BOM 测试。
 - Host 的 `uv.lock` 目前仍指向本机忽略目录中的旧 0.3.20 轮子（本任务给定背景）；发版后 Host SDK 的 uv.lock 需要换指向 GitHub release 的轮子，属 Host 侧另一次改动。本次未改 Host 仓库任何文件。
 - 候选制品与验证环境位于 Git 忽略目录，不纳入本地提交；由人工脚本发布已冻结的候选字节。
+
+## 正式发布后回执补录
+
+人工已完成发布：[v0.3.20 正式 release](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.3.20)。GitHub 实测发布时间为 `2026-10-27T17:46:00Z`（台北时间 2026-10-28 01:46:00）。本节取代上文准备阶段中“尚未发布、回执仍为历史记录”的状态描述；本次代理只读远端并补本地回执。
+
+### 远端元数据与标签
+
+使用 `gh release view v0.3.20 --repo DennyWanye/simple-harness-service-sdk --json url,tagName,targetCommitish,isDraft,isPrerelease,publishedAt,assets` 以及 `gh api repos/DennyWanye/simple-harness-service-sdk/releases/tags/v0.3.20` 获取真实数据；通过 `releases/latest` API 确认当前 latest，通过 Git ref / tag API 和本地 Git 对象双向核对附注标签。
+
+| 字段 | 实测结果 |
+|---|---|
+| 版本 | 0.3.20 |
+| 源码提交、剥离提交 | `f34caa3c82f1da73df0ea7bdf91f055a7c179f35` |
+| 标签对象 | `ac83a9bb51eee317d00bf9118221f90dd3ec86f6` |
+| 附注标签 | true |
+| draft / prerelease | false / false |
+| latest | true，核对时的 GitHub 状态 |
+| GitHub immutable | false |
+| published_at | `2026-10-27T17:46:00Z` |
+| release 附件数 | 17，不含 GitHub 自动生成的源码下载链接 |
+
+已核对 `git show v0.3.12 -- RELEASE_RECEIPT.json` 及该 tag 内文件；该 tag 的回执内容仍记录 0.3.0。本次沿用其 `simple-harness-service-release-receipt-v1` 字段结构，所有远端状态与附件散列均重新取证，没有沿用旧发布值。回执中的源码检查和 Python 3.13 候选安装结果来自前述发版准备阶段，本次未重跑；已明确其范围，移除旧回执中不适用于本次的 Python 3.11 / 公开安装等断言。
+
+### 下载与逐项散列核对
+
+新建此前不存在的空目录 `build/release-verify-0.3.20/`，执行：
+
+```bash
+gh release download v0.3.20 --repo DennyWanye/simple-harness-service-sdk --dir build/release-verify-0.3.20
+(cd build/release-verify-0.3.20 && shasum -a 256 * > ../release-0.3.20-downloaded.sha256)
+(cd build/release-verify-0.3.20 && shasum -a 256 -c ../../dist/candidate-0.3.20/SHA256SUMS)
+```
+
+核对结果：全部 17 个远端附件的集合与本地候选集合一致；下载字节实测 SHA-256 与本地候选 **17/17 一致，0 项差异**。候选 `SHA256SUMS` 中列出的 **15/15 一致，0 失败**；未列入其中的 `SHA256SUMS` 本身与 `candidate-manifest.json` 本身另与本地同名冻结文件实测比较，**2/2 一致**。候选清单内 16 项散列也与下载字节一致。回执 `assets` 的 17 项散列全部取自下载后运行 `shasum -a 256` 的结果，未使用 GitHub API 的 digest 代替实测。
+
+Service 轮子实测 SHA-256：`95a5ec79e6b12d7958f282e11c5e833f904f51505220a9d704698c14b2547bbb`。Harness opt.221、Memory 0.5.2 以及 authority 信息从已核对的下载制品回填。GitHub 元数据快照、散列实测输出和下载附件均留在 `build/` 忽略目录。
+
+### 本次测试与提交范围
+
+没有找到直接读取 `RELEASE_RECEIPT.json` 的现有测试。按测试先行要求，在 `build/test_release_receipt_0_3_20.py` 编写只读取回执并与远端元数据、实测散列组成的预期值比较的专项测试：更新前 **0 通过、1 失败**（旧回执仍为 0.3.0）；更新后 **1 通过、0 失败**。
+
+```bash
+.venv/bin/python -m pytest -q build/test_release_receipt_0_3_20.py
+```
+
+本次只更新 `RELEASE_RECEIPT.json`、`CHANGELOG.md` 和本记录并本地提交。未运行整套测试，未重建候选，未 push，未改 tag 或 release，未运行发布脚本，未改 Host 仓库。Host SDK 的 `uv.lock` 换指向正式 GitHub release 轮子仍属另一次 Host 侧改动。

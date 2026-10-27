@@ -2,6 +2,8 @@
 
 ## 0.3.20
 
+- 已于 `2026-10-27T17:46:00Z`（台北时间 2026-10-28 01:46:00）[正式发布](https://github.com/DennyWanye/simple-harness-service-sdk/releases/tag/v0.3.20)；17 个附件下载后实测 SHA-256 与冻结候选 17/17 一致，其中 SHA256SUMS 列出的 15/15 一致，发布回执已补齐。
+
 - 候选冻结 Harness opt.221（原 opt.217）；Harness 轮子 SHA-256：`bed6ed01950767e3a4e1af99ce0b26e04e94a0671d0e7f0adb51dfa01064ff23`。
 
 - 用户语音按来源事件登记；speech_started/committed 或 message/input_audio 建立的身份不会被 created 的 assistant 角色元数据覆盖。
