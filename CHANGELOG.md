@@ -2,6 +2,8 @@
 
 ## 0.3.20
 
+- 候选冻结 Harness opt.221（原 opt.217）；Harness 轮子 SHA-256：`bed6ed01950767e3a4e1af99ce0b26e04e94a0671d0e7f0adb51dfa01064ff23`。
+
 - 用户语音按来源事件登记；speech_started/committed 或 message/input_audio 建立的身份不会被 created 的 assistant 角色元数据覆盖。
 - 角色矛盾仅记录 item_role_metadata_mismatch，包含 item ID 和受限的声明角色，不终止转写或会话；助手新增身份仍要求有效 response_id。
 - 身份新增 origin 保存首次来源，保留 source 查询语义及旧快照读取；补齐 live7 五分支和阶段 0 完整轮次的脱敏反例。

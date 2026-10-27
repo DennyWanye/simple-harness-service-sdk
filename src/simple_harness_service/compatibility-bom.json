@@ -12,11 +12,11 @@
     "local_version_policy": "installed",
     "execution_schema": 5,
     "candidate": {
-      "version": "0.13.0.dev20260925+opt.217",
-      "wheel": "simple_harness_sdk-0.13.0.dev20260925+opt.217-py3-none-any.whl",
+      "version": "0.13.0.dev20260925+opt.221",
+      "wheel": "simple_harness_sdk-0.13.0.dev20260925+opt.221-py3-none-any.whl",
       "provenance": "private-wheel",
-      "url": "wheelhouse:simple_harness_sdk-0.13.0.dev20260925+opt.217-py3-none-any.whl",
-      "sha256": "23623352e321600e39f9b9756ea7aa269e90a2c9ec1fb73aed1d4198283c16e1"
+      "url": "wheelhouse:simple_harness_sdk-0.13.0.dev20260925+opt.221-py3-none-any.whl",
+      "sha256": "bed6ed01950767e3a4e1af99ce0b26e04e94a0671d0e7f0adb51dfa01064ff23"
     }
   },
   "memory": {

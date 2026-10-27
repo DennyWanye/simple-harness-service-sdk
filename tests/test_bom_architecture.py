@@ -35,6 +35,13 @@ def test_compatibility_bom_and_installed_harness_provenance() -> None:
     assert bom["harness"]["version"] == "0.13.0.dev20260925"
     assert bom["memory"]["version"] == "0.5.2"
     assert bom["harness"]["execution_schema"] == 5
+    assert bom["harness"]["candidate"] == {
+        "version": "0.13.0.dev20260925+opt.221",
+        "wheel": "simple_harness_sdk-0.13.0.dev20260925+opt.221-py3-none-any.whl",
+        "provenance": "private-wheel",
+        "url": "wheelhouse:simple_harness_sdk-0.13.0.dev20260925+opt.221-py3-none-any.whl",
+        "sha256": "bed6ed01950767e3a4e1af99ce0b26e04e94a0671d0e7f0adb51dfa01064ff23",
+    }
     assert "verification_status" not in bom["harness"]
     assert bom["memory"]["memory_schema"] == 4
     assert (
@@ -81,7 +88,7 @@ def test_private_harness_requirement_accepts_mainline_floor() -> None:
         validate_metadata_requirements(requirements)
 
 
-@pytest.mark.parametrize("local", ["opt.216", "opt.217", "opt.218"])
+@pytest.mark.parametrize("local", ["opt.216", "opt.217", "opt.218", "opt.221"])
 def test_installed_harness_local_version_is_observed(
     local: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -109,6 +116,38 @@ def test_installed_harness_local_version_is_observed(
     )
     assert validate_installed_bom()["harness"] == version
     assert Version(version).public == load_bom()["harness"]["version"]
+
+
+@pytest.mark.parametrize("valid_digest", [True, False])
+def test_installed_opt221_candidate_requires_frozen_direct_url_digest(
+    valid_digest: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = metadata.distribution
+    version = "0.13.0.dev20260925+opt.221"
+    digest = "bed6ed01950767e3a4e1af99ce0b26e04e94a0671d0e7f0adb51dfa01064ff23"
+
+    class HarnessDistribution:
+        def __init__(self) -> None:
+            self.version = version
+
+        def read_text(self, name: str) -> str:
+            return json.dumps(
+                {
+                    "url": f"file:///private/simple_harness_sdk-{version}-py3-none-any.whl",
+                    "archive_info": {"hashes": {"sha256": digest if valid_digest else "e" * 64}},
+                }
+            )
+
+    monkeypatch.setattr(
+        bom_module.metadata,
+        "distribution",
+        lambda name: HarnessDistribution() if name == "simple-harness-sdk" else original(name),
+    )
+    if valid_digest:
+        assert validate_installed_bom()["harness"] == version
+    else:
+        with pytest.raises(ServiceError, match="harness URL/SHA drift"):
+            validate_installed_bom()
 
 
 def test_thin_architecture_gate() -> None:

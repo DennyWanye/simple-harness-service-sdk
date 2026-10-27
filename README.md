@@ -48,4 +48,4 @@ are indexed in [`ARCHITECTURE/index.md`](ARCHITECTURE/index.md).
 
 ## 私有安装组合
 
-Harness 使用 `>=0.13.0.dev20260925`，通过 `--find-links` 指向 `build/vendor/`，接受 `+opt.N` 本地版本。BOM 记录主线下限与 execution schema 5，返回实际安装版本；正式候选单独冻结本次实测轮子的版本与 SHA。Memory extra 仍为 0.5.2，其旧 Harness 元数据约束需要按[构建说明](docs/build-and-release.md)分步 `--no-deps` 安装，不用历史 `uv.lock` 同步当前组合。
+Harness 使用 `>=0.13.0.dev20260925`，通过 `--find-links` 指向 `build/vendor/`，接受 `+opt.N` 本地版本。BOM 记录主线下限与 execution schema 5，返回实际安装版本；0.3.20 正式候选冻结 Harness `0.13.0.dev20260925+opt.221`（原 opt.217），SHA-256 为 `bed6ed01950767e3a4e1af99ce0b26e04e94a0671d0e7f0adb51dfa01064ff23`。`[realtime]` 候选的全新环境安装及 BOM 自检见[构建说明](docs/build-and-release.md)。Memory extra 仍为 0.5.2，其旧 Harness 元数据约束需要按[构建说明](docs/build-and-release.md)分步 `--no-deps` 安装，不用历史 `uv.lock` 同步当前组合。

@@ -34,3 +34,9 @@ tests/fixtures/qwen-input-role-metadata.json 保留 live7 五条共同事件顺�
 tests/test_realtime_input_role_metadata.py 覆盖五条分支在真实 ManagedRealtimeSession 中继续到工具请求/response 完成，以及完整轮次的适配器解码、首次来源、混合内容、去重、旧代隔离、上下文 ACK 不被消费、快照兼容和助手拒绝边界。live7 原分支止于 ASR 拒绝；测试的后续响应接自阶段 0 的合法序列，不冒充各分支已在线到达的后续帧。0.3.19 五份合同继续运行，不修改旧绿灯断言。
 
 这些是离线回放。Host 安装候选后仍须复验五条真线路分支及后续业务、恢复和独立评审，不据此宣称原 A08～A11 全部通过。
+
+## 发版候选冻结
+
+0.3.20 正式候选将 Harness 从历史 opt.217 改为 `0.13.0.dev20260925+opt.221`，轮子 SHA-256 为 `bed6ed01950767e3a4e1af99ce0b26e04e94a0671d0e7f0adb51dfa01064ff23`。安装后实测 execution schema 为 5，与 BOM 一致。历史 opt.217 的验证仅代表当时的组合；本次安装复验以 opt.221 为准。
+
+已知限制：A09～A11 仍阻断在中继 `upstream_protocol_error`；不提供请求与 response 的可靠关联，打断歧义时发 `response_origin_ambiguous`。本次只调整候选冻结及发布证据，不修改实时协议合同、提示词或工具说明。
