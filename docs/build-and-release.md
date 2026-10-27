@@ -44,13 +44,16 @@ SDK_HARNESS_VERSION=$(.venv/bin/python -c 'import importlib.metadata as m; print
 .venv/bin/python -c 'import simple_harness, agent_orchestrator, simple_harness_service, simple_harness_service.realtime; from simple_harness_service import validate_installed_bom; print(validate_installed_bom(include_memory=True))'
 ```
 
-上述 `--no-deps` 仅用于带 Memory extra 的历史开发安装组合。正式候选的全新 Python 3.13 环境验证只安装 `[realtime]`，不安装 Memory，不使用 `--no-deps`。先从公开索引装公共依赖，再由标准 pip 登记本地轮子的真实 URL 与 SHA：
+上述 `--no-deps` 仅用于带 Memory extra 的历史开发安装组合。正式候选的全新 Python 3.13 环境验证只安装 `[realtime]`，不安装 Memory，不使用 `--no-deps`。先从公开索引装公共依赖，再显式安装 Harness 本地轮子，由标准 pip 登记真实 URL 与 SHA，最后按名称安装 Service。仅按名称从 `--find-links` 安装 Harness 不会生成 `direct_url.json`，BOM 自检会以 `harness source provenance missing` 拒绝：
 
 ```bash
 uv venv --python 3.13 build/verify-0.3.20
 uv pip install --python build/verify-0.3.20/bin/python \
   'httpx>=0.28.1,<1' 'websockets>=15,<16' 'prompt-toolkit>=3.0.52,<4' \
   'pytest>=8.4,<9' 'deepseek-recipe==0.1.1' 'packaging>=25,<27' pip
+build/verify-0.3.20/bin/python -m pip install --no-index \
+  --find-links dist/candidate-0.3.20 --find-links build/vendor \
+  build/vendor/simple_harness_sdk-0.13.0.dev20260925+opt.221-py3-none-any.whl
 build/verify-0.3.20/bin/python -m pip install --no-index \
   --find-links dist/candidate-0.3.20 --find-links build/vendor \
   'simple-harness-service-sdk[realtime]==0.3.20'
